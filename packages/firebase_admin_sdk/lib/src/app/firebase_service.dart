@@ -20,6 +20,7 @@ enum FirebaseServiceType {
   auth(name: 'auth'),
   firestore(name: 'firestore'),
   messaging(name: 'messaging'),
+  remoteConfig(name: 'remote-config'),
   securityRules(name: 'security-rules'),
   functions(name: 'functions'),
   storage(name: 'storage');

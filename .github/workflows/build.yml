@@ -287,6 +287,15 @@ jobs:
       - name: Run WIF auth test
         run: dart test test/integration/app/firebase_app_prod_test.dart --concurrency=1
 
+      - name: Run Remote Config integration tests
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACCOUNT }}
+        run: |
+          project_id="${SERVICE_ACCOUNT##*@}"
+          project_id="${project_id%%.iam.gserviceaccount.com}"
+          RC_TEST_PROJECT_ID="$project_id" \
+            dart test test/integration/remote_config/ --concurrency=1
+
   publish:
     name: Publish verification
     runs-on: ubuntu-latest

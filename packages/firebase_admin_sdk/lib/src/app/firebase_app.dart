@@ -229,6 +229,11 @@ class FirebaseApp {
   /// Returns a cached instance if one exists, otherwise creates a new one.
   Messaging messaging() => Messaging.internal(this);
 
+  /// Gets the Remote Config service instance for this app.
+  ///
+  /// Returns a cached instance if one exists, otherwise creates a new one.
+  RemoteConfig remoteConfig() => RemoteConfig.internal(this);
+
   /// Gets the Security Rules service instance for this app.
   ///
   /// Returns a cached instance if one exists, otherwise creates a new one.

@@ -32,6 +32,7 @@ import '../auth.dart';
 import '../firestore.dart';
 import '../functions.dart';
 import '../messaging.dart';
+import '../remote_config.dart';
 import '../security_rules.dart';
 import '../storage.dart';
 import 'utils/utils.dart';
