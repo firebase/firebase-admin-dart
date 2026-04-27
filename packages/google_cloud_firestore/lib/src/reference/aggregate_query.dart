@@ -52,30 +52,18 @@ class AggregateQuery {
   ]) async {
     final firestore = query.firestore;
 
-    final aggregationQuery = firestore_v1.RunAggregationQueryRequest(
-      structuredAggregationQuery: firestore_v1.StructuredAggregationQuery(
-        structuredQuery: query._toStructuredQuery(),
-        aggregations: [
-          for (final field in aggregations)
-            firestore_v1.Aggregation(
-              alias: field.alias,
-              count: field.aggregation.count,
-              sum: field.aggregation.sum,
-              avg: field.aggregation.avg,
-            ),
-        ],
-      ),
-      explainOptions: options?.toProto() ?? firestore_v1.ExplainOptions(),
+    final aggregationQuery = _toProto(
+      parent: query._buildProtoParentPath(),
+      transactionId: null,
+      readTime: null,
+      explainOptions: options?.toProto(),
     );
 
     final response = await firestore._firestoreClient.v1((
       api,
       projectId,
     ) async {
-      return api.projects.databases.documents.runAggregationQuery(
-        aggregationQuery,
-        query._buildProtoParentPath(),
-      );
+      return api.runAggregationQuery(aggregationQuery);
     });
 
     ExplainMetrics? metrics;
@@ -84,29 +72,27 @@ class AggregateQuery {
     Timestamp? readTime;
     var hadResult = false;
 
-    for (final result in response) {
+    await for (final result in response) {
       if (result.explainMetrics != null) {
         metrics = ExplainMetrics._fromProto(result.explainMetrics!);
       }
 
       if (result.result != null) {
         hadResult = true;
-        if (result.result!.aggregateFields != null) {
-          for (final entry in result.result!.aggregateFields!.entries) {
-            final value = entry.value;
-            if (value.integerValue != null) {
-              results[entry.key] = int.parse(value.integerValue!);
-            } else if (value.doubleValue != null) {
-              results[entry.key] = value.doubleValue;
-            } else if (value.nullValue != null) {
-              results[entry.key] = null;
-            }
+        for (final entry in result.result!.aggregateFields.entries) {
+          final value = entry.value;
+          if (value.integerValue != null) {
+            results[entry.key] = value.integerValue;
+          } else if (value.doubleValue != null) {
+            results[entry.key] = value.doubleValue;
+          } else if (value.nullValue != null) {
+            results[entry.key] = null;
           }
         }
       }
 
       if (result.readTime != null) {
-        readTime = Timestamp._fromString(result.readTime!);
+        readTime = Timestamp._fromProto(result.readTime!);
       }
     }
 
@@ -138,27 +124,28 @@ class AggregateQuery {
   Future<AggregateQuerySnapshot> get() async {
     final firestore = query.firestore;
 
-    final request = _toProto(transactionId: null, readTime: null);
+    final request = _toProto(
+      parent: query._buildProtoParentPath(),
+      transactionId: null,
+      readTime: null,
+    );
 
     final response = await firestore._firestoreClient.v1((
       api,
       projectId,
     ) async {
-      return api.projects.databases.documents.runAggregationQuery(
-        request,
-        query._buildProtoParentPath(),
-      );
+      return api.runAggregationQuery(request);
     });
 
     final results = <String, Object?>{};
     Timestamp? readTime;
 
-    for (final result in response) {
-      if (result.result != null && result.result!.aggregateFields != null) {
-        for (final entry in result.result!.aggregateFields!.entries) {
+    await for (final result in response) {
+      if (result.result case final aggregationResult?) {
+        for (final entry in aggregationResult.aggregateFields.entries) {
           final value = entry.value;
           if (value.integerValue != null) {
-            results[entry.key] = int.parse(value.integerValue!);
+            results[entry.key] = value.integerValue;
           } else if (value.doubleValue != null) {
             results[entry.key] = value.doubleValue;
           } else if (value.nullValue != null) {
@@ -168,7 +155,7 @@ class AggregateQuery {
       }
 
       if (result.readTime != null) {
-        readTime = Timestamp._fromString(result.readTime!);
+        readTime = Timestamp._fromProto(result.readTime!);
       }
     }
 
@@ -183,9 +170,11 @@ class AggregateQuery {
   ///
   /// Supports transaction parameters for executing within a transaction.
   firestore_v1.RunAggregationQueryRequest _toProto({
+    required String parent,
     required String? transactionId,
     required Timestamp? readTime,
     firestore_v1.TransactionOptions? transactionOptions,
+    firestore_v1.ExplainOptions? explainOptions,
   }) {
     // Validate mutual exclusivity of transaction parameters
     final providedParams = [
@@ -201,12 +190,13 @@ class AggregateQuery {
       );
     }
 
-    final request = firestore_v1.RunAggregationQueryRequest(
+    return firestore_v1.RunAggregationQueryRequest(
+      parent: parent,
       structuredAggregationQuery: firestore_v1.StructuredAggregationQuery(
         structuredQuery: query._toStructuredQuery(),
         aggregations: [
           for (final field in aggregations)
-            firestore_v1.Aggregation(
+            firestore_v1.StructuredAggregationQuery_Aggregation(
               alias: field.alias,
               count: field.aggregation.count,
               sum: field.aggregation.sum,
@@ -214,17 +204,11 @@ class AggregateQuery {
             ),
         ],
       ),
+      explainOptions: explainOptions,
+      transaction: transactionId.let(base64Decode),
+      readTime: readTime?._toProto().timestampValue,
+      newTransaction: transactionOptions,
     );
-
-    if (transactionId != null) {
-      request.transaction = transactionId;
-    } else if (readTime != null) {
-      request.readTime = readTime._toProto().timestampValue;
-    } else if (transactionOptions != null) {
-      request.newTransaction = transactionOptions;
-    }
-
-    return request;
   }
 
   @override

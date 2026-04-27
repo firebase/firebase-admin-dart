@@ -73,18 +73,16 @@ interface class DocumentReference<T> implements _Serializable {
   Future<List<CollectionReference<DocumentData>>> listCollections() {
     return firestore._firestoreClient.v1((a, projectId) async {
       final request = firestore_v1.ListCollectionIdsRequest(
+        parent: _formattedName,
         // Setting `pageSize` to an arbitrarily large value lets the backend cap
         // the page size (currently to 300). Note that the backend rejects
         // MAX_INT32 (b/146883794).
         pageSize: (math.pow(2, 16) - 1).toInt(),
       );
 
-      final result = await a.projects.databases.documents.listCollectionIds(
-        request,
-        _formattedName,
-      );
+      final result = await a.listCollectionIds(request);
 
-      final ids = result.collectionIds ?? [];
+      final ids = result.collectionIds;
       ids.sort((a, b) => a.compareTo(b));
 
       return [for (final id in ids) collection(id)];

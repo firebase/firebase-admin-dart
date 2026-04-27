@@ -54,6 +54,7 @@ class _AggregationReader {
   /// and the transaction ID (if one was started or provided).
   Future<_AggregationReaderResponse> _get() async {
     final request = aggregateQuery._toProto(
+      parent: aggregateQuery.query._buildProtoParentPath(),
       transactionId: transactionId,
       readTime: readTime,
       transactionOptions: transactionOptions,
@@ -63,27 +64,24 @@ class _AggregationReader {
       api,
       projectId,
     ) async {
-      return api.projects.databases.documents.runAggregationQuery(
-        request,
-        aggregateQuery.query._buildProtoParentPath(),
-      );
+      return api.runAggregationQuery(request);
     });
 
     final results = <String, Object?>{};
     Timestamp? aggregationReadTime;
 
     // Process streaming response
-    for (final result in response) {
+    await for (final result in response) {
       // Capture transaction ID from response (if present)
-      if (result.transaction?.isNotEmpty ?? false) {
-        _retrievedTransactionId = result.transaction;
+      if (result.transaction.isNotEmpty) {
+        _retrievedTransactionId = base64Encode(result.transaction);
       }
 
-      if (result.result != null && result.result!.aggregateFields != null) {
-        for (final entry in result.result!.aggregateFields!.entries) {
+      if (result.result != null) {
+        for (final entry in result.result!.aggregateFields.entries) {
           final value = entry.value;
           if (value.integerValue != null) {
-            results[entry.key] = int.parse(value.integerValue!);
+            results[entry.key] = value.integerValue;
           } else if (value.doubleValue != null) {
             results[entry.key] = value.doubleValue;
           } else if (value.nullValue != null) {
@@ -93,7 +91,7 @@ class _AggregationReader {
       }
 
       if (result.readTime != null) {
-        aggregationReadTime = Timestamp._fromString(result.readTime!);
+        aggregationReadTime = Timestamp._fromProto(result.readTime!);
       }
     }
 

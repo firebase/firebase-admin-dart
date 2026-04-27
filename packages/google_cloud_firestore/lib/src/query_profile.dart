@@ -19,7 +19,9 @@ class PlanSummary {
   const PlanSummary._(this.indexesUsed);
 
   factory PlanSummary._fromProto(firestore_v1.PlanSummary proto) {
-    return PlanSummary._(proto.indexesUsed ?? <Map<String, Object?>>[]);
+    return PlanSummary._([
+      for (final index in proto.indexesUsed) index.toJson() as Map<String, Object?>,
+    ]);
   }
 
   /// Information about the indexes that were used to serve the query.
@@ -41,10 +43,18 @@ class ExecutionStats {
 
   factory ExecutionStats._fromProto(firestore_v1.ExecutionStats proto) {
     return ExecutionStats._(
-      resultsReturned: int.tryParse(proto.resultsReturned ?? '0') ?? 0,
-      executionDuration: proto.executionDuration ?? '0s',
-      readOperations: int.tryParse(proto.readOperations ?? '0') ?? 0,
-      debugStats: proto.debugStats ?? <String, Object?>{},
+      resultsReturned: proto.resultsReturned,
+      executionDuration:
+          proto.executionDuration?.let((d) {
+            final seconds = d.seconds;
+            final nanos = d.nanos;
+            if (nanos == 0) return '${seconds}s';
+            return '$seconds.${nanos.toString().padLeft(9, '0').replaceAll(RegExp(r'0+$'), '')}s';
+          }) ??
+          '0s',
+      readOperations: proto.readOperations,
+      debugStats:
+          proto.debugStats?.toJson() as Map<String, Object?>? ?? const {},
     );
   }
 
@@ -122,6 +132,6 @@ class ExplainOptions {
   final bool? analyze;
 
   firestore_v1.ExplainOptions toProto() {
-    return firestore_v1.ExplainOptions(analyze: analyze);
+    return firestore_v1.ExplainOptions(analyze: analyze ?? false);
   }
 }

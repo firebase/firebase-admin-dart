@@ -13,99 +13,17 @@
 // limitations under the License.
 
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:google_cloud/constants.dart' as google_cloud;
 import 'package:google_cloud/google_cloud.dart' as google_cloud;
-import 'package:googleapis/firestore/v1.dart' as firestore_v1;
+import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
 import 'package:googleapis_auth/auth_io.dart' as googleapis_auth;
 import 'package:http/http.dart';
 import 'package:meta/meta.dart';
 
 import '../google_cloud_firestore.dart';
 import 'environment.dart';
-import 'firestore.dart'
-    show Serializer, kInfinitySentinel, kNaNSentinel, kNegInfinitySentinel;
 import 'firestore_exception.dart';
-
-// Matches a complete Firestore Value JSON object whose doubleValue is one of
-// the three special IEEE 754 strings the REST API emits. Anchoring on the
-// surrounding braces prevents false-positive matches inside user string fields
-// that happen to contain the text `"doubleValue":"Infinity"`.
-final _specialDoublePattern = RegExp(
-  r'\{\s*"doubleValue"\s*:\s*"(Infinity|-Infinity|NaN)"\s*\}',
-);
-
-/// HTTP client wrapper that rewrites special IEEE 754 double values in
-/// Firestore REST API responses before the googleapis library parses them.
-///
-/// The Firestore REST API encodes [double.infinity], [double.negativeInfinity],
-/// and [double.nan] as the JSON strings `"Infinity"`, `"-Infinity"`, and
-/// `"NaN"` respectively (since those values are not representable in standard
-/// JSON). The googleapis-generated [firestore_v1.Value.fromJson] does a hard `as num` cast
-/// on the `doubleValue` field and therefore throws when it encounters a string.
-///
-/// This client intercepts every response body and replaces those patterns with
-/// a `stringValue` sentinel that [Serializer.decodeValue] understands.
-/// The sentinel strings are defined alongside [Serializer.decodeValue] in
-/// `serializer.dart`.
-class _SpecialDoubleClient extends BaseClient {
-  _SpecialDoubleClient(this._inner);
-
-  final Client _inner;
-
-  @override
-  Future<StreamedResponse> send(BaseRequest request) async {
-    final response = await _inner.send(request);
-
-    final contentType = response.headers['content-type'] ?? '';
-    if (!contentType.contains('application/json')) return response;
-
-    final body = await response.stream.bytesToString();
-    if (!body.contains('"doubleValue"')) return _rebuild(response, body);
-
-    final patched = body.replaceAllMapped(_specialDoublePattern, (m) {
-      final sentinel = switch (m.group(1)) {
-        'Infinity' => kInfinitySentinel,
-        '-Infinity' => kNegInfinitySentinel,
-        _ => kNaNSentinel, // 'NaN'
-      };
-      return '{"stringValue":"$sentinel"}';
-    });
-
-    return _rebuild(response, patched);
-  }
-
-  StreamedResponse _rebuild(StreamedResponse original, String body) {
-    final bytes = utf8.encode(body);
-    final headers = Map<String, String>.from(original.headers)
-      ..['content-length'] = bytes.length.toString();
-    return StreamedResponse(
-      Stream.value(bytes),
-      original.statusCode,
-      contentLength: bytes.length,
-      headers: headers,
-      request: original.request,
-      reasonPhrase: original.reasonPhrase,
-    );
-  }
-}
-
-/// An [googleapis_auth.AuthClient] wrapper that applies [_SpecialDoubleClient]
-/// response rewriting while preserving the [credentials] required by the
-/// googleapis request pipeline.
-class _SpecialDoubleAuthClient extends _SpecialDoubleClient
-    implements googleapis_auth.AuthClient {
-  _SpecialDoubleAuthClient(this._authInner) : super(_authInner);
-
-  final googleapis_auth.AuthClient _authInner;
-
-  @override
-  googleapis_auth.AccessCredentials get credentials => _authInner.credentials;
-
-  @override
-  void close() => _authInner.close();
-}
 
 /// Internal HTTP request implementation that wraps a stream.
 ///
@@ -196,28 +114,23 @@ class FirestoreHttpClient {
   /// Creates the appropriate HTTP client based on emulator configuration.
   Future<googleapis_auth.AuthClient> _createClient() async {
     if (_isUsingEmulator) {
-      // Emulator: Create unauthenticated client, wrapped to rewrite special
-      // doubles before EmulatorClient adds auth headers.
-      return EmulatorClient(_SpecialDoubleClient(Client()));
+      // Emulator: Create unauthenticated client.
+      return EmulatorClient(Client());
     }
 
-    // Production: Create authenticated client, then wrap to rewrite special
-    // doubles in responses before googleapis parses them.
+    // Production: Create authenticated client.
     final serviceAccountCreds = credential.serviceAccountCredentials;
     if (serviceAccountCreds != null) {
-      final authClient = await googleapis_auth.clientViaServiceAccount(
+      return googleapis_auth.clientViaServiceAccount(
         serviceAccountCreds,
-        [firestore_v1.FirestoreApi.cloudPlatformScope],
+        ['https://www.googleapis.com/auth/datastore'],
       );
-      return _SpecialDoubleAuthClient(authClient);
     }
 
     // Fall back to Application Default Credentials
-    final authClient = await googleapis_auth
-        .clientViaApplicationDefaultCredentials(
-          scopes: [firestore_v1.FirestoreApi.cloudPlatformScope],
-        );
-    return _SpecialDoubleAuthClient(authClient);
+    return googleapis_auth.clientViaApplicationDefaultCredentials(
+      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+    );
   }
 
   Future<R> _run<R>(
@@ -248,10 +161,10 @@ class FirestoreHttpClient {
 
   /// Executes a Firestore v1 API operation with automatic projectId injection.
   Future<R> v1<R>(
-    Future<R> Function(firestore_v1.FirestoreApi api, String projectId) fn,
+    Future<R> Function(firestore_v1.Firestore api, String projectId) fn,
   ) => _run(
     (client, projectId) => fn(
-      firestore_v1.FirestoreApi(client, rootUrl: _firestoreApiHost.toString()),
+      firestore_v1.Firestore(client: client, endPoint: _firestoreApiHost),
       projectId,
     ),
   );

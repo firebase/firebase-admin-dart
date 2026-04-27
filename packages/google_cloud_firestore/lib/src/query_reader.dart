@@ -54,6 +54,7 @@ class _QueryReader<T> {
   /// the transaction ID (if one was started or provided).
   Future<_QueryReaderResponse<T>> _get() async {
     final request = query._toProto(
+      parent: query._buildProtoParentPath(),
       transactionId: transactionId,
       readTime: readTime,
       transactionOptions: transactionOptions,
@@ -63,26 +64,25 @@ class _QueryReader<T> {
       api,
       projectId,
     ) async {
-      return api.projects.databases.documents.runQuery(
-        request,
-        query._buildProtoParentPath(),
-      );
+      return api.runQuery(request);
     });
 
     Timestamp? queryReadTime;
     final snapshots = <QueryDocumentSnapshot<T>>[];
 
     // Process streaming response
-    for (final e in response) {
+    await for (final e in response) {
       // Capture transaction ID from response (if present)
-      if (e.transaction?.isNotEmpty ?? false) {
-        _retrievedTransactionId = e.transaction;
+      if (e.transaction.isNotEmpty) {
+        _retrievedTransactionId = base64Encode(e.transaction);
       }
 
       final document = e.document;
       if (document == null) {
         // End of stream marker
-        queryReadTime = e.readTime.let(Timestamp._fromString);
+        if (e.readTime != null) {
+          queryReadTime = Timestamp._fromProto(e.readTime!);
+        }
         continue;
       }
 

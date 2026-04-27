@@ -124,41 +124,38 @@ int _compareNumbers(num left, num right) {
 
 /// Compares two Firestore number Value protos (integer or double).
 int _compareNumberProtos(firestore_v1.Value left, firestore_v1.Value right) {
-  final leftValue = left.integerValue != null
-      ? int.parse(left.integerValue!)
-      : left.doubleValue!;
-
-  final rightValue = right.integerValue != null
-      ? int.parse(right.integerValue!)
-      : right.doubleValue!;
+  final leftValue = left.integerValue ?? left.doubleValue!;
+  final rightValue = right.integerValue ?? right.doubleValue!;
 
   return _compareNumbers(leftValue, rightValue);
 }
 
-/// Compares two Firestore Timestamp value strings (RFC 3339 format).
-///
-/// Timestamps in Value protos are RFC 3339 formatted strings and can be
-/// compared lexicographically. We parse them as DateTime for proper comparison.
-int _compareTimestampStrings(String? left, String? right) {
+/// Compares two Firestore Timestamps.
+int _compareTimestampsInternal(
+  protobuf_v1.Timestamp? left,
+  protobuf_v1.Timestamp? right,
+) {
   if (left == null && right == null) return 0;
   if (left == null) return -1;
   if (right == null) return 1;
 
-  // Parse RFC 3339 timestamps
-  final leftTime = DateTime.parse(left);
-  final rightTime = DateTime.parse(right);
-
-  return leftTime.compareTo(rightTime);
+  final secondsCompare = left.seconds.compareTo(right.seconds);
+  if (secondsCompare != 0) return secondsCompare;
+  return left.nanos.compareTo(right.nanos);
 }
 
 /// Compares two byte arrays (blobs).
-int _compareBlobs(String? left, String? right) {
+int _compareBlobs(Uint8List? left, Uint8List? right) {
   if (left == null && right == null) return 0;
   if (left == null) return -1;
   if (right == null) return 1;
 
-  // Base64 strings are lexicographically comparable
-  return left.compareTo(right);
+  final length = math.min(left.length, right.length);
+  for (var i = 0; i < length; i++) {
+    final byteCompare = left[i].compareTo(right[i]);
+    if (byteCompare != 0) return byteCompare;
+  }
+  return left.length.compareTo(right.length);
 }
 
 /// Compares two Firestore document reference Value protos.
@@ -175,18 +172,15 @@ int _compareReferenceProtos(firestore_v1.Value left, firestore_v1.Value right) {
 /// Compares two Firestore GeoPoint values.
 ///
 /// GeoPoints are compared first by latitude, then by longitude.
-int _compareGeoPoints(firestore_v1.LatLng? left, firestore_v1.LatLng? right) {
+int _compareGeoPoints(type_v1.LatLng? left, type_v1.LatLng? right) {
   if (left == null && right == null) return 0;
   if (left == null) return -1;
   if (right == null) return 1;
 
-  final latComparison = _primitiveComparator(
-    left.latitude ?? 0.0,
-    right.latitude ?? 0.0,
-  );
+  final latComparison = _primitiveComparator(left.latitude, right.latitude);
   if (latComparison != 0) return latComparison;
 
-  return _primitiveComparator(left.longitude ?? 0.0, right.longitude ?? 0.0);
+  return _primitiveComparator(left.longitude, right.longitude);
 }
 
 /// Compares two Firestore array values element-by-element.
@@ -347,7 +341,7 @@ int compare(firestore_v1.Value left, firestore_v1.Value right) {
     case _TypeOrder.numberValue:
       return _compareNumberProtos(left, right);
     case _TypeOrder.timestampValue:
-      return _compareTimestampStrings(
+      return _compareTimestampsInternal(
         left.timestampValue,
         right.timestampValue,
       );

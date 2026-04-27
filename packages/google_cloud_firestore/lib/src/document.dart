@@ -105,11 +105,11 @@ class DocumentSnapshot<T> {
         target[key] = firestore_v1.Value(
           mapValue: firestore_v1.MapValue(
             fields: merge(
-              target: target[key]!.mapValue!.fields!,
+              target: target[key]!.mapValue!.fields,
               value: value,
               path: path,
               pos: pos + 1,
-            ),
+            )!,
           ),
         );
         return target;
@@ -133,27 +133,28 @@ class DocumentSnapshot<T> {
 
   static DocumentSnapshot<DocumentData> _fromDocument(
     firestore_v1.Document document,
-    String? readTime,
+    protobuf_v1.Timestamp? readTime,
     Firestore firestore,
   ) {
+    final name = document.name;
     final ref = DocumentReference<DocumentData>._(
       firestore: firestore,
-      path: _QualifiedResourcePath.fromSlashSeparatedString(document.name!),
+      path: _QualifiedResourcePath.fromSlashSeparatedString(name),
       converter: _jsonConverter,
     );
 
     final builder = _DocumentSnapshotBuilder(ref)
-      ..fieldsProto = firestore_v1.MapValue(fields: document.fields ?? {})
-      ..createTime = document.createTime.let(Timestamp._fromString)
-      ..readTime = readTime.let(Timestamp._fromString)
-      ..updateTime = document.updateTime.let(Timestamp._fromString);
+      ..fieldsProto = firestore_v1.MapValue(fields: document.fields)
+      ..createTime = document.createTime.let(Timestamp._fromProto)
+      ..readTime = readTime.let(Timestamp._fromProto)
+      ..updateTime = document.updateTime.let(Timestamp._fromProto);
 
     return builder.build();
   }
 
   static DocumentSnapshot<DocumentData> _missing(
     String document,
-    String? readTime,
+    protobuf_v1.Timestamp? readTime,
     Firestore firestore,
   ) {
     final ref = DocumentReference<DocumentData>._(
@@ -163,7 +164,7 @@ class DocumentSnapshot<T> {
     );
 
     final builder = _DocumentSnapshotBuilder(ref)
-      ..readTime = readTime.let(Timestamp._fromString);
+      ..readTime = readTime.let(Timestamp._fromProto);
 
     return builder.build();
   }
@@ -265,7 +266,7 @@ class DocumentSnapshot<T> {
       // The field component is not present.
       if (newFields == null) return null;
 
-      fields = newFields.fields!;
+      fields = newFields.fields;
     }
 
     return fields[components.last];
@@ -275,7 +276,7 @@ class DocumentSnapshot<T> {
     return firestore_v1.Write(
       update: firestore_v1.Document(
         name: ref._formattedName,
-        fields: _fieldsProto?.fields,
+        fields: _fieldsProto?.fields ?? const {},
       ),
     );
   }
@@ -430,7 +431,7 @@ class _DocumentTransform<T> {
   }
 
   /// Converts a document transform to the Firestore 'FieldTransform' Proto.
-  List<firestore_v1.FieldTransform> toProto(Serializer serializer) {
+  List<firestore_v1.DocumentTransform_FieldTransform> toProto(Serializer serializer) {
     return [
       for (final entry in transforms.entries)
         entry.value._toProto(serializer, entry.key),

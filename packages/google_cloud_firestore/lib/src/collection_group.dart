@@ -103,17 +103,15 @@ interface class CollectionGroup<T> extends Query<T> {
       );
 
       // Collect partitions from this page
-      if (response.partitions != null) {
-        for (final cursor in response.partitions!) {
-          if (cursor.values != null) {
-            partitions.add(cursor.values!);
-          }
+      for (final cursor in response.partitions) {
+        if (cursor.values.isNotEmpty) {
+          partitions.add(cursor.values);
         }
       }
 
       // Continue to next page if token is present
       pageToken = response.nextPageToken;
-    } while (pageToken != null && pageToken.isNotEmpty);
+    } while (pageToken.isNotEmpty);
 
     return partitions;
   }
@@ -125,16 +123,14 @@ interface class CollectionGroup<T> extends Query<T> {
     String? pageToken,
   }) async {
     final partitionRequest = firestore_v1.PartitionQueryRequest(
+      parent: '${firestore._formattedDatabaseName}/documents',
       structuredQuery: structuredQuery,
-      partitionCount: '$partitionCount',
-      pageToken: pageToken,
+      partitionCount: partitionCount,
+      pageToken: pageToken ?? '',
     );
 
     return firestore._firestoreClient.v1((api, projectId) {
-      return api.projects.databases.documents.partitionQuery(
-        partitionRequest,
-        '${firestore._formattedDatabaseName}/documents',
-      );
+      return api.partitionQuery(partitionRequest);
     });
   }
 

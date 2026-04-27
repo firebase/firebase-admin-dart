@@ -12,16 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:typed_data';
+
 import 'package:google_cloud_firestore/src/firestore.dart';
-import 'package:googleapis/firestore/v1.dart' as firestore_v1;
+import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
+import 'package:google_cloud_protobuf/protobuf.dart' as protobuf_v1;
+import 'package:google_cloud_type/type.dart' as type_v1;
 import 'package:test/test.dart';
 
 void main() {
   group('Firestore Value Ordering', () {
     group('compare()', () {
       test('compares null values', () {
-        final left = firestore_v1.Value(nullValue: 'NULL_VALUE');
-        final right = firestore_v1.Value(nullValue: 'NULL_VALUE');
+        final left = firestore_v1.Value(
+          nullValue: protobuf_v1.NullValue.nullValue,
+        );
+        final right = firestore_v1.Value(
+          nullValue: protobuf_v1.NullValue.nullValue,
+        );
         expect(compare(left, right), equals(0));
       });
 
@@ -35,8 +43,8 @@ void main() {
       });
 
       test('compares integer values', () {
-        final left = firestore_v1.Value(integerValue: '10');
-        final right = firestore_v1.Value(integerValue: '20');
+        final left = firestore_v1.Value(integerValue: 10);
+        final right = firestore_v1.Value(integerValue: 20);
 
         expect(compare(left, right), lessThan(0));
         expect(compare(right, left), greaterThan(0));
@@ -55,7 +63,7 @@ void main() {
       test('compares NaN values correctly', () {
         final nan1 = firestore_v1.Value(doubleValue: double.nan);
         final nan2 = firestore_v1.Value(doubleValue: double.nan);
-        final regular = firestore_v1.Value(doubleValue: 1);
+        final regular = firestore_v1.Value(doubleValue: 1.0);
 
         // NaN == NaN
         expect(compare(nan1, nan2), equals(0));
@@ -65,7 +73,7 @@ void main() {
       });
 
       test('compares mixed integer and double values', () {
-        final intValue = firestore_v1.Value(integerValue: '10');
+        final intValue = firestore_v1.Value(integerValue: 10);
         final doubleValue = firestore_v1.Value(doubleValue: 10.5);
 
         expect(compare(intValue, doubleValue), lessThan(0));
@@ -82,10 +90,12 @@ void main() {
       });
 
       test('compares timestamp values', () {
-        final left = firestore_v1.Value(timestampValue: '2020-01-01T00:00:00Z');
+        final left = firestore_v1.Value(
+          timestampValue: protobuf_v1.Timestamp(seconds: 1577836800),
+        ); // 2020-01-01
         final right = firestore_v1.Value(
-          timestampValue: '2021-01-01T00:00:00Z',
-        );
+          timestampValue: protobuf_v1.Timestamp(seconds: 1609459200),
+        ); // 2021-01-01
 
         expect(compare(left, right), lessThan(0));
         expect(compare(right, left), greaterThan(0));
@@ -108,8 +118,12 @@ void main() {
       });
 
       test('compares blob values', () {
-        final left = firestore_v1.Value(bytesValue: 'YWJj'); // "abc" in base64
-        final right = firestore_v1.Value(bytesValue: 'eHl6'); // "xyz" in base64
+        final left = firestore_v1.Value(
+          bytesValue: Uint8List.fromList([97, 98, 99]),
+        ); // "abc"
+        final right = firestore_v1.Value(
+          bytesValue: Uint8List.fromList([120, 121, 122]),
+        ); // "xyz"
 
         expect(compare(left, right), lessThan(0));
         expect(compare(right, left), greaterThan(0));
@@ -118,10 +132,10 @@ void main() {
 
       test('compares geopoint values', () {
         final left = firestore_v1.Value(
-          geoPointValue: firestore_v1.LatLng(latitude: 37.7, longitude: -122.4),
+          geoPointValue: type_v1.LatLng(latitude: 37.7, longitude: -122.4),
         );
         final right = firestore_v1.Value(
-          geoPointValue: firestore_v1.LatLng(latitude: 37.8, longitude: -122.4),
+          geoPointValue: type_v1.LatLng(latitude: 37.8, longitude: -122.4),
         );
 
         expect(compare(left, right), lessThan(0));
@@ -133,16 +147,16 @@ void main() {
         final left = firestore_v1.Value(
           arrayValue: firestore_v1.ArrayValue(
             values: [
-              firestore_v1.Value(integerValue: '1'),
-              firestore_v1.Value(integerValue: '2'),
+              firestore_v1.Value(integerValue: 1),
+              firestore_v1.Value(integerValue: 2),
             ],
           ),
         );
         final right = firestore_v1.Value(
           arrayValue: firestore_v1.ArrayValue(
             values: [
-              firestore_v1.Value(integerValue: '1'),
-              firestore_v1.Value(integerValue: '3'),
+              firestore_v1.Value(integerValue: 1),
+              firestore_v1.Value(integerValue: 3),
             ],
           ),
         );
@@ -152,17 +166,17 @@ void main() {
         expect(compare(left, left), equals(0));
       });
 
-      test('compares arrays of different lengths', () {
+      test('compares array values of different lengths', () {
         final shorter = firestore_v1.Value(
           arrayValue: firestore_v1.ArrayValue(
-            values: [firestore_v1.Value(integerValue: '1')],
+            values: [firestore_v1.Value(integerValue: 1)],
           ),
         );
         final longer = firestore_v1.Value(
           arrayValue: firestore_v1.ArrayValue(
             values: [
-              firestore_v1.Value(integerValue: '1'),
-              firestore_v1.Value(integerValue: '2'),
+              firestore_v1.Value(integerValue: 1),
+              firestore_v1.Value(integerValue: 2),
             ],
           ),
         );
@@ -175,16 +189,16 @@ void main() {
         final left = firestore_v1.Value(
           mapValue: firestore_v1.MapValue(
             fields: {
-              'a': firestore_v1.Value(integerValue: '1'),
-              'b': firestore_v1.Value(integerValue: '2'),
+              'a': firestore_v1.Value(integerValue: 1),
+              'b': firestore_v1.Value(integerValue: 2),
             },
           ),
         );
         final right = firestore_v1.Value(
           mapValue: firestore_v1.MapValue(
             fields: {
-              'a': firestore_v1.Value(integerValue: '1'),
-              'b': firestore_v1.Value(integerValue: '3'),
+              'a': firestore_v1.Value(integerValue: 1),
+              'b': firestore_v1.Value(integerValue: 3),
             },
           ),
         );
@@ -194,21 +208,22 @@ void main() {
         expect(compare(left, left), equals(0));
       });
 
-      test('compares values of different types using type ordering', () {
-        final nullValue = firestore_v1.Value(nullValue: 'NULL_VALUE');
-        final boolValue = firestore_v1.Value(booleanValue: false);
-        final numberValue = firestore_v1.Value(integerValue: '1');
+      test('cross-type ordering', () {
+        final nullValue = firestore_v1.Value(
+          nullValue: protobuf_v1.NullValue.nullValue,
+        );
+        final boolValue = firestore_v1.Value(booleanValue: true);
+        final numberValue = firestore_v1.Value(integerValue: 1);
         final timestampValue = firestore_v1.Value(
-          timestampValue: '2020-01-01T00:00:00Z',
+          timestampValue: protobuf_v1.Timestamp(seconds: 1609459200),
         );
-        final stringValue = firestore_v1.Value(stringValue: 'abc');
-        final blobValue = firestore_v1.Value(bytesValue: 'YWJj');
-        final refValue = firestore_v1.Value(
-          referenceValue:
-              'projects/test/databases/(default)/documents/coll/doc1',
+        final stringValue = firestore_v1.Value(stringValue: 'a');
+        final blobValue = firestore_v1.Value(
+          bytesValue: Uint8List.fromList([97, 98, 99]),
         );
+        final refValue = firestore_v1.Value(referenceValue: 'ref/1');
         final geoValue = firestore_v1.Value(
-          geoPointValue: firestore_v1.LatLng(latitude: 0, longitude: 0),
+          geoPointValue: type_v1.LatLng(latitude: 0, longitude: 0),
         );
         final arrayValue = firestore_v1.Value(
           arrayValue: firestore_v1.ArrayValue(values: []),
@@ -217,7 +232,6 @@ void main() {
           mapValue: firestore_v1.MapValue(fields: {}),
         );
 
-        // Type ordering: null < bool < number < timestamp < string < blob < ref < geopoint < array < object
         expect(compare(nullValue, boolValue), lessThan(0));
         expect(compare(boolValue, numberValue), lessThan(0));
         expect(compare(numberValue, timestampValue), lessThan(0));
@@ -228,17 +242,30 @@ void main() {
         expect(compare(geoValue, arrayValue), lessThan(0));
         expect(compare(arrayValue, mapValue), lessThan(0));
       });
+
+      test('compares strings using UTF-8 lexicographical order', () {
+        // "𐐷" is U+10437, UTF-16: 0xD801 0xDC37, UTF-8: 0xF0 0x90 0x90 0xB7
+        // "ÿ" is U+00FF, UTF-16: 0x00FF, UTF-8: 0xC3 0xBF
+        final emoji = firestore_v1.Value(stringValue: '𐐷');
+        final replacement = firestore_v1.Value(stringValue: 'ÿ');
+
+        expect(compare(replacement, emoji), lessThan(0));
+
+        final str1 = firestore_v1.Value(stringValue: 'a');
+        final str2 = firestore_v1.Value(stringValue: 'b');
+        expect(compare(str1, str2), lessThan(0));
+      });
     });
 
     group('compareArrays()', () {
       test('compares arrays element by element', () {
         final left = [
-          firestore_v1.Value(integerValue: '1'),
-          firestore_v1.Value(integerValue: '2'),
+          firestore_v1.Value(integerValue: 1),
+          firestore_v1.Value(integerValue: 2),
         ];
         final right = [
-          firestore_v1.Value(integerValue: '1'),
-          firestore_v1.Value(integerValue: '3'),
+          firestore_v1.Value(integerValue: 1),
+          firestore_v1.Value(integerValue: 3),
         ];
 
         expect(compareArrays(left, right), lessThan(0));
@@ -246,51 +273,33 @@ void main() {
         expect(compareArrays(left, left), equals(0));
       });
 
-      test('compares empty arrays', () {
+      test('compares empty and non-empty arrays', () {
         final empty = <firestore_v1.Value>[];
-        final nonEmpty = [firestore_v1.Value(integerValue: '1')];
+        final nonEmpty = [firestore_v1.Value(integerValue: 1)];
 
         expect(compareArrays(empty, empty), equals(0));
         expect(compareArrays(empty, nonEmpty), lessThan(0));
         expect(compareArrays(nonEmpty, empty), greaterThan(0));
       });
 
-      test('handles partition cursor comparison (reference values)', () {
-        // This matches the use case in CollectionGroup.getPartitions
+      test('compares nested arrays', () {
         final partition1 = [
           firestore_v1.Value(
-            referenceValue:
-                'projects/test/databases/(default)/documents/coll/doc1',
+            arrayValue: firestore_v1.ArrayValue(
+              values: [firestore_v1.Value(integerValue: 1)],
+            ),
           ),
         ];
         final partition2 = [
           firestore_v1.Value(
-            referenceValue:
-                'projects/test/databases/(default)/documents/coll/doc2',
+            arrayValue: firestore_v1.ArrayValue(
+              values: [firestore_v1.Value(integerValue: 2)],
+            ),
           ),
         ];
 
         expect(compareArrays(partition1, partition2), lessThan(0));
         expect(compareArrays(partition2, partition1), greaterThan(0));
-      });
-    });
-
-    group('UTF-8 string comparison', () {
-      test('handles surrogate pairs correctly', () {
-        // U+FFFD (Replacement Character) vs U+1F600 (Grinning Face emoji)
-        // In UTF-8: 0xEF 0xBF 0xBD vs 0xF0 0x9F 0x98 0x80
-        // Replacement should come before emoji
-        final replacement = firestore_v1.Value(stringValue: '\uFFFD');
-        final emoji = firestore_v1.Value(stringValue: '😀');
-
-        expect(compare(replacement, emoji), lessThan(0));
-      });
-
-      test('compares strings character by character', () {
-        final str1 = firestore_v1.Value(stringValue: 'abc');
-        final str2 = firestore_v1.Value(stringValue: 'abd');
-
-        expect(compare(str1, str2), lessThan(0));
       });
     });
   });

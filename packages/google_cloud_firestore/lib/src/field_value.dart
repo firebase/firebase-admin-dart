@@ -182,7 +182,7 @@ abstract class _FieldTransform implements FieldValue {
   void validate();
 
   /// The proto representation for this field transform.
-  firestore_v1.FieldTransform _toProto(
+  firestore_v1.DocumentTransform_FieldTransform _toProto(
     Serializer serializer,
     FieldPath fieldPath,
   );
@@ -210,7 +210,7 @@ class _DeleteTransform implements _FieldTransform {
   void validate() {}
 
   @override
-  firestore_v1.FieldTransform _toProto(
+  firestore_v1.DocumentTransform_FieldTransform _toProto(
     Serializer serializer,
     FieldPath fieldPath,
   ) {
@@ -249,11 +249,11 @@ class _NumericIncrementTransform implements _FieldTransform {
   }
 
   @override
-  firestore_v1.FieldTransform _toProto(
+  firestore_v1.DocumentTransform_FieldTransform _toProto(
     Serializer serializer,
     FieldPath fieldPath,
   ) {
-    return firestore_v1.FieldTransform(
+    return firestore_v1.DocumentTransform_FieldTransform(
       fieldPath: fieldPath._formattedName,
       increment: serializer.encodeValue(value),
     );
@@ -290,11 +290,11 @@ class _ArrayUnionTransform implements _FieldTransform {
   }
 
   @override
-  firestore_v1.FieldTransform _toProto(
+  firestore_v1.DocumentTransform_FieldTransform _toProto(
     Serializer serializer,
     FieldPath fieldPath,
   ) {
-    return firestore_v1.FieldTransform(
+    return firestore_v1.DocumentTransform_FieldTransform(
       fieldPath: fieldPath._formattedName,
       appendMissingElements: serializer.encodeValue(elements)!.arrayValue,
     );
@@ -332,11 +332,11 @@ class _ArrayRemoveTransform implements _FieldTransform {
   }
 
   @override
-  firestore_v1.FieldTransform _toProto(
+  firestore_v1.DocumentTransform_FieldTransform _toProto(
     Serializer serializer,
     FieldPath fieldPath,
   ) {
-    return firestore_v1.FieldTransform(
+    return firestore_v1.DocumentTransform_FieldTransform(
       fieldPath: fieldPath._formattedName,
       removeAllFromArray: serializer.encodeValue(elements)!.arrayValue,
     );
@@ -368,13 +368,14 @@ class _ServerTimestampTransform implements _FieldTransform {
   String get methodName => 'FieldValue.serverTimestamp';
 
   @override
-  firestore_v1.FieldTransform _toProto(
+  firestore_v1.DocumentTransform_FieldTransform _toProto(
     Serializer serializer,
     FieldPath fieldPath,
   ) {
-    return firestore_v1.FieldTransform(
+    return firestore_v1.DocumentTransform_FieldTransform(
       fieldPath: fieldPath._formattedName,
-      setToServerValue: 'REQUEST_TIME',
+      setToServerValue:
+          firestore_v1.DocumentTransform_FieldTransform_ServerValue.requestTime,
     );
   }
 

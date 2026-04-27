@@ -104,23 +104,24 @@ interface class CollectionReference<T> extends Query<T> {
         firestore.databaseId,
       );
 
-      return api.projects.databases.documents.list(
-        parentPath._formattedName,
-        id,
+      final request = firestore_v1.ListDocumentsRequest(
+        parent: parentPath._formattedName,
+        collectionId: id,
         showMissing: true,
         // Setting `pageSize` to an arbitrarily large value lets the backend cap
         // the page size (currently to 300). Note that the backend rejects
         // MAX_INT32 (b/146883794).
         pageSize: math.pow(2, 16 - 1).toInt(),
-        mask_fieldPaths: [],
+        mask: firestore_v1.DocumentMask(fieldPaths: []),
       );
+
+      return api.listDocuments(request);
     });
 
     return [
-      for (final document
-          in response.documents ?? const <firestore_v1.Document>[])
+      for (final document in response.documents)
         doc(
-          _QualifiedResourcePath.fromSlashSeparatedString(document.name!).id!,
+          _QualifiedResourcePath.fromSlashSeparatedString(document.name).id!,
         ),
     ];
   }

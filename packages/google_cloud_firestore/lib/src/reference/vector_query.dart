@@ -58,43 +58,44 @@ class VectorQuery<T> {
       api,
       projectId,
     ) async {
-      return api.projects.databases.documents.runQuery(
-        _toProto(transactionId: null, readTime: null),
-        _query._buildProtoParentPath(),
+      final request = _toProto(transactionId: null, readTime: null);
+      final finalRequest = firestore_v1.RunQueryRequest(
+        parent: _query._buildProtoParentPath(),
+        structuredQuery: request.structuredQuery,
+        transaction: request.transaction,
+        readTime: request.readTime,
       );
+      return api.runQuery(finalRequest);
     });
 
     Timestamp? readTime;
-    final snapshots = response
-        .map((e) {
-          final document = e.document;
-          if (document == null) {
-            readTime = e.readTime.let(Timestamp._fromString);
-            return null;
-          }
+    final snapshots = <QueryDocumentSnapshot<T>>[];
+    await for (final e in response) {
+      final document = e.document;
+      if (document == null) {
+        readTime = e.readTime.let(Timestamp._fromProto);
+        continue;
+      }
 
-          final snapshot = DocumentSnapshot._fromDocument(
-            document,
-            e.readTime,
-            _query.firestore,
-          );
-          final finalDoc =
-              _DocumentSnapshotBuilder(
-                  snapshot.ref.withConverter<T>(
-                    fromFirestore: _query._queryOptions.converter.fromFirestore,
-                    toFirestore: _query._queryOptions.converter.toFirestore,
-                  ),
-                )
-                ..fieldsProto = firestore_v1.MapValue(fields: document.fields)
-                ..readTime = snapshot.readTime
-                ..createTime = snapshot.createTime
-                ..updateTime = snapshot.updateTime;
+      final snapshot = DocumentSnapshot._fromDocument(
+        document,
+        e.readTime,
+        _query.firestore,
+      );
+      final finalDoc =
+          _DocumentSnapshotBuilder(
+              snapshot.ref.withConverter<T>(
+                fromFirestore: _query._queryOptions.converter.fromFirestore,
+                toFirestore: _query._queryOptions.converter.toFirestore,
+              ),
+            )
+            ..fieldsProto = firestore_v1.MapValue(fields: document.fields)
+            ..readTime = snapshot.readTime
+            ..createTime = snapshot.createTime
+            ..updateTime = snapshot.updateTime;
 
-          return finalDoc.build();
-        })
-        .nonNulls
-        .cast<QueryDocumentSnapshot<T>>()
-        .toList();
+      snapshots.add(finalDoc.build() as QueryDocumentSnapshot<T>);
+    }
 
     return VectorQuerySnapshot<T>._(
       query: this,
@@ -131,12 +132,15 @@ class VectorQuery<T> {
       projectId,
     ) async {
       final request = _toProto(transactionId: null, readTime: null);
-      request.explainOptions = options.toProto();
-
-      return api.projects.databases.documents.runQuery(
-        request,
-        _query._buildProtoParentPath(),
+      final finalRequest = firestore_v1.RunQueryRequest(
+        parent: _query._buildProtoParentPath(),
+        structuredQuery: request.structuredQuery,
+        transaction: request.transaction,
+        readTime: request.readTime,
+        explainOptions: options.toProto(),
       );
+
+      return api.runQuery(finalRequest);
     });
 
     ExplainMetrics? metrics;
@@ -145,7 +149,7 @@ class VectorQuery<T> {
 
     final docs = <QueryDocumentSnapshot<T>>[];
 
-    for (final element in response) {
+    await for (final element in response) {
       // Extract explain metrics if present
       if (element.explainMetrics != null) {
         metrics = ExplainMetrics._fromProto(element.explainMetrics!);
@@ -176,7 +180,7 @@ class VectorQuery<T> {
       }
 
       if (element.readTime != null) {
-        readTime = Timestamp._fromString(element.readTime!);
+        readTime = Timestamp._fromProto(element.readTime!);
       }
     }
 
@@ -206,48 +210,57 @@ class VectorQuery<T> {
     }
 
     // Get the base structured query from the underlying query
-    final structuredQuery = _query._toStructuredQuery();
+    final structuredQueryBase = _query._toStructuredQuery();
 
     // Convert query vector to VectorValue if it's a List<double>
     final queryVector = _options.queryVector is VectorValue
         ? _options.queryVector as VectorValue
         : VectorValue(_options.queryVector as List<double>);
 
-    // Add the findNearest clause
-    structuredQuery.findNearest = firestore_v1.FindNearest(
-      vectorField: firestore_v1.FieldReference(
-        fieldPath: FieldPath.from(_options.vectorField)._formattedName,
+    // Reconstruct structuredQuery with findNearest
+    final structuredQuery = firestore_v1.StructuredQuery(
+      select: structuredQueryBase.select,
+      from: structuredQueryBase.from,
+      where: structuredQueryBase.where,
+      orderBy: structuredQueryBase.orderBy,
+      startAt: structuredQueryBase.startAt,
+      endAt: structuredQueryBase.endAt,
+      offset: structuredQueryBase.offset,
+      limit: structuredQueryBase.limit,
+      findNearest: firestore_v1.StructuredQuery_FindNearest(
+        vectorField: firestore_v1.StructuredQuery_FieldReference(
+          fieldPath: FieldPath.from(_options.vectorField)._formattedName,
+        ),
+        queryVector: queryVector._toProto(_query.firestore._serializer),
+        distanceMeasure: _distanceMeasureToProto(_options.distanceMeasure),
+        limit: protobuf_v1.Int32Value(value: _options.limit),
+        distanceResultField:
+            _options.distanceResultField != null
+                ? FieldPath.from(_options.distanceResultField)._formattedName
+                : '',
+        distanceThreshold: _options.distanceThreshold?.let(
+          (t) => protobuf_v1.DoubleValue(value: t),
+        ),
       ),
-      queryVector: queryVector._toProto(_query.firestore._serializer),
-      distanceMeasure: _distanceMeasureToProto(_options.distanceMeasure),
-      limit: _options.limit,
-      distanceResultField: _options.distanceResultField != null
-          ? FieldPath.from(_options.distanceResultField)._formattedName
-          : null,
-      distanceThreshold: _options.distanceThreshold,
     );
 
-    final runQueryRequest = firestore_v1.RunQueryRequest(
+    return firestore_v1.RunQueryRequest(
+      parent: '', // Will be set by caller
       structuredQuery: structuredQuery,
+      transaction: transactionId.let(base64Decode),
+      readTime: readTime?._toProto().timestampValue,
     );
-
-    if (transactionId != null) {
-      runQueryRequest.transaction = transactionId;
-    } else if (readTime != null) {
-      runQueryRequest.readTime = readTime._toProto().timestampValue;
-    }
-
-    return runQueryRequest;
   }
 
-  String _distanceMeasureToProto(DistanceMeasure measure) {
+  firestore_v1.StructuredQuery_FindNearest_DistanceMeasure
+  _distanceMeasureToProto(DistanceMeasure measure) {
     switch (measure) {
       case DistanceMeasure.euclidean:
-        return 'EUCLIDEAN';
+        return firestore_v1.StructuredQuery_FindNearest_DistanceMeasure.euclidean;
       case DistanceMeasure.cosine:
-        return 'COSINE';
+        return firestore_v1.StructuredQuery_FindNearest_DistanceMeasure.cosine;
       case DistanceMeasure.dotProduct:
-        return 'DOT_PRODUCT';
+        return firestore_v1.StructuredQuery_FindNearest_DistanceMeasure.dotProduct;
     }
   }
 

@@ -44,29 +44,36 @@ class _FieldFilterInternal extends _FilterInternal {
   }
 
   @override
-  firestore_v1.Filter toProto() {
+  firestore_v1.StructuredQuery_Filter toProto() {
     final value = this.value;
+    final filter = op == WhereFilter.equal
+        ? firestore_v1.StructuredQuery_UnaryFilter_Operator.isNan
+        : firestore_v1.StructuredQuery_UnaryFilter_Operator.isNotNan;
+    final fieldReference = firestore_v1.StructuredQuery_FieldReference(
+      fieldPath: field._formattedName,
+    );
+
     if (value is num && value.isNaN) {
-      return firestore_v1.Filter(
-        unaryFilter: firestore_v1.UnaryFilter(
-          field: firestore_v1.FieldReference(fieldPath: field._formattedName),
-          op: op == WhereFilter.equal ? 'IS_NAN' : 'IS_NOT_NAN',
+      return firestore_v1.StructuredQuery_Filter(
+        unaryFilter: firestore_v1.StructuredQuery_UnaryFilter(
+          field: fieldReference,
+          op: filter,
         ),
       );
     }
 
     if (value == null) {
-      return firestore_v1.Filter(
-        unaryFilter: firestore_v1.UnaryFilter(
-          field: firestore_v1.FieldReference(fieldPath: field._formattedName),
-          op: op == WhereFilter.equal ? 'IS_NULL' : 'IS_NOT_NULL',
+      return firestore_v1.StructuredQuery_Filter(
+        unaryFilter: firestore_v1.StructuredQuery_UnaryFilter(
+          field: fieldReference,
+          op: filter,
         ),
       );
     }
 
-    return firestore_v1.Filter(
-      fieldFilter: firestore_v1.FieldFilter(
-        field: firestore_v1.FieldReference(fieldPath: field._formattedName),
+    return firestore_v1.StructuredQuery_Filter(
+      fieldFilter: firestore_v1.StructuredQuery_FieldFilter(
+        field: fieldReference,
         op: op.proto,
         value: serializer.encodeValue(value),
       ),

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
+import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
 import 'package:test/test.dart';
 
 import '../fixtures/helpers.dart';
@@ -218,16 +219,46 @@ void main() {
     setUp(() async => firestore = await createFirestore());
 
     test('handles all operators', () {
-      expect(WhereFilter.equal.proto, 'EQUAL');
-      expect(WhereFilter.greaterThan.proto, 'GREATER_THAN');
-      expect(WhereFilter.greaterThanOrEqual.proto, 'GREATER_THAN_OR_EQUAL');
-      expect(WhereFilter.lessThan.proto, 'LESS_THAN');
-      expect(WhereFilter.lessThanOrEqual.proto, 'LESS_THAN_OR_EQUAL');
-      expect(WhereFilter.notEqual.proto, 'NOT_EQUAL');
-      expect(WhereFilter.isIn.proto, 'IN');
-      expect(WhereFilter.notIn.proto, 'NOT_IN');
-      expect(WhereFilter.arrayContains.proto, 'ARRAY_CONTAINS');
-      expect(WhereFilter.arrayContainsAny.proto, 'ARRAY_CONTAINS_ANY');
+      expect(
+        WhereFilter.equal.proto,
+        firestore_v1.StructuredQuery_FieldFilter_Operator.equal,
+      );
+      expect(
+        WhereFilter.greaterThan.proto,
+        firestore_v1.StructuredQuery_FieldFilter_Operator.greaterThan,
+      );
+      expect(
+        WhereFilter.greaterThanOrEqual.proto,
+        firestore_v1.StructuredQuery_FieldFilter_Operator.greaterThanOrEqual,
+      );
+      expect(
+        WhereFilter.lessThan.proto,
+        firestore_v1.StructuredQuery_FieldFilter_Operator.lessThan,
+      );
+      expect(
+        WhereFilter.lessThanOrEqual.proto,
+        firestore_v1.StructuredQuery_FieldFilter_Operator.lessThanOrEqual,
+      );
+      expect(
+        WhereFilter.notEqual.proto,
+        firestore_v1.StructuredQuery_FieldFilter_Operator.notEqual,
+      );
+      expect(
+        WhereFilter.isIn.proto,
+        firestore_v1.StructuredQuery_FieldFilter_Operator.in$,
+      );
+      expect(
+        WhereFilter.notIn.proto,
+        firestore_v1.StructuredQuery_FieldFilter_Operator.notIn,
+      );
+      expect(
+        WhereFilter.arrayContains.proto,
+        firestore_v1.StructuredQuery_FieldFilter_Operator.arrayContains,
+      );
+      expect(
+        WhereFilter.arrayContainsAny.proto,
+        firestore_v1.StructuredQuery_FieldFilter_Operator.arrayContainsAny,
+      );
     });
 
     test('accepts objects', () async {

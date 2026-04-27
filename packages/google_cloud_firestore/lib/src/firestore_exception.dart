@@ -14,7 +14,7 @@
 
 import 'dart:convert';
 
-import 'package:googleapis/firestore/v1.dart' as firestore_v1;
+import 'package:google_cloud_rpc/exceptions.dart';
 import 'package:meta/meta.dart';
 
 import 'status_code.dart';
@@ -110,15 +110,12 @@ R firestoreGuard<R>(R Function() cb) {
 /// Converts an Exception to a FirestoreError.
 @internal
 Never handleFirestoreException(Object exception, StackTrace stackTrace) {
-  if (exception is firestore_v1.DetailedApiRequestError) {
+  if (exception is ServiceException) {
     Error.throwWithStackTrace(
       _createFirestoreError(
-        statusCode: exception.status,
-        body: switch (exception.jsonResponse) {
-          null => '',
-          final json => jsonEncode(json),
-        },
-        isJson: exception.jsonResponse != null,
+        statusCode: exception.statusCode,
+        body: exception.responseBody ?? '',
+        isJson: exception.status != null,
       ),
       stackTrace,
     );

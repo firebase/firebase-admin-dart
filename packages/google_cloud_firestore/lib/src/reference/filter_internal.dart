@@ -26,7 +26,7 @@ sealed class _FilterInternal {
   FieldPath? get firstInequalityField;
 
   /// Returns the proto representation of this filter
-  firestore_v1.Filter toProto();
+  firestore_v1.StructuredQuery_Filter toProto();
 
   @mustBeOverridden
   @override

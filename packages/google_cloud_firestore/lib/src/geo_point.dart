@@ -51,10 +51,10 @@ final class GeoPoint implements _Serializable {
   }
 
   /// Converts a google.type.LatLng proto to its GeoPoint representation.
-  factory GeoPoint._fromProto(firestore_v1.LatLng latLng) {
+  factory GeoPoint._fromProto(type_v1.LatLng latLng) {
     return GeoPoint(
-      latitude: latLng.latitude ?? 0,
-      longitude: latLng.longitude ?? 0,
+      latitude: latLng.latitude,
+      longitude: latLng.longitude,
     );
   }
 
@@ -67,7 +67,7 @@ final class GeoPoint implements _Serializable {
   @override
   firestore_v1.Value _toProto() {
     return firestore_v1.Value(
-      geoPointValue: firestore_v1.LatLng(
+      geoPointValue: type_v1.LatLng(
         latitude: latitude,
         longitude: longitude,
       ),

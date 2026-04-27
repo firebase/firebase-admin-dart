@@ -116,7 +116,7 @@ class _QueryOptions<T> {
   final _QueryCursor? startAt;
   final _QueryCursor? endAt;
   final int? limit;
-  final firestore_v1.Projection? projection;
+  final firestore_v1.StructuredQuery_Projection? projection;
   final LimitType? limitType;
   final int? offset;
   final bool kindless;
@@ -153,7 +153,7 @@ class _QueryOptions<T> {
     _QueryCursor? startAt,
     _QueryCursor? endAt,
     int? limit,
-    firestore_v1.Projection? projection,
+    firestore_v1.StructuredQuery_Projection? projection,
     LimitType? limitType,
     int? offset,
     bool? kindless,

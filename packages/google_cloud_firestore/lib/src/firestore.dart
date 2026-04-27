@@ -13,12 +13,14 @@
 // limitations under the License.
 
 import 'dart:async';
-import 'dart:convert' show jsonEncode, utf8;
+import 'dart:convert' show base64Decode, base64Encode, jsonEncode, utf8;
 import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
-import 'package:googleapis/firestore/v1.dart' as firestore_v1;
+import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
+import 'package:google_cloud_protobuf/protobuf.dart' as protobuf_v1;
+import 'package:google_cloud_type/type.dart' as type_v1;
 import 'package:intl/intl.dart';
 import 'package:meta/meta.dart';
 
@@ -540,24 +542,30 @@ class Firestore {
     Object documentOrName,
     Timestamp readTime,
   ) {
-    final readTimeString = _toGoogleDateTime(
-      seconds: readTime.seconds,
-      nanoseconds: readTime.nanoseconds,
-    );
+    final readTimeProto = readTime._toProto().timestampValue;
 
     if (documentOrName is String) {
-      return DocumentSnapshot._missing(documentOrName, readTimeString, this);
+      return DocumentSnapshot._missing(documentOrName, readTimeProto, this);
     } else if (documentOrName is firestore_v1.Document) {
       return DocumentSnapshot._fromDocument(
         documentOrName,
-        readTimeString,
+        readTimeProto,
         this,
       );
-    } else {
-      throw ArgumentError(
-        'documentOrName must be either a String or firestore_v1.Document',
-      );
     }
+
+    throw ArgumentError(
+      'documentOrName must be either a String or firestore_v1.Document',
+    );
+  }
+
+  @internal
+  QuerySnapshot<T> querySnapshot_<T>(
+    Query<T> query,
+    Timestamp readTime,
+    List<QueryDocumentSnapshot<T>> docs,
+  ) {
+    return QuerySnapshot<T>._(query: query, readTime: readTime, docs: docs);
   }
 
   /// Creates a QuerySnapshot for testing purposes.

@@ -15,7 +15,8 @@
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
 import 'package:google_cloud_firestore/src/firestore.dart' show FieldMask;
 import 'package:google_cloud_firestore/src/firestore_http_client.dart';
-import 'package:googleapis/firestore/v1.dart' as firestore_v1;
+import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
+import 'package:google_cloud_protobuf/protobuf.dart' as protobuf_v1;
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -23,31 +24,35 @@ const projectId = 'test-project';
 
 class MockFirestoreHttpClient extends Mock implements FirestoreHttpClient {}
 
-firestore_v1.BatchGetDocumentsResponseElement createFoundResponse({
+firestore_v1.BatchGetDocumentsResponse createFoundResponse({
   required String documentPath,
   required Map<String, Object?> fields,
   required Firestore firestore,
 }) {
-  return firestore_v1.BatchGetDocumentsResponseElement()
-    ..found = (firestore_v1.Document()
-      ..name = 'projects/$projectId/databases/(default)/documents/$documentPath'
-      ..fields = fields.map((key, value) {
+  final now = protobuf_v1.Timestamp(seconds: DateTime.now().millisecondsSinceEpoch ~/ 1000);
+  return firestore_v1.BatchGetDocumentsResponse(
+    found: firestore_v1.Document(
+      name: 'projects/$projectId/databases/(default)/documents/$documentPath',
+      fields: fields.map((key, value) {
         // Use SDK's serializer to properly encode values
         final encoded = firestore.serializer.encodeValue(value);
         return MapEntry(key, encoded!);
-      })
-      ..createTime = DateTime.now().toUtc().toIso8601String()
-      ..updateTime = DateTime.now().toUtc().toIso8601String())
-    ..readTime = DateTime.now().toUtc().toIso8601String();
+      }),
+      createTime: now,
+      updateTime: now,
+    ),
+    readTime: now,
+  );
 }
 
-firestore_v1.BatchGetDocumentsResponseElement createMissingResponse(
+firestore_v1.BatchGetDocumentsResponse createMissingResponse(
   String documentPath,
 ) {
-  return firestore_v1.BatchGetDocumentsResponseElement()
-    ..missing =
-        'projects/$projectId/databases/(default)/documents/$documentPath'
-    ..readTime = DateTime.now().toUtc().toIso8601String();
+  final now = protobuf_v1.Timestamp(seconds: DateTime.now().millisecondsSinceEpoch ~/ 1000);
+  return firestore_v1.BatchGetDocumentsResponse(
+    missing: 'projects/$projectId/databases/(default)/documents/$documentPath',
+    readTime: now,
+  );
 }
 
 void main() {
@@ -68,15 +73,15 @@ void main() {
     test('accepts single document', () async {
       when(
         () => mockClient
-            .v1<List<firestore_v1.BatchGetDocumentsResponseElement>>(any()),
+            .v1<Stream<firestore_v1.BatchGetDocumentsResponse>>(any()),
       ).thenAnswer((_) async {
-        return [
+        return Stream.fromIterable([
           createFoundResponse(
             documentPath: 'collectionId/documentId',
             fields: {'foo': 'bar'},
             firestore: firestore,
           ),
-        ];
+        ]);
       });
 
       final doc = firestore.doc('collectionId/documentId');
@@ -91,9 +96,9 @@ void main() {
     test('accepts multiple documents', () async {
       when(
         () => mockClient
-            .v1<List<firestore_v1.BatchGetDocumentsResponseElement>>(any()),
+            .v1<Stream<firestore_v1.BatchGetDocumentsResponse>>(any()),
       ).thenAnswer((_) async {
-        return [
+        return Stream.fromIterable([
           createFoundResponse(
             documentPath: 'col/doc1',
             fields: {'a': 1},
@@ -104,7 +109,7 @@ void main() {
             fields: {'b': 2},
             firestore: firestore,
           ),
-        ];
+        ]);
       });
 
       final doc1 = firestore.doc('col/doc1');
@@ -123,9 +128,9 @@ void main() {
     test('returns missing documents', () async {
       when(
         () => mockClient
-            .v1<List<firestore_v1.BatchGetDocumentsResponseElement>>(any()),
+            .v1<Stream<firestore_v1.BatchGetDocumentsResponse>>(any()),
       ).thenAnswer((_) async {
-        return [createMissingResponse('col/missing')];
+        return Stream.fromIterable([createMissingResponse('col/missing')]);
       });
 
       final doc = firestore.doc('col/missing');
@@ -139,16 +144,16 @@ void main() {
     test('handles mix of found and missing documents', () async {
       when(
         () => mockClient
-            .v1<List<firestore_v1.BatchGetDocumentsResponseElement>>(any()),
+            .v1<Stream<firestore_v1.BatchGetDocumentsResponse>>(any()),
       ).thenAnswer((_) async {
-        return [
+        return Stream.fromIterable([
           createFoundResponse(
             documentPath: 'col/found',
             fields: {'exists': true},
             firestore: firestore,
           ),
           createMissingResponse('col/missing'),
-        ];
+        ]);
       });
 
       final doc1 = firestore.doc('col/found');
@@ -177,10 +182,10 @@ void main() {
     test('verifies document order is preserved', () async {
       when(
         () => mockClient
-            .v1<List<firestore_v1.BatchGetDocumentsResponseElement>>(any()),
+            .v1<Stream<firestore_v1.BatchGetDocumentsResponse>>(any()),
       ).thenAnswer((_) async {
         // Return in different order than requested
-        return [
+        return Stream.fromIterable([
           createFoundResponse(
             documentPath: 'col/doc3',
             fields: {'n': 3},
@@ -196,7 +201,7 @@ void main() {
             fields: {'n': 2},
             firestore: firestore,
           ),
-        ];
+        ]);
       });
 
       final doc1 = firestore.doc('col/doc1');
@@ -214,10 +219,10 @@ void main() {
     test('accepts same document multiple times', () async {
       when(
         () => mockClient
-            .v1<List<firestore_v1.BatchGetDocumentsResponseElement>>(any()),
+            .v1<Stream<firestore_v1.BatchGetDocumentsResponse>>(any()),
       ).thenAnswer((_) async {
         // Only returns unique documents
-        return [
+        return Stream.fromIterable([
           createFoundResponse(
             documentPath: 'col/a',
             fields: {'val': 'a'},
@@ -228,7 +233,7 @@ void main() {
             fields: {'val': 'b'},
             firestore: firestore,
           ),
-        ];
+        ]);
       });
 
       final docA = firestore.doc('col/a');
@@ -248,15 +253,15 @@ void main() {
     test('applies field mask with FieldPath', () async {
       when(
         () => mockClient
-            .v1<List<firestore_v1.BatchGetDocumentsResponseElement>>(any()),
+            .v1<Stream<firestore_v1.BatchGetDocumentsResponse>>(any()),
       ).thenAnswer((_) async {
-        return [
+        return Stream.fromIterable([
           createFoundResponse(
             documentPath: 'col/doc',
             fields: {'foo': 'included'},
             firestore: firestore,
           ),
-        ];
+        ]);
       });
 
       final doc = firestore.doc('col/doc');
@@ -277,15 +282,15 @@ void main() {
     test('applies field mask with strings', () async {
       when(
         () => mockClient
-            .v1<List<firestore_v1.BatchGetDocumentsResponseElement>>(any()),
+            .v1<Stream<firestore_v1.BatchGetDocumentsResponse>>(any()),
       ).thenAnswer((_) async {
-        return [
+        return Stream.fromIterable([
           createFoundResponse(
             documentPath: 'col/doc',
             fields: {'foo': 'bar'},
             firestore: firestore,
           ),
-        ];
+        ]);
       });
 
       final doc = firestore.doc('col/doc');

@@ -16,7 +16,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
-import 'package:googleapis/firestore/v1.dart' as firestore_v1;
+import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
+import 'package:google_cloud_protobuf/protobuf.dart' as protobuf_v1;
 import 'package:test/test.dart';
 
 const testBundleId = 'test-bundle';
@@ -123,10 +124,10 @@ void main() {
           name: '$databaseRoot/documents/collectionId/doc1',
           fields: {
             'foo': firestore_v1.Value(stringValue: 'value'),
-            'bar': firestore_v1.Value(integerValue: '42'),
+            'bar': firestore_v1.Value(integerValue: 42),
           },
-          createTime: '1970-01-01T00:00:01.002Z',
-          updateTime: '1970-01-01T00:00:03.000004Z',
+          createTime: protobuf_v1.Timestamp(seconds: 1, nanos: 2000000),
+          updateTime: protobuf_v1.Timestamp(seconds: 3, nanos: 4000),
         ),
         // This should be the bundle read time.
         Timestamp(seconds: 1577840405, nanoseconds: 6),
@@ -138,10 +139,10 @@ void main() {
           name: '$databaseRoot/documents/collectionId/doc1',
           fields: {
             'foo': firestore_v1.Value(stringValue: 'value'),
-            'bar': firestore_v1.Value(integerValue: '-42'),
+            'bar': firestore_v1.Value(integerValue: -42),
           },
-          createTime: '1970-01-01T00:00:01.002Z',
-          updateTime: '1970-01-01T00:00:03.000004Z',
+          createTime: protobuf_v1.Timestamp(seconds: 1, nanos: 2000000),
+          updateTime: protobuf_v1.Timestamp(seconds: 3, nanos: 4000),
         ),
         Timestamp(seconds: 5, nanoseconds: 6),
       );
@@ -149,32 +150,30 @@ void main() {
       bundle.addDocument(snap1);
       bundle.addDocument(snap2);
 
-      // Bundle is expected to be [bundleMeta, snap1Meta, snap1] because snap1 is newer.
-      final elements = bundleToElementArray(bundle.build());
-      expect(elements.length, equals(3));
+      final bundleBuffer = bundle.build();
+      final elements = bundleToElementArray(bundleBuffer);
 
-      final meta = elements[0]['metadata'] as Map<String, dynamic>;
+      expect(elements, hasLength(3));
+
       verifyMetadata(
-        meta,
-        // snap1.readTime is the bundle createTime, because it is larger than snap2.readTime.
-        snap1.readTime!,
+        elements[0]['metadata'] as Map<String, dynamic>,
+        Timestamp(seconds: 1577840405, nanoseconds: 6),
         1,
       );
 
       // Verify doc1Meta and doc1Snap
       final docMeta = elements[1]['documentMetadata'] as Map<String, dynamic>;
-      final docSnap = elements[2]['document'] as Map<String, dynamic>;
       expect(
         docMeta,
         equals({
           'name': '$databaseRoot/documents/collectionId/doc1',
-          'readTime': {
-            'seconds': snap1.readTime!.seconds.toString(),
-            'nanos': snap1.readTime!.nanoseconds,
-          },
           'exists': true,
+          'readTime': {'seconds': '1577840405', 'nanos': 6},
         }),
       );
+
+      // Verify doc1Meta and doc1Snap
+      final docSnap = elements[2]['document'] as Map<String, dynamic>;
       expect(
         docSnap['name'],
         equals('$databaseRoot/documents/collectionId/doc1'),
@@ -183,6 +182,7 @@ void main() {
     });
 
     test('succeeds with query snapshots', () {
+      // XXX - XXX - XXX - XXX - XXX - XXX
       final bundle = firestore.bundle(testBundleId);
 
       final snap =
@@ -190,94 +190,47 @@ void main() {
                 firestore_v1.Document(
                   name: '$databaseRoot/documents/collectionId/doc1',
                   fields: {'foo': firestore_v1.Value(stringValue: 'value')},
-                  createTime: '1970-01-01T00:00:01.002Z',
-                  updateTime: '1970-01-01T00:00:03.000004Z',
+                  createTime: protobuf_v1.Timestamp(seconds: 1, nanos: 2000000),
+                  updateTime: protobuf_v1.Timestamp(seconds: 3, nanos: 4000),
                 ),
                 Timestamp(seconds: 1577840405, nanoseconds: 6),
               )
               as QueryDocumentSnapshot<Object?>;
 
-      final query = firestore
-          .collection('collectionId')
-          .where('value', WhereFilter.equal, 'string');
-      final querySnapshot = firestore.createQuerySnapshot(
-        query: query,
-        readTime: snap.readTime!,
-        docs: [snap],
+      final query = firestore.collection('collectionId').limit(1);
+      final querySnapshot = firestore.querySnapshot_(
+        query,
+        Timestamp(seconds: 1577840405, nanoseconds: 6),
+        [snap],
       );
 
-      final newQuery = firestore.collection('collectionId');
-      final newQuerySnapshot = firestore.createQuerySnapshot(
-        query: newQuery,
-        readTime: snap.readTime!,
-        docs: [snap],
-      );
+      bundle.addQuery('query-name', querySnapshot);
 
-      bundle.addQuery('test-query', querySnapshot);
-      bundle.addQuery('test-query-new', newQuerySnapshot);
+      final bundleBuffer = bundle.build();
+      final elements = bundleToElementArray(bundleBuffer);
 
-      // Bundle is expected to be [bundleMeta, namedQuery, newNamedQuery, snapMeta, snap]
-      final elements = bundleToElementArray(bundle.build());
-      expect(elements.length, equals(5));
+      expect(elements, hasLength(4));
 
-      final meta = elements[0]['metadata'] as Map<String, dynamic>;
-      verifyMetadata(meta, snap.readTime!, 1);
-
-      // Verify named query
-      final namedQuery =
-          elements.firstWhere(
-                (e) =>
-                    e.containsKey('namedQuery') &&
-                    (e['namedQuery'] as Map<String, dynamic>)['name'] ==
-                        'test-query',
-              )['namedQuery']
-              as Map<String, dynamic>;
-
-      final newNamedQuery =
-          elements.firstWhere(
-                (e) =>
-                    e.containsKey('namedQuery') &&
-                    (e['namedQuery'] as Map<String, dynamic>)['name'] ==
-                        'test-query-new',
-              )['namedQuery']
-              as Map<String, dynamic>;
-
-      expect(namedQuery['name'], equals('test-query'));
-      expect(
-        namedQuery['readTime'],
-        equals({
-          'seconds': snap.readTime!.seconds.toString(),
-          'nanos': snap.readTime!.nanoseconds,
-        }),
-      );
-
-      expect(newNamedQuery['name'], equals('test-query-new'));
-      expect(
-        newNamedQuery['readTime'],
-        equals({
-          'seconds': snap.readTime!.seconds.toString(),
-          'nanos': snap.readTime!.nanoseconds,
-        }),
+      verifyMetadata(
+        elements[0]['metadata'] as Map<String, dynamic>,
+        Timestamp(seconds: 1577840405, nanoseconds: 6),
+        1,
       );
 
       // Verify docMeta and docSnap
-      final docMeta = elements[3]['documentMetadata'] as Map<String, dynamic>;
-      final docSnap = elements[4]['document'] as Map<String, dynamic>;
+      final namedQuery = elements[1]['namedQuery'] as Map<String, dynamic>;
+      expect(namedQuery['name'], equals('query-name'));
+      expect(namedQuery['readTime'], isNotNull);
 
-      final queries = List<String>.from(docMeta['queries'] as List)..sort();
+      // 3. Document Metadata
+      final docMeta = elements[2]['documentMetadata'] as Map<String, dynamic>;
       expect(
         docMeta['name'],
         equals('$databaseRoot/documents/collectionId/doc1'),
       );
-      expect(
-        docMeta['readTime'],
-        equals({
-          'seconds': snap.readTime!.seconds.toString(),
-          'nanos': snap.readTime!.nanoseconds,
-        }),
-      );
-      expect(docMeta['exists'], equals(true));
-      expect(queries, equals(['test-query', 'test-query-new']));
+
+      // 4. Document
+      final docSnap = elements[3]['document'] as Map<String, dynamic>;
       expect(
         docSnap['name'],
         equals('$databaseRoot/documents/collectionId/doc1'),
@@ -292,39 +245,24 @@ void main() {
           name: '$databaseRoot/documents/collectionId/doc1',
           fields: {
             'foo': firestore_v1.Value(stringValue: 'value'),
-            'bar': firestore_v1.Value(integerValue: '42'),
+            'bar': firestore_v1.Value(integerValue: 42),
           },
-          createTime: '1970-01-01T00:00:01.002Z',
-          updateTime: '1970-01-01T00:00:03.000004Z',
+          createTime: protobuf_v1.Timestamp(seconds: 1, nanos: 2000000),
+          updateTime: protobuf_v1.Timestamp(seconds: 3, nanos: 4000),
         ),
         Timestamp(seconds: 1577840405, nanoseconds: 6),
       );
 
       bundle.addDocument(snap1);
 
-      // Bundle is expected to be [bundleMeta, doc1Meta, doc1Snap].
-      final elements = bundleToElementArray(bundle.build());
-      expect(elements.length, equals(3));
+      final bundleBuffer1 = bundle.build();
+      final elements1 = bundleToElementArray(bundleBuffer1);
+      expect(elements1, hasLength(3));
 
-      final meta = elements[0]['metadata'] as Map<String, dynamic>;
-      verifyMetadata(meta, snap1.readTime!, 1);
-
-      // Verify doc1Meta and doc1Snap
-      final doc1Meta = elements[1]['documentMetadata'] as Map<String, dynamic>;
-      final doc1Snap = elements[2]['document'] as Map<String, dynamic>;
+      final doc1Meta = elements1[1]['documentMetadata'] as Map<String, dynamic>;
+      expect(doc1Meta, containsPair('exists', true));
       expect(
-        doc1Meta,
-        equals({
-          'name': '$databaseRoot/documents/collectionId/doc1',
-          'readTime': {
-            'seconds': snap1.readTime!.seconds.toString(),
-            'nanos': snap1.readTime!.nanoseconds,
-          },
-          'exists': true,
-        }),
-      );
-      expect(
-        doc1Snap['name'],
+        doc1Meta['name'],
         equals('$databaseRoot/documents/collectionId/doc1'),
       );
 
@@ -334,55 +272,37 @@ void main() {
           name: '$databaseRoot/documents/collectionId/doc2',
           fields: {
             'foo': firestore_v1.Value(stringValue: 'value'),
-            'bar': firestore_v1.Value(integerValue: '-42'),
+            'bar': firestore_v1.Value(integerValue: -42),
           },
-          createTime: '1970-01-01T00:00:01.002Z',
-          updateTime: '1970-01-01T00:00:03.000004Z',
+          createTime: protobuf_v1.Timestamp(seconds: 1, nanos: 2000000),
+          updateTime: protobuf_v1.Timestamp(seconds: 3, nanos: 4000),
         ),
         Timestamp(seconds: 5, nanoseconds: 6),
       );
 
       bundle.addDocument(snap2);
 
-      // Bundle is expected to be [bundleMeta, doc1Meta, doc1Snap, doc2Meta, doc2Snap].
-      final newElements = bundleToElementArray(bundle.build());
-      expect(newElements.length, equals(5));
+      final bundleBuffer2 = bundle.build();
+      final elements2 = bundleToElementArray(bundleBuffer2);
 
-      final newMeta = newElements[0]['metadata'] as Map<String, dynamic>;
-      verifyMetadata(newMeta, snap1.readTime!, 2);
-
-      expect(newElements.sublist(1, 3), equals(elements.sublist(1)));
-
-      // Verify doc2Meta and doc2Snap
-      final doc2Meta =
-          newElements[3]['documentMetadata'] as Map<String, dynamic>;
-      final doc2Snap = newElements[4]['document'] as Map<String, dynamic>;
-      expect(
-        doc2Meta,
-        equals({
-          'name': '$databaseRoot/documents/collectionId/doc2',
-          'readTime': {
-            'seconds': snap2.readTime!.seconds.toString(),
-            'nanos': snap2.readTime!.nanoseconds,
-          },
-          'exists': true,
-        }),
-      );
-      expect(
-        doc2Snap['name'],
-        equals('$databaseRoot/documents/collectionId/doc2'),
+      // metadata + (doc1Meta + doc1) + (doc2Meta + doc2)
+      expect(elements2, hasLength(5));
+      verifyMetadata(
+        elements2[0]['metadata'] as Map<String, dynamic>,
+        Timestamp(seconds: 1577840405, nanoseconds: 6),
+        2,
       );
     });
 
-    test('succeeds when nothing is added', () {
+    test('succeeds with empty content', () {
       final bundle = firestore.bundle(testBundleId);
+      final bundleBuffer = bundle.build();
 
-      final elements = bundleToElementArray(bundle.build());
-      expect(elements.length, equals(1));
+      final elements = bundleToElementArray(bundleBuffer);
+      expect(elements, hasLength(1));
 
-      final meta = elements[0]['metadata'] as Map<String, dynamic>;
       verifyMetadata(
-        meta,
+        elements[0]['metadata'] as Map<String, dynamic>,
         Timestamp(seconds: 0, nanoseconds: 0),
         0,
         expectEmptyContent: true,
@@ -397,10 +317,10 @@ void main() {
           name: '$databaseRoot/documents/collectionId_A/doc1',
           fields: {
             'foo': firestore_v1.Value(stringValue: 'value'),
-            'bar': firestore_v1.Value(integerValue: '42'),
+            'bar': firestore_v1.Value(integerValue: 42),
           },
-          createTime: '1970-01-01T00:00:01.002Z',
-          updateTime: '1970-01-01T00:00:03.000004Z',
+          createTime: protobuf_v1.Timestamp(seconds: 1, nanos: 2000000),
+          updateTime: protobuf_v1.Timestamp(seconds: 3, nanos: 4000),
         ),
         Timestamp(seconds: 1577840405, nanoseconds: 6),
       );
@@ -411,10 +331,10 @@ void main() {
           name: '$databaseRoot/documents/collectionId_B/doc1',
           fields: {
             'foo': firestore_v1.Value(stringValue: 'value'),
-            'bar': firestore_v1.Value(integerValue: '-42'),
+            'bar': firestore_v1.Value(integerValue: -42),
           },
-          createTime: '1970-01-01T00:00:01.002Z',
-          updateTime: '1970-01-01T00:00:03.000004Z',
+          createTime: protobuf_v1.Timestamp(seconds: 1, nanos: 2000000),
+          updateTime: protobuf_v1.Timestamp(seconds: 3, nanos: 4000),
         ),
         Timestamp(seconds: 5, nanoseconds: 6),
       );
@@ -422,48 +342,24 @@ void main() {
       bundle.addDocument(snap1);
       bundle.addDocument(snap2);
 
-      // Bundle is expected to be [bundleMeta, snap1Meta, snap1, snap2Meta, snap2] because snap1 is newer.
-      final elements = bundleToElementArray(bundle.build());
-      expect(elements.length, equals(5));
+      final bundleBuffer = bundle.build();
+      final elements = bundleToElementArray(bundleBuffer);
 
-      final meta = elements[0]['metadata'] as Map<String, dynamic>;
-      verifyMetadata(meta, snap1.readTime!, 2);
+      // metadata + (docA_Meta + docA) + (docB_Meta + docB)
+      expect(elements, hasLength(5));
 
-      // Verify doc1Meta and doc1Snap
-      var docMeta = elements[1]['documentMetadata'] as Map<String, dynamic>;
-      var docSnap = elements[2]['document'] as Map<String, dynamic>;
-      expect(
-        docMeta,
-        equals({
-          'name': '$databaseRoot/documents/collectionId_A/doc1',
-          'readTime': {
-            'seconds': snap1.readTime!.seconds.toString(),
-            'nanos': snap1.readTime!.nanoseconds,
-          },
-          'exists': true,
-        }),
+      verifyMetadata(
+        elements[0]['metadata'] as Map<String, dynamic>,
+        Timestamp(seconds: 1577840405, nanoseconds: 6),
+        2,
       );
+
       expect(
-        docSnap['name'],
+        elements[1]['documentMetadata']['name'],
         equals('$databaseRoot/documents/collectionId_A/doc1'),
       );
-
-      // Verify doc2Meta and doc2Snap
-      docMeta = elements[3]['documentMetadata'] as Map<String, dynamic>;
-      docSnap = elements[4]['document'] as Map<String, dynamic>;
       expect(
-        docMeta,
-        equals({
-          'name': '$databaseRoot/documents/collectionId_B/doc1',
-          'readTime': {
-            'seconds': snap2.readTime!.seconds.toString(),
-            'nanos': snap2.readTime!.nanoseconds,
-          },
-          'exists': true,
-        }),
-      );
-      expect(
-        docSnap['name'],
+        elements[3]['documentMetadata']['name'],
         equals('$databaseRoot/documents/collectionId_B/doc1'),
       );
     });

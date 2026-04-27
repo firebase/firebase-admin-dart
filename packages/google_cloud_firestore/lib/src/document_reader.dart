@@ -80,13 +80,14 @@ class _DocumentReader<T> {
     if (_outstandingDocuments.isEmpty) return;
 
     final request = firestore_v1.BatchGetDocumentsRequest(
+      database: firestore._formattedDatabaseName,
       documents: _outstandingDocuments.toList(),
       mask: fieldMask.let((fieldMask) {
         return firestore_v1.DocumentMask(
           fieldPaths: fieldMask.map((e) => e._formattedName).toList(),
         );
       }),
-      transaction: transactionId,
+      transaction: transactionId.let(base64Decode),
       newTransaction: transactionOptions,
       readTime: readTime?._toProto().timestampValue,
     );
@@ -97,17 +98,14 @@ class _DocumentReader<T> {
         api,
         projectId,
       ) async {
-        return api.projects.databases.documents.batchGet(
-          request,
-          firestore._formattedDatabaseName,
-        );
+        return api.batchGetDocuments(request);
       });
 
-      for (final response in documents) {
+      await for (final response in documents) {
         DocumentSnapshot<DocumentData>? documentSnapshot;
 
-        if (response.transaction?.isNotEmpty ?? false) {
-          _retrievedTransactionId = response.transaction;
+        if (response.transaction.isNotEmpty) {
+          _retrievedTransactionId = base64Encode(response.transaction);
         }
 
         final found = response.found;
@@ -117,7 +115,7 @@ class _DocumentReader<T> {
             response.readTime,
             firestore,
           );
-        } else if (response.missing != null) {
+        } else if (response.missing != null && response.missing!.isNotEmpty) {
           final missing = response.missing!;
           documentSnapshot = DocumentSnapshot._missing(
             missing,

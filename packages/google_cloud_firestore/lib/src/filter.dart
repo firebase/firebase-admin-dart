@@ -15,20 +15,40 @@
 part of 'firestore.dart';
 
 enum WhereFilter {
-  lessThan('LESS_THAN'),
-  lessThanOrEqual('LESS_THAN_OR_EQUAL'),
-  equal('EQUAL'),
-  notEqual('NOT_EQUAL'),
-  greaterThanOrEqual('GREATER_THAN_OR_EQUAL'),
-  greaterThan('GREATER_THAN'),
-  isIn('IN'),
-  notIn('NOT_IN'),
-  arrayContains('ARRAY_CONTAINS'),
-  arrayContainsAny('ARRAY_CONTAINS_ANY');
+  lessThan,
+  lessThanOrEqual,
+  equal,
+  notEqual,
+  greaterThanOrEqual,
+  greaterThan,
+  isIn,
+  notIn,
+  arrayContains,
+  arrayContainsAny;
 
-  const WhereFilter(this.proto);
-
-  final String proto;
+  firestore_v1.StructuredQuery_FieldFilter_Operator get proto {
+    return switch (this) {
+      WhereFilter.lessThan =>
+        firestore_v1.StructuredQuery_FieldFilter_Operator.lessThan,
+      WhereFilter.lessThanOrEqual =>
+        firestore_v1.StructuredQuery_FieldFilter_Operator.lessThanOrEqual,
+      WhereFilter.equal =>
+        firestore_v1.StructuredQuery_FieldFilter_Operator.equal,
+      WhereFilter.notEqual =>
+        firestore_v1.StructuredQuery_FieldFilter_Operator.notEqual,
+      WhereFilter.greaterThanOrEqual =>
+        firestore_v1.StructuredQuery_FieldFilter_Operator.greaterThanOrEqual,
+      WhereFilter.greaterThan =>
+        firestore_v1.StructuredQuery_FieldFilter_Operator.greaterThan,
+      WhereFilter.isIn => firestore_v1.StructuredQuery_FieldFilter_Operator.in$,
+      WhereFilter.notIn =>
+        firestore_v1.StructuredQuery_FieldFilter_Operator.notIn,
+      WhereFilter.arrayContains =>
+        firestore_v1.StructuredQuery_FieldFilter_Operator.arrayContains,
+      WhereFilter.arrayContainsAny =>
+        firestore_v1.StructuredQuery_FieldFilter_Operator.arrayContainsAny,
+    };
+  }
 }
 
 /// A `Filter` represents a restriction on one or more field values and can
@@ -177,10 +197,12 @@ enum _CompositeOperator {
   and,
   or;
 
-  String get proto {
+  firestore_v1.StructuredQuery_CompositeFilter_Operator get proto {
     return switch (this) {
-      _CompositeOperator.and => 'AND',
-      _CompositeOperator.or => 'OR',
+      _CompositeOperator.and =>
+        firestore_v1.StructuredQuery_CompositeFilter_Operator.and,
+      _CompositeOperator.or =>
+        firestore_v1.StructuredQuery_CompositeFilter_Operator.or,
     };
   }
 }

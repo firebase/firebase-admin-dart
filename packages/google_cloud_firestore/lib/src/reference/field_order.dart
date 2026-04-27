@@ -25,12 +25,18 @@ class _FieldOrder {
   final FieldPath fieldPath;
   final _Direction direction;
 
-  firestore_v1.Order _toProto() {
-    return firestore_v1.Order(
-      field: firestore_v1.FieldReference(fieldPath: fieldPath._formattedName),
-      direction: direction.value,
+  firestore_v1.StructuredQuery_Order _toProto() {
+    return firestore_v1.StructuredQuery_Order(
+      field: firestore_v1.StructuredQuery_FieldReference(
+        fieldPath: fieldPath._formattedName,
+      ),
+      direction:
+          direction == _Direction.ascending
+              ? firestore_v1.StructuredQuery_Direction.ascending
+              : firestore_v1.StructuredQuery_Direction.descending,
     );
   }
+
 
   @override
   bool operator ==(Object other) {

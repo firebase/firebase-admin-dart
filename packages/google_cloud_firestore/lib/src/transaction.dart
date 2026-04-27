@@ -340,12 +340,10 @@ class Transaction {
     // otherwise blocking.
     return _firestore._firestoreClient.v1((api, projectId) {
       final rollBackRequest = firestore_v1.RollbackRequest(
-        transaction: transactionId,
+        database: _firestore._formattedDatabaseName,
+        transaction: base64Decode(transactionId!),
       );
-      return api.projects.databases.documents.rollback(
-        rollBackRequest,
-        _firestore._formattedDatabaseName,
-      );
+      return api.rollback(rollBackRequest);
     });
   }
 
@@ -389,13 +387,20 @@ class Transaction {
       } else {
         // This is the first read of the transaction so we create the appropriate
         // options for lazily starting the transaction inside this first read op
-        final opts = firestore_v1.TransactionOptions();
+        final firestore_v1.TransactionOptions opts;
         if (_writeBatch != null) {
-          opts.readWrite = _prevTransactionId == null
-              ? firestore_v1.ReadWrite()
-              : firestore_v1.ReadWrite(retryTransaction: _prevTransactionId);
+          opts = firestore_v1.TransactionOptions(
+            readWrite:
+                _prevTransactionId == null
+                    ? firestore_v1.TransactionOptions_ReadWrite()
+                    : firestore_v1.TransactionOptions_ReadWrite(
+                      retryTransaction: base64Decode(_prevTransactionId!),
+                    ),
+          );
         } else {
-          opts.readOnly = firestore_v1.ReadOnly();
+          opts = firestore_v1.TransactionOptions(
+            readOnly: firestore_v1.TransactionOptions_ReadOnly(),
+          );
         }
 
         final resultPromise = resultFn(

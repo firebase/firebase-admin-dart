@@ -84,25 +84,34 @@ class AggregateField {
 
   /// Converts this public field to the internal representation.
   AggregateFieldInternal _toInternal() {
-    firestore_v1.Aggregation aggregation;
+    firestore_v1.StructuredAggregationQuery_Aggregation aggregation;
     switch (type) {
       case AggregateType.count:
-        aggregation = firestore_v1.Aggregation(count: firestore_v1.Count());
+        aggregation = firestore_v1.StructuredAggregationQuery_Aggregation(
+          alias: alias,
+          count: firestore_v1.StructuredAggregationQuery_Aggregation_Count(),
+        );
       case AggregateType.sum:
-        aggregation = firestore_v1.Aggregation(
-          sum: firestore_v1.Sum(
-            field: firestore_v1.FieldReference(fieldPath: fieldPath),
+        aggregation = firestore_v1.StructuredAggregationQuery_Aggregation(
+          alias: alias,
+          sum: firestore_v1.StructuredAggregationQuery_Aggregation_Sum(
+            field: firestore_v1.StructuredQuery_FieldReference(
+              fieldPath: fieldPath!,
+            ),
           ),
         );
       case AggregateType.average:
-        aggregation = firestore_v1.Aggregation(
-          avg: firestore_v1.Avg(
-            field: firestore_v1.FieldReference(fieldPath: fieldPath),
+        aggregation = firestore_v1.StructuredAggregationQuery_Aggregation(
+          alias: alias,
+          avg: firestore_v1.StructuredAggregationQuery_Aggregation_Avg(
+            field: firestore_v1.StructuredQuery_FieldReference(
+              fieldPath: fieldPath!,
+            ),
           ),
         );
     }
 
-    return AggregateFieldInternal(alias: alias, aggregation: aggregation);
+    return AggregateFieldInternal(aggregation: aggregation);
   }
 }
 
@@ -150,13 +159,11 @@ class average extends AggregateField {
 @immutable
 @internal
 class AggregateFieldInternal {
-  const AggregateFieldInternal({
-    required this.alias,
-    required this.aggregation,
-  });
+  const AggregateFieldInternal({required this.aggregation});
 
-  final String alias;
-  final firestore_v1.Aggregation aggregation;
+  final firestore_v1.StructuredAggregationQuery_Aggregation aggregation;
+
+  String get alias => aggregation.alias;
 
   @override
   bool operator ==(Object other) {

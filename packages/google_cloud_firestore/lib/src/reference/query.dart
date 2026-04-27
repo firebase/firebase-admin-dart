@@ -412,14 +412,14 @@ interface class Query<T> {
       api,
       projectId,
     ) async {
-      final request = _toProto(transactionId: null, readTime: null);
-      request.explainOptions =
-          options?.toProto() ?? firestore_v1.ExplainOptions();
-
-      return api.projects.databases.documents.runQuery(
-        request,
-        _buildProtoParentPath(),
+      final request = _toProto(
+        parent: _buildProtoParentPath(),
+        transactionId: null,
+        readTime: null,
+        explainOptions: options?.toProto(),
       );
+
+      return api.runQuery(request);
     });
 
     ExplainMetrics? metrics;
@@ -428,7 +428,7 @@ interface class Query<T> {
 
     final docs = <QueryDocumentSnapshot<T>>[];
 
-    for (final element in response) {
+    await for (final element in response) {
       // Extract explain metrics if present
       if (element.explainMetrics != null) {
         metrics = ExplainMetrics._fromProto(element.explainMetrics!);
@@ -459,7 +459,7 @@ interface class Query<T> {
       }
 
       if (element.readTime != null) {
-        readTime = Timestamp._fromString(element.readTime!);
+        readTime = Timestamp._fromProto(element.readTime!);
       }
     }
 
@@ -484,46 +484,44 @@ interface class Query<T> {
       api,
       projectId,
     ) async {
-      return api.projects.databases.documents.runQuery(
-        _toProto(transactionId: transactionId, readTime: null),
-        _buildProtoParentPath(),
+      final request = _toProto(
+        parent: _buildProtoParentPath(),
+        transactionId: transactionId,
+        readTime: null,
       );
+      return api.runQuery(request);
     });
 
     Timestamp? readTime;
-    final snapshots = response
-        .map((e) {
-          final document = e.document;
-          if (document == null) {
-            readTime = e.readTime.let(Timestamp._fromString);
-            return null;
-          }
+    final snapshots = <QueryDocumentSnapshot<T>>[];
+    await for (final e in response) {
+      final document = e.document;
+      if (document == null) {
+        readTime = e.readTime.let(Timestamp._fromProto);
+        continue;
+      }
 
-          final snapshot = DocumentSnapshot._fromDocument(
-            document,
-            e.readTime,
-            firestore,
-          );
-          final finalDoc =
-              _DocumentSnapshotBuilder(
-                  snapshot.ref.withConverter<T>(
-                    fromFirestore: _queryOptions.converter.fromFirestore,
-                    toFirestore: _queryOptions.converter.toFirestore,
-                  ),
-                )
-                // Recreate the QueryDocumentSnapshot with the DocumentReference
-                // containing the original converter.
-                ..fieldsProto = firestore_v1.MapValue(fields: document.fields)
-                ..readTime = snapshot.readTime
-                ..createTime = snapshot.createTime
-                ..updateTime = snapshot.updateTime;
+      final snapshot = DocumentSnapshot._fromDocument(
+        document,
+        e.readTime,
+        firestore,
+      );
+      final finalDoc =
+          _DocumentSnapshotBuilder(
+              snapshot.ref.withConverter<T>(
+                fromFirestore: _queryOptions.converter.fromFirestore,
+                toFirestore: _queryOptions.converter.toFirestore,
+              ),
+            )
+            // Recreate the QueryDocumentSnapshot with the DocumentReference
+            // containing the original converter.
+            ..fieldsProto = firestore_v1.MapValue(fields: document.fields)
+            ..readTime = snapshot.readTime
+            ..createTime = snapshot.createTime
+            ..updateTime = snapshot.updateTime;
 
-          return finalDoc.build();
-        })
-        .nonNulls
-        // Specifying fieldsProto should cause the builder to create a query snapshot.
-        .cast<QueryDocumentSnapshot<T>>()
-        .toList();
+      snapshots.add(finalDoc.build() as QueryDocumentSnapshot<T>);
+    }
 
     return QuerySnapshot<T>._(query: this, readTime: readTime, docs: snapshots);
   }
@@ -535,9 +533,11 @@ interface class Query<T> {
   }
 
   firestore_v1.RunQueryRequest _toProto({
+    required String parent,
     required String? transactionId,
     required Timestamp? readTime,
     firestore_v1.TransactionOptions? transactionOptions,
+    firestore_v1.ExplainOptions? explainOptions,
   }) {
     // Validate mutual exclusivity of transaction parameters
     final providedParams = [
@@ -564,7 +564,7 @@ interface class Query<T> {
         );
       }
 
-      structuredQuery.orderBy = _queryOptions.fieldOrders.map((order) {
+      final reversedOrderBy = _queryOptions.fieldOrders.map((order) {
         // Flip the orderBy directions since we want the last results
         final dir = order.direction == _Direction.descending
             ? _Direction.ascending
@@ -576,7 +576,7 @@ interface class Query<T> {
       }).toList();
 
       // Swap the cursors to match the now-flipped query ordering.
-      structuredQuery.startAt = _queryOptions.endAt != null
+      final reversedStartAt = _queryOptions.endAt != null
           ? _toCursor(
               _QueryCursor(
                 values: _queryOptions.endAt!.values,
@@ -584,7 +584,7 @@ interface class Query<T> {
               ),
             )
           : null;
-      structuredQuery.endAt = _queryOptions.startAt != null
+      final reversedEndAt = _queryOptions.startAt != null
           ? _toCursor(
               _QueryCursor(
                 values: _queryOptions.startAt!.values,
@@ -592,61 +592,69 @@ interface class Query<T> {
               ),
             )
           : null;
+
+      final reversedStructuredQuery = firestore_v1.StructuredQuery(
+        select: structuredQuery.select,
+        from: structuredQuery.from,
+        where: structuredQuery.where,
+        orderBy: reversedOrderBy,
+        startAt: reversedStartAt,
+        endAt: reversedEndAt,
+        offset: structuredQuery.offset,
+        limit: structuredQuery.limit,
+      );
+
+      return firestore_v1.RunQueryRequest(
+        parent: parent,
+        structuredQuery: reversedStructuredQuery,
+        transaction: transactionId.let(base64Decode),
+        readTime: readTime?._toProto().timestampValue,
+        newTransaction: transactionOptions,
+        explainOptions: explainOptions,
+      );
     }
 
-    final runQueryRequest = firestore_v1.RunQueryRequest(
+    return firestore_v1.RunQueryRequest(
+      parent: parent,
       structuredQuery: structuredQuery,
+      transaction: transactionId.let(base64Decode),
+      readTime: readTime?._toProto().timestampValue,
+      newTransaction: transactionOptions,
+      explainOptions: explainOptions,
     );
-
-    if (transactionId != null) {
-      runQueryRequest.transaction = transactionId;
-    } else if (readTime != null) {
-      runQueryRequest.readTime = readTime._toProto().timestampValue;
-    } else if (transactionOptions != null) {
-      runQueryRequest.newTransaction = transactionOptions;
-    }
-
-    return runQueryRequest;
   }
 
   firestore_v1.StructuredQuery _toStructuredQuery() {
-    final structuredQuery = firestore_v1.StructuredQuery(
-      from: [firestore_v1.CollectionSelector()],
+    final selectors = [
+      firestore_v1.StructuredQuery_CollectionSelector(
+        collectionId: _queryOptions.kindless ? '' : _queryOptions.collectionId,
+        allDescendants: _queryOptions.allDescendants,
+      ),
+    ];
+
+    final where =
+        _queryOptions.filters.isNotEmpty
+            ? _CompositeFilterInternal(
+              filters: _queryOptions.filters,
+              op: _CompositeOperator.and,
+            ).toProto()
+            : null;
+
+    final orderBy =
+        _queryOptions.hasFieldOrders
+            ? _queryOptions.fieldOrders.map((o) => o._toProto()).toList()
+            : const <firestore_v1.StructuredQuery_Order>[];
+
+    return firestore_v1.StructuredQuery(
+      select: _queryOptions.projection,
+      from: selectors,
+      where: where,
+      orderBy: orderBy,
+      startAt: _toCursor(_queryOptions.startAt),
+      endAt: _toCursor(_queryOptions.endAt),
+      offset: _queryOptions.offset ?? 0,
+      limit: _queryOptions.limit?.let((l) => protobuf_v1.Int32Value(value: l)),
     );
-
-    if (_queryOptions.allDescendants) {
-      structuredQuery.from![0].allDescendants = true;
-    }
-
-    // Kindless queries select all descendant documents, so we remove the
-    // collectionId field.
-    if (!_queryOptions.kindless) {
-      structuredQuery.from![0].collectionId = _queryOptions.collectionId;
-    }
-
-    if (_queryOptions.filters.isNotEmpty) {
-      structuredQuery.where = _CompositeFilterInternal(
-        filters: _queryOptions.filters,
-        op: _CompositeOperator.and,
-      ).toProto();
-    }
-
-    if (_queryOptions.hasFieldOrders) {
-      structuredQuery.orderBy = _queryOptions.fieldOrders
-          .map((o) => o._toProto())
-          .toList();
-    }
-
-    structuredQuery.startAt = _toCursor(_queryOptions.startAt);
-    structuredQuery.endAt = _toCursor(_queryOptions.endAt);
-
-    final limit = _queryOptions.limit;
-    if (limit != null) structuredQuery.limit = limit;
-
-    structuredQuery.offset = _queryOptions.offset;
-    structuredQuery.select = _queryOptions.projection;
-
-    return structuredQuery;
   }
 
   /// Converts a QueryCursor to its proto representation.
@@ -841,20 +849,20 @@ interface class Query<T> {
   /// });
   /// ```
   Query<DocumentData> select([List<FieldPath> fieldPaths = const []]) {
-    final fields = <firestore_v1.FieldReference>[
+    final fields = <firestore_v1.StructuredQuery_FieldReference>[
       if (fieldPaths.isEmpty)
-        firestore_v1.FieldReference(
+        firestore_v1.StructuredQuery_FieldReference(
           fieldPath: FieldPath.documentId._formattedName,
         )
       else
         for (final fieldPath in fieldPaths)
-          firestore_v1.FieldReference(fieldPath: fieldPath._formattedName),
+          firestore_v1.StructuredQuery_FieldReference(fieldPath: fieldPath._formattedName),
     ];
 
     return Query<DocumentData>._(
       firestore: firestore,
       queryOptions: _queryOptions
-          .copyWith(projection: firestore_v1.Projection(fields: fields))
+          .copyWith(projection: firestore_v1.StructuredQuery_Projection(fields: fields))
           .withConverter(
             // By specifying a field mask, the query result no longer conforms to type
             // `T`. We there return `Query<DocumentData>`.

@@ -39,11 +39,11 @@ class _CompositeFilterInternal extends _FilterInternal {
   }
 
   @override
-  firestore_v1.Filter toProto() {
+  firestore_v1.StructuredQuery_Filter toProto() {
     if (filters.length == 1) return filters.single.toProto();
 
-    return firestore_v1.Filter(
-      compositeFilter: firestore_v1.CompositeFilter(
+    return firestore_v1.StructuredQuery_Filter(
+      compositeFilter: firestore_v1.StructuredQuery_CompositeFilter(
         op: op.proto,
         filters: filters.map((e) => e.toProto()).toList(),
       ),
