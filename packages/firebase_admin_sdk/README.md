@@ -385,6 +385,11 @@ final nextPageToken = result.pageToken;
 final idToken = req.headers['Authorization'].split(' ')[1];
 final decodedToken = await auth.verifyIdToken(idToken, checkRevoked: true);
 print(decodedToken.uid);
+
+// Access custom claims
+if (decodedToken.claims['isAdmin'] == true) {
+  print('User is an admin');
+}
 ```
 
 #### createCustomToken

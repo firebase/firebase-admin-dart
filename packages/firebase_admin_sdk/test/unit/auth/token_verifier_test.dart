@@ -36,6 +36,9 @@ void main() {
         'phone_number': 'mock-phone-number',
         'picture': 'mock-picture',
         'sub': 'mock-sub',
+        'custom_claim': 'mock-custom-claim',
+        'isAdmin': true,
+        'numberOfTests': 3,
       });
       expect(idToken.aud, 'mock-aud');
       expect(idToken.authTime, DateTime.fromMillisecondsSinceEpoch(1000));
@@ -56,6 +59,11 @@ void main() {
       expect(idToken.picture, 'mock-picture');
       expect(idToken.sub, 'mock-sub');
       expect(idToken.uid, 'mock-sub');
+      expect(idToken.claims['custom_claim'], 'mock-custom-claim');
+      expect(idToken.claims['isAdmin'], true);
+      expect(idToken.claims['numberOfTests'], 3);
+      expect(idToken.claims.containsKey('aud'), false);
+      expect(idToken.claims.containsKey('sub'), false);
     });
   });
 }
