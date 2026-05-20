@@ -225,7 +225,7 @@ void main() {
     });
 
     group('callback registration', () {
-      test('onWriteResult sets success callback', () {
+      test('onWriteResult can be called before operations', () {
         final bulkWriter = firestore.bulkWriter();
         var callbackCalled = false;
 
@@ -233,10 +233,10 @@ void main() {
           callbackCalled = true;
         });
 
-        expect(callbackCalled, isFalse); // Not called yet
+        expect(callbackCalled, isFalse);
       });
 
-      test('onWriteError sets error callback', () {
+      test('onWriteError can be called before operations', () {
         final bulkWriter = firestore.bulkWriter();
         var callbackCalled = false;
 
@@ -245,7 +245,43 @@ void main() {
           return false;
         });
 
-        expect(callbackCalled, isFalse); // Not called yet
+        expect(callbackCalled, isFalse);
+      });
+
+      test('onWriteResult replaces previous callback', () {
+        final bulkWriter = firestore.bulkWriter();
+        var firstCallbackCalled = false;
+        var secondCallbackCalled = false;
+
+        bulkWriter.onWriteResult((ref, result) {
+          firstCallbackCalled = true;
+        });
+
+        bulkWriter.onWriteResult((ref, result) {
+          secondCallbackCalled = true;
+        });
+
+        expect(firstCallbackCalled, isFalse);
+        expect(secondCallbackCalled, isFalse);
+      });
+
+      test('onWriteError replaces previous callback', () {
+        final bulkWriter = firestore.bulkWriter();
+        var firstCallbackCalled = false;
+        var secondCallbackCalled = false;
+
+        bulkWriter.onWriteError((error) {
+          firstCallbackCalled = true;
+          return false;
+        });
+
+        bulkWriter.onWriteError((error) {
+          secondCallbackCalled = true;
+          return false;
+        });
+
+        expect(firstCallbackCalled, isFalse);
+        expect(secondCallbackCalled, isFalse);
       });
     });
 
@@ -293,77 +329,6 @@ void main() {
         expect(errorString, contains('create'));
         expect(errorString, contains('test/doc'));
         expect(errorString, contains('3'));
-      });
-    });
-
-    group('callback registration', () {
-      test('onWriteResult can be called before operations', () {
-        final bulkWriter = firestore.bulkWriter();
-        var callbackCalled = false;
-
-        // Register callback before any writes
-        bulkWriter.onWriteResult((ref, result) {
-          callbackCalled = true;
-        });
-
-        // Callback should not be called until writes complete
-        expect(callbackCalled, isFalse);
-      });
-
-      test('onWriteError can be called before operations', () {
-        final bulkWriter = firestore.bulkWriter();
-        var callbackCalled = false;
-
-        // Register callback before any writes
-        bulkWriter.onWriteError((error) {
-          callbackCalled = true;
-          return false;
-        });
-
-        // Callback should not be called until errors occur
-        expect(callbackCalled, isFalse);
-      });
-
-      test('onWriteResult replaces previous callback', () {
-        final bulkWriter = firestore.bulkWriter();
-        var firstCallbackCalled = false;
-        var secondCallbackCalled = false;
-
-        // Register first callback
-        bulkWriter.onWriteResult((ref, result) {
-          firstCallbackCalled = true;
-        });
-
-        // Register second callback (should replace first)
-        bulkWriter.onWriteResult((ref, result) {
-          secondCallbackCalled = true;
-        });
-
-        // Only the second callback should exist
-        expect(firstCallbackCalled, isFalse);
-        expect(secondCallbackCalled, isFalse);
-      });
-
-      test('onWriteError replaces previous callback', () {
-        final bulkWriter = firestore.bulkWriter();
-        var firstCallbackCalled = false;
-        var secondCallbackCalled = false;
-
-        // Register first callback
-        bulkWriter.onWriteError((error) {
-          firstCallbackCalled = true;
-          return false;
-        });
-
-        // Register second callback (should replace first)
-        bulkWriter.onWriteError((error) {
-          secondCallbackCalled = true;
-          return false;
-        });
-
-        // Only the second callback should exist
-        expect(firstCallbackCalled, isFalse);
-        expect(secondCallbackCalled, isFalse);
       });
     });
 
