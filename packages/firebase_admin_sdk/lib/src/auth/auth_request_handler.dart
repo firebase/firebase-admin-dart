@@ -61,16 +61,16 @@ abstract class _AbstractAuthRequestHandler {
     ActionCodeSettings? actionCodeSettings, [
     String? newEmail,
   ]) async {
-    if (email.isEmpty) {
-      throw FirebaseAuthAdminException(AuthClientErrorCode.invalidEmail);
-    }
+    assertIsEmail(email);
 
-    if (requestType == 'VERIFY_AND_CHANGE_EMAIL' &&
-        (newEmail == null || newEmail.isEmpty)) {
-      throw FirebaseAuthAdminException(
-        AuthClientErrorCode.invalidArgument,
-        "`newEmail` is required when `requestType` === 'VERIFY_AND_CHANGE_EMAIL'",
-      );
+    if (requestType == 'VERIFY_AND_CHANGE_EMAIL') {
+      if (newEmail == null || newEmail.isEmpty) {
+        throw FirebaseAuthAdminException(
+          AuthClientErrorCode.invalidArgument,
+          "`newEmail` is required when `requestType` === 'VERIFY_AND_CHANGE_EMAIL'",
+        );
+      }
+      assertIsEmail(newEmail);
     }
 
     final request = auth1.GoogleCloudIdentitytoolkitV1GetOobCodeRequest(
