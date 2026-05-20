@@ -285,7 +285,7 @@ jobs:
         working-directory: .
 
       - name: Run WIF auth test
-        run: dart test test/integration/app/firebase_app_prod_test.dart --concurrency=1 --tags wif
+        run: dart test test/integration/app/firebase_app_prod_test.dart --concurrency=1 -P wif
 
   publish:
     name: Publish verification

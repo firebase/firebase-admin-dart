@@ -31,74 +31,82 @@ void main() {
 
   group('Storage (Production)', () {
     group('getDownloadURL()', () {
-      test('returns a URL that can be used to download the file', () {
-        return runZoned(() async {
-          final app = createApp();
-          final storage = app.storage();
-          final bucket = storage.bucket(testBucketName);
-          final objectName =
-              'download-url-${DateTime.now().millisecondsSinceEpoch}.txt';
+      test(
+        'returns a URL that can be used to download the file',
+        () {
+          return runZoned(() async {
+            final app = createApp();
+            final storage = app.storage();
+            final bucket = storage.bucket(testBucketName);
+            final objectName =
+                'download-url-${DateTime.now().millisecondsSinceEpoch}.txt';
 
-          const uploadedContent = 'Download URL test';
+            const uploadedContent = 'Download URL test';
 
-          addTearDown(() async {
-            try {
-              await bucket.storage.deleteObject(bucket.name, objectName);
-            } catch (_) {}
-          });
+            addTearDown(() async {
+              try {
+                await bucket.storage.deleteObject(bucket.name, objectName);
+              } catch (_) {}
+            });
 
-          await bucket.storage.uploadObject(
-            bucket.name,
-            objectName,
-            Uint8List.fromList(uploadedContent.codeUnits),
-            metadata: gcs.ObjectMetadata(contentType: 'text/plain'),
-          );
+            await bucket.storage.uploadObject(
+              bucket.name,
+              objectName,
+              Uint8List.fromList(uploadedContent.codeUnits),
+              metadata: gcs.ObjectMetadata(contentType: 'text/plain'),
+            );
 
-          final url = await storage.getDownloadURL(bucket, objectName);
+            final url = await storage.getDownloadURL(bucket, objectName);
 
-          expect(url, startsWith('$productionEndpoint/b/$testBucketName/o/'));
-          expect(url, contains('?alt=media&token='));
+            expect(url, startsWith('$productionEndpoint/b/$testBucketName/o/'));
+            expect(url, contains('?alt=media&token='));
 
-          // Verify the URL actually serves the uploaded file content.
-          final response = await http.get(Uri.parse(url));
-          expect(response.statusCode, 200);
-          expect(response.body, uploadedContent);
-        }, zoneValues: {envSymbol: prodEnv()});
-      }, timeout: const Timeout(Duration(seconds: 30)));
+            // Verify the URL actually serves the uploaded file content.
+            final response = await http.get(Uri.parse(url));
+            expect(response.statusCode, 200);
+            expect(response.body, uploadedContent);
+          }, zoneValues: {envSymbol: prodEnv()});
+        },
+        timeout: const Timeout(Duration(seconds: 30)),
+      );
 
-      test('URL-encodes object names with special characters', () {
-        return runZoned(() async {
-          final app = createApp();
-          final storage = app.storage();
-          final bucket = storage.bucket(testBucketName);
-          final objectName =
-              'folder/download url test ${DateTime.now().millisecondsSinceEpoch}.txt';
+      test(
+        'URL-encodes object names with special characters',
+        () {
+          return runZoned(() async {
+            final app = createApp();
+            final storage = app.storage();
+            final bucket = storage.bucket(testBucketName);
+            final objectName =
+                'folder/download url test ${DateTime.now().millisecondsSinceEpoch}.txt';
 
-          const uploadedContent = 'content';
+            const uploadedContent = 'content';
 
-          addTearDown(() async {
-            try {
-              await bucket.storage.deleteObject(bucket.name, objectName);
-            } catch (_) {}
-          });
+            addTearDown(() async {
+              try {
+                await bucket.storage.deleteObject(bucket.name, objectName);
+              } catch (_) {}
+            });
 
-          await bucket.storage.uploadObject(
-            bucket.name,
-            objectName,
-            Uint8List.fromList(uploadedContent.codeUnits),
-            metadata: gcs.ObjectMetadata(contentType: 'text/plain'),
-          );
+            await bucket.storage.uploadObject(
+              bucket.name,
+              objectName,
+              Uint8List.fromList(uploadedContent.codeUnits),
+              metadata: gcs.ObjectMetadata(contentType: 'text/plain'),
+            );
 
-          final url = await storage.getDownloadURL(bucket, objectName);
+            final url = await storage.getDownloadURL(bucket, objectName);
 
-          expect(url, contains(Uri.encodeComponent(objectName)));
+            expect(url, contains(Uri.encodeComponent(objectName)));
 
-          // Verify the encoded URL actually serves the uploaded file content.
-          final response = await http.get(Uri.parse(url));
-          expect(response.statusCode, 200);
-          expect(response.body, uploadedContent);
-        }, zoneValues: {envSymbol: prodEnv()});
-      }, timeout: const Timeout(Duration(seconds: 30)));
+            // Verify the encoded URL actually serves the uploaded file content.
+            final response = await http.get(Uri.parse(url));
+            expect(response.statusCode, 200);
+            expect(response.body, uploadedContent);
+          }, zoneValues: {envSymbol: prodEnv()});
+        },
+        timeout: const Timeout(Duration(seconds: 30)),
+      );
     });
   });
 }

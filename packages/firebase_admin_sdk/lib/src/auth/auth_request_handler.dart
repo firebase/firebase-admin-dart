@@ -65,7 +65,8 @@ abstract class _AbstractAuthRequestHandler {
       throw FirebaseAuthAdminException(AuthClientErrorCode.invalidEmail);
     }
 
-    if (requestType == 'VERIFY_AND_CHANGE_EMAIL' && (newEmail == null || newEmail.isEmpty)) {
+    if (requestType == 'VERIFY_AND_CHANGE_EMAIL' &&
+        (newEmail == null || newEmail.isEmpty)) {
       throw FirebaseAuthAdminException(
         AuthClientErrorCode.invalidArgument,
         "`newEmail` is required when `requestType` === 'VERIFY_AND_CHANGE_EMAIL'",
