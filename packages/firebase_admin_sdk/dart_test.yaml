@@ -1,4 +1,20 @@
+exclude_tags: firebase-emulator || prod || wif
+
+presets:
+  ci:
+    exclude_tags: prod || wif
+  firebase-emulator:
+    include_tags: firebase-emulator
+  prod:
+    include_tags: prod
+  wif:
+    include_tags: wif
+
 tags:
+  firebase-emulator:
+    description: >
+      Tests that require Firebase emulators (Auth, Firestore, Storage, Functions).
+      Run with: firebase emulators:exec "dart test -P firebase-emulator"
   prod:
     description: >
       Tests that hit real Firebase production APIs.

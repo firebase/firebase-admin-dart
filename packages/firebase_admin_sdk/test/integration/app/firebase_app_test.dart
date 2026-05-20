@@ -103,6 +103,7 @@ void main() {
           ? false
           : 'Skipping Firestore emulator lifecycle tests. '
                 'Set FIRESTORE_EMULATOR_HOST to run these tests.',
+      tags: 'firebase-emulator',
     );
 
     group(
@@ -142,6 +143,7 @@ void main() {
           ? false
           : 'Skipping Auth emulator lifecycle tests. '
                 'Set FIREBASE_AUTH_EMULATOR_HOST to run these tests.',
+      tags: 'firebase-emulator',
     );
   });
 }

@@ -20,6 +20,9 @@
 // Run with:
 //   FIREBASE_AUTH_EMULATOR_HOST=localhost:9099 dart test test/auth/project_config_integration_test.dart
 
+@Tags(['firebase-emulator'])
+library;
+
 import 'package:firebase_admin_sdk/auth.dart';
 import 'package:test/test.dart';
 

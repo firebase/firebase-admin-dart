@@ -27,6 +27,9 @@
 // To run these tests:
 //   FIREBASE_AUTH_EMULATOR_HOST=localhost:9099 dart test test/auth/integration_test.dart
 
+@Tags(['firebase-emulator'])
+library;
+
 import 'dart:convert';
 import 'dart:io';
 

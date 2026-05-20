@@ -26,7 +26,7 @@ cd ../../..
 dart pub global activate coverage
 
 # Exclude prod/wif tests unless a credential is available.
-TEST_TAGS="--exclude-tags prod,wif"
+TEST_TAGS="-P ci"
 if [ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]; then
   TEST_TAGS=""
 fi

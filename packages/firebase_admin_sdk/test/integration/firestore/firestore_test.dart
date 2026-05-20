@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+@Tags(['firebase-emulator'])
+library;
+
 import 'package:firebase_admin_sdk/src/app.dart';
 import 'package:google_cloud_firestore/google_cloud_firestore.dart' as gfs;
 import 'package:test/test.dart';
