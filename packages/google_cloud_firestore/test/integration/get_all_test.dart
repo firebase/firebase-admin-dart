@@ -3,7 +3,6 @@
 // BSD-style license that can be found in the LICENSE file.
 
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
-import 'package:google_cloud_firestore/src/firestore.dart' show FieldMask;
 import 'package:test/test.dart';
 import '../fixtures/helpers.dart' as helpers;
 
