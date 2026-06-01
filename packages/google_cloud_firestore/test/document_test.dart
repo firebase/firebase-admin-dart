@@ -333,7 +333,6 @@ void main() {
       });
     });
 
-
     group('text string', () {
       test('serializes unicode keys', () async {
         await firestore.doc('collectionId/unicode').set({'😀': '😜'});

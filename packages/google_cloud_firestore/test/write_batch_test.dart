@@ -393,10 +393,7 @@ void main() {
             FieldPath(const ['foo']): 'updated',
           }, precondition: Precondition.timestamp(futureTime));
 
-          await expectLater(
-            batch.commit(),
-            throwsA(isA<FirestoreException>()),
-          );
+          await expectLater(batch.commit(), throwsA(isA<FirestoreException>()));
         },
       );
 

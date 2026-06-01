@@ -470,7 +470,8 @@ void main() {
 
       for (final doc in docsWithQueries) {
         final queries =
-            (doc['documentMetadata'] as Map<String, dynamic>)['queries'] as List;
+            (doc['documentMetadata'] as Map<String, dynamic>)['queries']
+                as List;
         expect(queries, contains('test-query'));
       }
 

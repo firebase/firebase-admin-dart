@@ -89,15 +89,19 @@ void main() {
           timeout: const Timeout(Duration(seconds: 30)),
         );
 
-        test('closes multiple services concurrently without error', () async {
-          app.firestore();
-          app.messaging();
-          app.securityRules();
+        test(
+          'closes multiple services concurrently without error',
+          () async {
+            app.firestore();
+            app.messaging();
+            app.securityRules();
 
-          await expectLater(app.close(), completes);
+            await expectLater(app.close(), completes);
 
-          expect(app.isDeleted, isTrue);
-        }, timeout: const Timeout(Duration(seconds: 30)));
+            expect(app.isDeleted, isTrue);
+          },
+          timeout: const Timeout(Duration(seconds: 30)),
+        );
       },
       skip: Environment.isFirestoreEmulatorEnabled()
           ? false
@@ -117,26 +121,30 @@ void main() {
           emulatorEnv.remove(Environment.googleApplicationCredentials);
         });
 
-        test('initialises Auth, creates a user, then closes cleanly', () async {
-          await runZoned(zoneValues: {envSymbol: emulatorEnv}, () async {
-            final app = FirebaseApp.initializeApp(
-              name: 'auth-lifecycle-${DateTime.now().millisecondsSinceEpoch}',
-              options: const AppOptions(projectId: projectId),
-            );
+        test(
+          'initialises Auth, creates a user, then closes cleanly',
+          () async {
+            await runZoned(zoneValues: {envSymbol: emulatorEnv}, () async {
+              final app = FirebaseApp.initializeApp(
+                name: 'auth-lifecycle-${DateTime.now().millisecondsSinceEpoch}',
+                options: const AppOptions(projectId: projectId),
+              );
 
-            final auth = Auth.internal(app);
+              final auth = Auth.internal(app);
 
-            final user = await auth.createUser(
-              CreateRequest(email: 'lifecycle-test@example.com'),
-            );
-            expect(user.email, 'lifecycle-test@example.com');
+              final user = await auth.createUser(
+                CreateRequest(email: 'lifecycle-test@example.com'),
+              );
+              expect(user.email, 'lifecycle-test@example.com');
 
-            await auth.deleteUser(user.uid);
+              await auth.deleteUser(user.uid);
 
-            await app.close();
-            expect(app.isDeleted, isTrue);
-          });
-        }, timeout: const Timeout(Duration(seconds: 30)));
+              await app.close();
+              expect(app.isDeleted, isTrue);
+            });
+          },
+          timeout: const Timeout(Duration(seconds: 30)),
+        );
       },
       skip: Environment.isAuthEmulatorEnabled()
           ? false

@@ -1128,8 +1128,9 @@ void main() {
       test('supports findNearest on vector nested in a map', () async {
         await runZoned(() async {
           // Use fixed collection name for production (requires pre-configured index)
-          final collection =
-              firestoreProd.collection('nested-vector-test-prod');
+          final collection = firestoreProd.collection(
+            'nested-vector-test-prod',
+          );
           final testId = 'test-${DateTime.now().millisecondsSinceEpoch}';
 
           try {

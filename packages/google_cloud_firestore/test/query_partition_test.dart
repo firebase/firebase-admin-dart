@@ -873,10 +873,7 @@ class _Post {
 
 /// Firestore converter for testing
 class _FirestoreConverter<T> {
-  _FirestoreConverter({
-    required this.fromFirestore,
-    required this.toFirestore,
-  });
+  _FirestoreConverter({required this.fromFirestore, required this.toFirestore});
 
   final T Function(DocumentSnapshot<Map<String, Object?>>) fromFirestore;
   final Map<String, Object?> Function(T) toFirestore;
