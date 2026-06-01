@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+@Tags(['firebase-emulator'])
+library;
+
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
 import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
 import 'package:test/test.dart';
 
-import '../fixtures/helpers.dart';
+import 'fixtures/helpers.dart';
 
 void main() {
   group('query interface', () {

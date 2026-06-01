@@ -2,9 +2,12 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+@Tags(['firebase-emulator'])
+library;
+
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
 import 'package:test/test.dart';
-import '../fixtures/helpers.dart' as helpers;
+import 'fixtures/helpers.dart' as helpers;
 
 void main() {
   group('Transaction Query', () {

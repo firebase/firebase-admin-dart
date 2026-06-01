@@ -15,14 +15,18 @@ cd "$PACKAGE_DIR"
 
 dart pub global activate coverage
 
-# Exclude prod tests unless a credential is available.
-TEST_TAGS="--exclude-tags prod"
+# Prod tests are opt-in: set GOOGLE_APPLICATION_CREDENTIALS to include them.
+TAGS="-P ci"
 if [ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]; then
-  TEST_TAGS=""
+  TAGS=""
 fi
 
-# Use test_with_coverage which supports workspaces (dart test --coverage doesn't work with resolution: workspace)
-firebase emulators:exec --config ../firebase_admin_sdk/test/firebase.json --project dart-firebase-admin --only firestore "dart run coverage:test_with_coverage -- --concurrency=1 $TEST_TAGS"
+# Run unit and emulator tests in a single pass inside the emulator.
+# Unit tests ignore the emulator; this avoids needing to merge separate lcov files.
+firebase emulators:exec \
+  --config ../firebase_admin_sdk/test/firebase.json \
+  --project dart-firebase-admin \
+  --only firestore \
+  "dart run coverage:test_with_coverage -- --concurrency=1 $TAGS"
 
-# test_with_coverage already generates lcov.info, just move it
 mv coverage/lcov.info coverage.lcov
