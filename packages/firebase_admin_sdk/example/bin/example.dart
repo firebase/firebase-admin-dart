@@ -30,7 +30,7 @@ Future<void> main() async {
   final admin = FirebaseApp.initializeApp();
 
   try {
-    await functionsExample(admin);
+    // await functionsExample(admin);
 
     // Uncomment to run auth example
     // await authExample(admin);
@@ -39,7 +39,7 @@ Future<void> main() async {
     // await projectConfigExample(admin);
 
     // Uncomment to run the firestore example
-    // await firestoreExample(admin);
+    await firestoreExample(admin);
 
     // Uncomment to run storage example
     // await storageExample(admin);
