@@ -125,7 +125,29 @@ void main() {
     });
 
     group('array', () {
-      // TODO: Add array tests.
+      test('empty', () async {
+        final doc = firestore.doc('collectionId/array');
+        addTearDown(doc.delete);
+
+        await doc.set({'array': []});
+        final data = await doc.get().then((snapshot) => snapshot.data());
+
+        expect(data, {'array': isEmpty});
+      });
+
+      test('non-empty', () async {
+        final doc = firestore.doc('collectionId/array');
+        addTearDown(doc.delete);
+
+        await doc.set({
+          'array': [1, 'two', true],
+        });
+        final data = await doc.get().then((snapshot) => snapshot.data());
+
+        expect(data, {
+          'array': [1, 'two', true],
+        });
+      });
     });
 
     group('boolean', () {
@@ -287,11 +309,28 @@ void main() {
     });
 
     group('null', () {
-      // TODO: Add null tests.
+      test('value', () async {
+        final doc = firestore.doc('collectionId/null');
+        addTearDown(doc.delete);
+
+        await doc.set({'null': null});
+        final data = await doc.get().then((snapshot) => snapshot.data());
+
+        expect(data, {'null': null});
+      });
     });
 
     group('reference', () {
-      // TODO: Add reference tests.
+      test('document reference', () async {
+        final doc = firestore.doc('collectionId/reference');
+        addTearDown(doc.delete);
+
+        final otherDoc = firestore.doc('otherCollection/otherDoc');
+        await doc.set({'reference': otherDoc});
+        final data = await doc.get().then((snapshot) => snapshot.data());
+
+        expect(data, {'reference': otherDoc});
+      });
     });
 
 
@@ -309,7 +348,50 @@ void main() {
     });
 
     group('vector', () {
-      // TODO: Add vector tests.
+      test('empty', () async {
+        final doc = firestore.doc('collectionId/vector');
+        addTearDown(doc.delete);
+
+        await expectLater(
+          doc.set({'vector': FieldValue.vector([])}),
+          // Zero-dimensional vectors are not supported by Firestore.
+          throwsA(
+            isA<FirestoreException>().having(
+              (e) => e.code,
+              'code',
+              'invalid_argument',
+            ),
+          ),
+        );
+      });
+
+      test('single-dimension', () async {
+        final doc = firestore.doc('collectionId/vector');
+        addTearDown(doc.delete);
+
+        await doc.set({
+          'vector': FieldValue.vector([0.0]),
+        });
+        final data = await doc.get().then((snapshot) => snapshot.data());
+
+        expect(data, {
+          'vector': FieldValue.vector([0.0]),
+        });
+      });
+
+      test('multi-dimension', () async {
+        final doc = firestore.doc('collectionId/vector');
+        addTearDown(doc.delete);
+
+        await doc.set({
+          'vector': FieldValue.vector([1.0, 2.0, 3.0]),
+        });
+        final data = await doc.get().then((snapshot) => snapshot.data());
+
+        expect(data, {
+          'vector': FieldValue.vector([1.0, 2.0, 3.0]),
+        });
+      });
     });
   });
 
