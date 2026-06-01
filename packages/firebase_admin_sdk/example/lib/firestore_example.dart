@@ -22,17 +22,17 @@ import 'package:google_cloud_firestore/google_cloud_firestore.dart';
 Future<void> firestoreExample(FirebaseApp admin) async {
   print('\n### Firestore Examples ###\n');
 
-  //await basicFirestoreExample(admin);
+  await basicFirestoreExample(admin);
   await blobExample(admin);
-  //await multiDatabaseExample(admin);
-  //await batchExample(admin);
-  //await transactionExample(admin);
-  //await collectionGroupExample(admin);
-  //await getAllExample(admin);
-  //await listCollectionsExample(admin);
-  //await recursiveDeleteExample(admin);
-  //await bulkWriterExamples(admin);
-  //await bundleBuilderExample(admin);
+  await multiDatabaseExample(admin);
+  await batchExample(admin);
+  await transactionExample(admin);
+  await collectionGroupExample(admin);
+  await getAllExample(admin);
+  await listCollectionsExample(admin);
+  await recursiveDeleteExample(admin);
+  await bulkWriterExamples(admin);
+  await bundleBuilderExample(admin);
 }
 
 /// Example 1: Basic Firestore operations with default database
