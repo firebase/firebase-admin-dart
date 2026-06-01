@@ -68,24 +68,20 @@ void main() {
       expect(data['baz'], 'qux');
     });
 
-    test(
-      'BulkWriter should merge fields',
-      () async {
-        final docRef = testCollection.doc();
-        await docRef.set({'foo': 'bar'});
+    test('BulkWriter should merge fields', () async {
+      final docRef = testCollection.doc();
+      await docRef.set({'foo': 'bar'});
 
-        final bulkWriter = firestore.bulkWriter();
-        await bulkWriter.set(docRef, {
-          'baz': 'qux',
-        }, options: const SetOptions.merge());
-        await bulkWriter.close();
+      final bulkWriter = firestore.bulkWriter();
+      await bulkWriter.set(docRef, {
+        'baz': 'qux',
+      }, options: const SetOptions.merge());
+      await bulkWriter.close();
 
-        final data = (await docRef.get()).data()!;
-        expect(data['foo'], 'bar');
-        expect(data['baz'], 'qux');
-      },
-      skip: 'BulkWriter.close() times out - known issue',
-    );
+      final data = (await docRef.get()).data()!;
+      expect(data['foo'], 'bar');
+      expect(data['baz'], 'qux');
+    }, skip: 'BulkWriter.close() times out - known issue');
   });
 
   group('SetOptions.mergeFields()', () {

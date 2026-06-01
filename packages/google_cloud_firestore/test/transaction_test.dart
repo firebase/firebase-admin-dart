@@ -250,30 +250,26 @@ void main() {
         expect(callCount, 1);
       });
 
-      test(
-        'respects maxAttempts from ReadWriteTransactionOptions',
-        () async {
-          var callCount = 0;
-          await expectLater(
-            firestore.runTransaction((_) async {
-              callCount++;
-              throw FirestoreException(
-                FirestoreClientErrorCode.aborted,
-                'test abort',
-              );
-            }, transactionOptions: ReadWriteTransactionOptions(maxAttempts: 3)),
-            throwsA(
-              isA<FirestoreException>().having(
-                (e) => e.message,
-                'message',
-                contains('max attempts exceeded'),
-              ),
+      test('respects maxAttempts from ReadWriteTransactionOptions', () async {
+        var callCount = 0;
+        await expectLater(
+          firestore.runTransaction((_) async {
+            callCount++;
+            throw FirestoreException(
+              FirestoreClientErrorCode.aborted,
+              'test abort',
+            );
+          }, transactionOptions: ReadWriteTransactionOptions(maxAttempts: 3)),
+          throwsA(
+            isA<FirestoreException>().having(
+              (e) => e.message,
+              'message',
+              contains('max attempts exceeded'),
             ),
-          );
-          expect(callCount, 3);
-        },
-        timeout: const Timeout(Duration(seconds: 10)),
-      );
+          ),
+        );
+        expect(callCount, 3);
+      }, timeout: const Timeout(Duration(seconds: 10)));
 
       test('user-thrown non-FirestoreException is not retried', () async {
         var callCount = 0;
