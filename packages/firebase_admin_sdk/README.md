@@ -18,6 +18,7 @@
    - [App Check](#app-check)
    - [Firestore](#firestore)
    - [Functions](#functions)
+   - [Remote Config](#remote-config)
    - [Messaging](#messaging)
    - [Storage](#storage)
    - [Security Rules](#security-rules)
@@ -57,7 +58,7 @@ The Firebase Admin Dart SDK currently supports the following Firebase services:
 | Machine Learning   | 🔴     |                                      |
 | Messaging          | 🟢     |                                      |
 | Project Management | 🔴     |                                      |
-| Remote Config      | 🔴     |                                      |
+| Remote Config      | 🟢     |                                      |
 | Security Rules     | 🟢     |                                      |
 | Storage            | 🟢     | Via [package:google_cloud_storage]   |
 
@@ -581,6 +582,84 @@ await queue.enqueue(
 
 ```dart
 await queue.delete('payment-order-456');
+```
+
+### Remote Config
+
+```dart
+import 'package:firebase_admin_sdk/firebase_admin_sdk.dart';
+import 'package:firebase_admin_sdk/remote_config.dart';
+
+final app = FirebaseApp.initializeApp();
+final remoteConfig = app.remoteConfig();
+```
+
+#### getTemplate / publishTemplate
+
+```dart
+// Read the active template, edit one parameter, and publish.
+final template = await remoteConfig.getTemplate();
+final updated = RemoteConfigTemplate(
+  etag: template.etag,
+  conditions: template.conditions,
+  parameters: {
+    ...template.parameters,
+    'welcome_message': RemoteConfigParameter(
+      defaultValue: const ExplicitParameterValue(value: 'Hello'),
+      description: 'Updated greeting',
+    ),
+  },
+  parameterGroups: template.parameterGroups,
+  version: template.version,
+);
+final published = await remoteConfig.publishTemplate(updated);
+print('Published version: ${published.version?.versionNumber}');
+```
+
+#### validateTemplate
+
+```dart
+// Server-side validation without publishing.
+final validated = await remoteConfig.validateTemplate(template);
+print('Template OK; etag: ${validated.etag}');
+```
+
+#### listVersions / rollback
+
+```dart
+final versions = await remoteConfig.listVersions(
+  ListVersionsOptions(pageSize: 10),
+);
+for (final v in versions.versions) {
+  print('v${v.versionNumber}: ${v.description}');
+}
+
+// Roll back to a previous version.
+await remoteConfig.rollback('5');
+```
+
+#### Server-side evaluation
+
+Use [`getServerTemplate`](https://firebase.google.com/docs/remote-config/server-side-config) to fetch a template that the SDK can evaluate locally — useful for runtime feature flags, A/B test bucketing, and server-rendered configuration.
+
+```dart
+final template = await remoteConfig.getServerTemplate(
+  defaultConfig: {'enable_new_ui': false, 'max_items': 50},
+);
+
+// Evaluate against an EvaluationContext: randomizationId is used by percent
+// conditions, custom signals are used by string/numeric/semver conditions.
+final config = template.evaluate(
+  EvaluationContext(
+    randomizationId: '<user-id>',
+    customSignals: {'app_version': '2.3.1', 'country': 'US'},
+  ),
+);
+
+if (config.getBoolean('enable_new_ui')) {
+  // ...
+}
+print('max items: ${config.getInt('max_items')}');
 ```
 
 ### Messaging

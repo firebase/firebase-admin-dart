@@ -21,6 +21,7 @@ import 'package:firebase_admin_sdk_example/auth_example.dart';
 import 'package:firebase_admin_sdk_example/firestore_example.dart';
 import 'package:firebase_admin_sdk_example/functions_example.dart';
 import 'package:firebase_admin_sdk_example/messaging_example.dart';
+import 'package:firebase_admin_sdk_example/remote_config_example.dart';
 import 'package:firebase_admin_sdk_example/security_rules_example.dart';
 import 'package:firebase_admin_sdk_example/storage_example.dart';
 
@@ -55,6 +56,9 @@ Future<void> main() async {
 
     // Uncomment to run security rules example (requires a real project and credentials)
     // await securityRulesExample(admin);
+
+    // Uncomment to run remote config example (requires a real project and credentials)
+    // await remoteConfigExample(admin);
   } finally {
     await admin.close();
   }

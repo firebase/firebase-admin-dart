@@ -4,6 +4,7 @@
 
 ## 0.5.2
 
+- Add Remote Config support: template management and server-side template evaluation.
 - Remove dependency on `package:equatable`.
 - Make `Query`, `CollectionReference`, `DocumentReference`, and `CollectionGroup` mockable.
 - `Credential.createClient(List<String> scopes)` — create an authenticated `AuthClient` directly
