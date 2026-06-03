@@ -89,8 +89,7 @@ void main() {
       });
 
       test('delete() throws on read-only transaction', () {
-        final docRef =
-            firestore.doc('col/doc') as DocumentReference<Map<String, dynamic>>;
+        final docRef = firestore.doc('col/doc');
         expect(
           () => readOnlyTx.delete(docRef),
           throwsA(isA<FirestoreException>()),
