@@ -118,51 +118,78 @@ firebase_admin_sdk/             # Workspace root
 
 ### Running Tests
 
-Tests are split into unit/emulator tests and production integration tests.
+Tests use tag-based presets defined in each package's `dart_test.yaml`:
 
-#### Unit and Emulator Tests
+| Preset | Tag | What runs |
+|---|---|---|
+| _(default)_ | — | Unit tests only, no emulator or credentials needed |
+| `-P firebase-emulator` | `firebase-emulator` | Tests that require emulators |
+| `-P prod` | `prod` | Tests against real Firebase APIs (opt-in) |
+| `-P wif` | `wif` | Workload Identity Federation tests (opt-in) |
+| `-P ci` | — | Unit + emulator tests; excludes `prod` and `wif` |
+
+#### Unit tests
+
+No setup needed:
+
+```bash
+# From packages/firebase_admin_sdk or packages/google_cloud_firestore
+dart test
+```
+
+#### `firebase_admin_sdk` emulator tests
+
+Requires the [Firebase CLI](https://firebase.google.com/docs/cli) and Java 21+.
+The Firebase Cloud Tasks emulator also requires the functions fixture to be built first:
+
+```bash
+cd packages/firebase_admin_sdk/test/fixtures/task_queue_functions
+npm install && npm run build
+cd ../../../../..
+```
+
+Then run the emulators and tests together:
 
 ```bash
 # From packages/firebase_admin_sdk
+firebase emulators:exec --config test/firebase.json --project dart-firebase-admin \
+  --only auth,firestore,functions,tasks,storage \
+  "dart test -P firebase-emulator"
 
-# Run all tests against emulators (requires Firebase CLI)
-firebase emulators:exec --project dart-firebase-admin --only auth,firestore,functions,tasks,storage \
-  "dart run coverage:test_with_coverage -- --concurrency=1"
-
-# Or use the convenience script from the repo root
+# Or use the convenience script from the repo root (also collects coverage)
 ./scripts/coverage.sh
-
-# Run a specific test file
-dart test test/auth/auth_test.dart
 ```
 
-#### Integration Tests with Emulator Suite
+#### `google_cloud_firestore` emulator tests
 
-Start the emulators, then run with the relevant environment variables:
+Requires the [Firebase CLI](https://firebase.google.com/docs/cli) and Java 21+.
+The `firebase.json` in the package root configures the Firestore emulator on port 8080.
 
 ```bash
-firebase emulators:start --only firestore,auth
+# From packages/google_cloud_firestore
+firebase emulators:exec --project dart-firebase-admin --only firestore \
+  "dart test -P firebase-emulator"
 
-export FIRESTORE_EMULATOR_HOST=localhost:8080
-export FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
-dart test test/firestore/firestore_integration_test.dart
+# Or use the convenience script from the repo root (also collects coverage)
+./scripts/firestore-coverage.sh
 ```
 
-#### Production Integration Tests
+#### Production tests (opt-in)
 
-Requires a real Firebase project and Google application default credentials. Authorise `gcloud` first:
+Requires a service account with access to the `dart-firebase-admin` Firebase project:
 
 ```bash
-gcloud beta auth application-default login
+GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json dart test -P prod
 ```
 
-Then run with `RUN_PROD_TESTS=true`:
+#### Workload Identity Federation tests (opt-in)
+
+Requires an `external_account` JSON credential (e.g. from `gcloud auth application-default login`
+or `google-github-actions/auth` in CI). Only applies to `firebase_admin_sdk`:
 
 ```bash
-RUN_PROD_TESTS=true dart test test/app/firebase_app_prod_test.dart --concurrency=1
+GOOGLE_APPLICATION_CREDENTIALS=path/to/external-account.json dart test -P wif
 ```
-
-See [`README.md`](README.md) for Firebase project setup details. You can create a project in the [Firebase Console](https://console.firebase.google.com) if you don't have one already.
 
 ### Code Formatting and Analysis
 

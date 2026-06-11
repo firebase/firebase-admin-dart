@@ -24,7 +24,6 @@ fi
 # Run unit and emulator tests in a single pass inside the emulator.
 # Unit tests ignore the emulator; this avoids needing to merge separate lcov files.
 firebase emulators:exec \
-  --config ../firebase_admin_sdk/test/firebase.json \
   --project dart-firebase-admin \
   --only firestore \
   "dart run coverage:test_with_coverage -- --concurrency=1 $TAGS"
