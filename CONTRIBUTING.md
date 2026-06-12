@@ -157,7 +157,7 @@ firebase emulators:exec --config test/firebase.json --project dart-firebase-admi
   "dart test -P firebase-emulator"
 
 # Or use the convenience script from the repo root (also collects coverage)
-./scripts/coverage.sh
+../../scripts/coverage.sh
 ```
 
 #### `google_cloud_firestore` emulator tests
@@ -171,7 +171,7 @@ firebase emulators:exec --project dart-firebase-admin --only firestore \
   "dart test -P firebase-emulator"
 
 # Or use the convenience script from the repo root (also collects coverage)
-./scripts/firestore-coverage.sh
+../../scripts/firestore-coverage.sh
 ```
 
 #### Production tests (opt-in)

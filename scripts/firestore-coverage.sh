@@ -15,17 +15,16 @@ cd "$PACKAGE_DIR"
 
 dart pub global activate coverage
 
-# Prod tests are opt-in: set GOOGLE_APPLICATION_CREDENTIALS to include them.
-TAGS="-P ci"
-if [ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]; then
-  TAGS=""
-fi
-
 # Run unit and emulator tests in a single pass inside the emulator.
 # Unit tests ignore the emulator; this avoids needing to merge separate lcov files.
 firebase emulators:exec \
   --project dart-firebase-admin \
   --only firestore \
-  "dart run coverage:test_with_coverage -- --concurrency=1 $TAGS"
+  "dart run coverage:test_with_coverage -- --concurrency=1 -P ci"
+
+# Prod tests are opt-in: set GOOGLE_APPLICATION_CREDENTIALS to include them.
+if [ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]; then
+  dart test --concurrency=1 -P prod
+fi
 
 mv coverage/lcov.info coverage.lcov

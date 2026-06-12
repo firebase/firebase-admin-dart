@@ -25,14 +25,14 @@ cd ../../..
 
 dart pub global activate coverage
 
-# Exclude prod/wif tests unless a credential is available.
-TEST_TAGS="-P ci"
-if [ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]; then
-  TEST_TAGS=""
-fi
-
 # Use test_with_coverage which supports workspaces (dart test --coverage doesn't work with resolution: workspace)
-firebase emulators:exec --config test/firebase.json --project dart-firebase-admin --only auth,firestore,functions,tasks,storage "dart run coverage:test_with_coverage -- --concurrency=1 $TEST_TAGS"
+firebase emulators:exec --config test/firebase.json --project dart-firebase-admin --only auth,firestore,functions,tasks,storage "dart run coverage:test_with_coverage -- --concurrency=1 -P ci"
+
+# Prod tests are opt-in: set GOOGLE_APPLICATION_CREDENTIALS to include them.
+# wif tests are handled separately by the test-wif CI job.
+if [ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]; then
+  dart test --concurrency=1 -P prod
+fi
 
 # test_with_coverage already generates lcov.info, just move it
 mv coverage/lcov.info coverage.lcov
