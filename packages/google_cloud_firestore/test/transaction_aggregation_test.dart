@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+@Tags(['firebase-emulator'])
+library;
+
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
 import 'package:test/test.dart';
 
-import '../fixtures/helpers.dart';
+import 'fixtures/helpers.dart';
 
 void main() {
   group('Transaction - Aggregation Queries', () {

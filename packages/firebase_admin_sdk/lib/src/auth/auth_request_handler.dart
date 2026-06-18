@@ -61,6 +61,18 @@ abstract class _AbstractAuthRequestHandler {
     ActionCodeSettings? actionCodeSettings, [
     String? newEmail,
   ]) async {
+    assertIsEmail(email);
+
+    if (requestType == 'VERIFY_AND_CHANGE_EMAIL') {
+      if (newEmail == null || newEmail.isEmpty) {
+        throw FirebaseAuthAdminException(
+          AuthClientErrorCode.invalidArgument,
+          "`newEmail` is required when `requestType` === 'VERIFY_AND_CHANGE_EMAIL'",
+        );
+      }
+      assertIsEmail(newEmail);
+    }
+
     final request = auth1.GoogleCloudIdentitytoolkitV1GetOobCodeRequest(
       requestType: requestType,
       email: email,
@@ -82,13 +94,6 @@ abstract class _AbstractAuthRequestHandler {
     if (actionCodeSettings != null || requestType == 'EMAIL_SIGNIN') {
       final builder = _ActionCodeSettingsBuilder(actionCodeSettings!);
       builder.buildRequest(request);
-    }
-
-    if (requestType == 'VERIFY_AND_CHANGE_EMAIL' && newEmail == null) {
-      throw FirebaseAuthAdminException(
-        AuthClientErrorCode.invalidArgument,
-        "`newEmail` is required when `requestType` === 'VERIFY_AND_CHANGE_EMAIL'",
-      );
     }
 
     final response = await _httpClient.getOobCode(request);
@@ -325,8 +330,20 @@ abstract class _AbstractAuthRequestHandler {
   /// session management (set as a server side session cookie with custom cookie policy).
   /// The session cookie JWT will have the same payload claims as the provided ID token.
   Future<String> createSessionCookie(String idToken, {required int expiresIn}) {
+    if (idToken.isEmpty) {
+      throw FirebaseAuthAdminException(AuthClientErrorCode.invalidIdToken);
+    }
+
     // Convert to seconds (use integer division to avoid decimal).
     final validDuration = expiresIn ~/ 1000;
+
+    if (validDuration < _minSessionCookieDurationSecs ||
+        validDuration > _maxSessionCookieDurationSecs) {
+      throw FirebaseAuthAdminException(
+        AuthClientErrorCode.invalidSessionCookieDuration,
+      );
+    }
+
     final request =
         auth1.GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest(
           idToken: idToken,
@@ -334,19 +351,6 @@ abstract class _AbstractAuthRequestHandler {
         );
 
     return _httpClient.v1((api, projectId) async {
-      // Validate the ID token is a non-empty string.
-      if (idToken.isEmpty) {
-        throw FirebaseAuthAdminException(AuthClientErrorCode.invalidIdToken);
-      }
-
-      // Validate the custom session cookie duration.
-      if (validDuration < _minSessionCookieDurationSecs ||
-          validDuration > _maxSessionCookieDurationSecs) {
-        throw FirebaseAuthAdminException(
-          AuthClientErrorCode.invalidSessionCookieDuration,
-        );
-      }
-
       final response = await api.projects.createSessionCookie(
         request,
         projectId,

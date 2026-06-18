@@ -19,7 +19,7 @@ import 'dart:io';
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
 import 'package:test/test.dart' hide throwsArgumentError;
 
-import '../fixtures/helpers.dart';
+import 'fixtures/helpers.dart';
 
 void _writeRetryError(
   HttpRequest request,
@@ -54,6 +54,136 @@ void _writeCommitSuccess(HttpRequest request) {
 }
 
 void main() {
+  group('WriteBatch retry', () {
+    late HttpServer server;
+    late Firestore firestore;
+    late int callCount;
+    late void Function(HttpRequest request, int callNumber) handler;
+    late Map<Object, Object?> zoneValues;
+
+    setUp(() async {
+      callCount = 0;
+      handler = (_, _) {};
+
+      server = await HttpServer.bind('localhost', 0);
+      server.listen((request) async {
+        await request.drain<void>();
+        callCount++;
+        handler(request, callCount);
+      });
+
+      zoneValues = {
+        envSymbol: <String, String>{
+          'FIRESTORE_EMULATOR_HOST': 'localhost:${server.port}',
+        },
+      };
+
+      firestore = Firestore(
+        settings: const Settings(projectId: 'test-project'),
+      );
+    });
+
+    tearDown(() async {
+      await firestore.terminate();
+      await server.close(force: true);
+    });
+
+    test('retries on UNAVAILABLE and succeeds', () async {
+      handler = (request, callNumber) {
+        if (callNumber == 1) {
+          _writeRetryError(request, 503, 'UNAVAILABLE', 'Service unavailable');
+        } else {
+          _writeCommitSuccess(request);
+        }
+      };
+
+      await runZoned(
+        () => firestore.doc('test/retry').set({'value': 1}),
+        zoneValues: zoneValues,
+      );
+      expect(callCount, 2);
+    });
+
+    test('retries on ABORTED and succeeds', () async {
+      handler = (request, callNumber) {
+        if (callNumber == 1) {
+          _writeRetryError(request, 409, 'ABORTED', 'Transaction lock timeout');
+        } else {
+          _writeCommitSuccess(request);
+        }
+      };
+
+      await runZoned(
+        () => firestore.doc('test/retry').set({'value': 1}),
+        zoneValues: zoneValues,
+      );
+      expect(callCount, 2);
+    });
+
+    test('succeeds after multiple transient failures', () async {
+      handler = (request, callNumber) {
+        if (callNumber <= 3) {
+          _writeRetryError(request, 503, 'UNAVAILABLE', 'Service unavailable');
+        } else {
+          _writeCommitSuccess(request);
+        }
+      };
+
+      await runZoned(
+        () => firestore.doc('test/retry').set({'value': 1}),
+        zoneValues: zoneValues,
+      );
+      expect(callCount, 4);
+    });
+
+    test('does not retry on PERMISSION_DENIED', () async {
+      handler = (request, _) {
+        _writeRetryError(
+          request,
+          403,
+          'PERMISSION_DENIED',
+          'Missing permissions',
+        );
+      };
+
+      await runZoned(
+        () => expectLater(
+          () => firestore.doc('test/retry').set({'value': 1}),
+          throwsA(
+            isA<FirestoreException>().having(
+              (e) => e.errorCode,
+              'errorCode',
+              FirestoreClientErrorCode.permissionDenied,
+            ),
+          ),
+        ),
+        zoneValues: zoneValues,
+      );
+      expect(callCount, 1);
+    });
+
+    test('does not retry on INVALID_ARGUMENT', () async {
+      handler = (request, _) {
+        _writeRetryError(request, 400, 'INVALID_ARGUMENT', 'Invalid field');
+      };
+
+      await runZoned(
+        () => expectLater(
+          () => firestore.doc('test/retry').set({'value': 1}),
+          throwsA(
+            isA<FirestoreException>().having(
+              (e) => e.errorCode,
+              'errorCode',
+              FirestoreClientErrorCode.invalidArgument,
+            ),
+          ),
+        ),
+        zoneValues: zoneValues,
+      );
+      expect(callCount, 1);
+    });
+  });
+
   group('WriteBatch', () {
     late Firestore firestore;
     late CollectionReference<Map<String, Object?>> testCollection;
@@ -376,135 +506,5 @@ void main() {
         expect(results, isEmpty);
       });
     });
-  });
-
-  group('WriteBatch retry', () {
-    late HttpServer server;
-    late Firestore firestore;
-    late int callCount;
-    late void Function(HttpRequest request, int callNumber) handler;
-    late Map<Object, Object?> zoneValues;
-
-    setUp(() async {
-      callCount = 0;
-      handler = (_, _) {};
-
-      server = await HttpServer.bind('localhost', 0);
-      server.listen((request) async {
-        await request.drain<void>();
-        callCount++;
-        handler(request, callCount);
-      });
-
-      zoneValues = {
-        envSymbol: <String, String>{
-          'FIRESTORE_EMULATOR_HOST': 'localhost:${server.port}',
-        },
-      };
-
-      firestore = Firestore(
-        settings: const Settings(projectId: 'test-project'),
-      );
-    });
-
-    tearDown(() async {
-      await firestore.terminate();
-      await server.close(force: true);
-    });
-
-    test('retries on UNAVAILABLE and succeeds', () async {
-      handler = (request, callNumber) {
-        if (callNumber == 1) {
-          _writeRetryError(request, 503, 'UNAVAILABLE', 'Service unavailable');
-        } else {
-          _writeCommitSuccess(request);
-        }
-      };
-
-      await runZoned(
-        () => firestore.doc('test/retry').set({'value': 1}),
-        zoneValues: zoneValues,
-      );
-      expect(callCount, 2);
-    });
-
-    test('retries on ABORTED and succeeds', () async {
-      handler = (request, callNumber) {
-        if (callNumber == 1) {
-          _writeRetryError(request, 409, 'ABORTED', 'Transaction lock timeout');
-        } else {
-          _writeCommitSuccess(request);
-        }
-      };
-
-      await runZoned(
-        () => firestore.doc('test/retry').set({'value': 1}),
-        zoneValues: zoneValues,
-      );
-      expect(callCount, 2);
-    });
-
-    test('succeeds after multiple transient failures', () async {
-      handler = (request, callNumber) {
-        if (callNumber <= 3) {
-          _writeRetryError(request, 503, 'UNAVAILABLE', 'Service unavailable');
-        } else {
-          _writeCommitSuccess(request);
-        }
-      };
-
-      await runZoned(
-        () => firestore.doc('test/retry').set({'value': 1}),
-        zoneValues: zoneValues,
-      );
-      expect(callCount, 4);
-    });
-
-    test('does not retry on PERMISSION_DENIED', () async {
-      handler = (request, _) {
-        _writeRetryError(
-          request,
-          403,
-          'PERMISSION_DENIED',
-          'Missing permissions',
-        );
-      };
-
-      await runZoned(
-        () => expectLater(
-          () => firestore.doc('test/retry').set({'value': 1}),
-          throwsA(
-            isA<FirestoreException>().having(
-              (e) => e.errorCode,
-              'errorCode',
-              FirestoreClientErrorCode.permissionDenied,
-            ),
-          ),
-        ),
-        zoneValues: zoneValues,
-      );
-      expect(callCount, 1);
-    });
-
-    test('does not retry on INVALID_ARGUMENT', () async {
-      handler = (request, _) {
-        _writeRetryError(request, 400, 'INVALID_ARGUMENT', 'Invalid field');
-      };
-
-      await runZoned(
-        () => expectLater(
-          () => firestore.doc('test/retry').set({'value': 1}),
-          throwsA(
-            isA<FirestoreException>().having(
-              (e) => e.errorCode,
-              'errorCode',
-              FirestoreClientErrorCode.invalidArgument,
-            ),
-          ),
-        ),
-        zoneValues: zoneValues,
-      );
-      expect(callCount, 1);
-    });
-  });
+  }, tags: 'firebase-emulator');
 }

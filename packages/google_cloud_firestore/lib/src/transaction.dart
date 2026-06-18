@@ -256,7 +256,7 @@ class Transaction {
   /// A [Precondition] restricting this update.
   ///
   void update(
-    DocumentReference<dynamic> documentRef,
+    DocumentReference<Object?> documentRef,
     Map<Object?, Object?> data, {
     Precondition? precondition,
   }) {
@@ -277,7 +277,7 @@ class Transaction {
   /// A delete for a non-existing document is treated as a success (unless
   /// [precondition] is specified, in which case it throws a [FirestoreException] with [FirestoreClientErrorCode.notFound]).
   void delete(
-    DocumentReference<Map<String, dynamic>> documentRef, {
+    DocumentReference<Object?> documentRef, {
     Precondition? precondition,
   }) {
     if (_writeBatch == null) {

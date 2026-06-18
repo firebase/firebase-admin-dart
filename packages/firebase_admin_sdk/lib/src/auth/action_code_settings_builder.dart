@@ -99,7 +99,7 @@ class _ActionCodeSettingsBuilder {
       _apn = actionCodeSettings.android?.packageName,
       _amv = actionCodeSettings.android?.minimumVersion,
       _installApp = actionCodeSettings.android?.installApp ?? false {
-    if (Uri.tryParse(actionCodeSettings.url) == null) {
+    if (Uri.tryParse(actionCodeSettings.url)?.isAbsolute != true) {
       throw FirebaseAuthAdminException(AuthClientErrorCode.invalidContinueUri);
     }
 
