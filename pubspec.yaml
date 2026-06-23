@@ -20,7 +20,7 @@ melos:
     docs:
       description: Generate documentation for all packages
       exec:
-        command: ../../scripts/generate-docs.sh
+        command: $MELOS_ROOT_PATH/scripts/generate-docs.sh
         concurrency: 1
       select-package:
         - '*'
