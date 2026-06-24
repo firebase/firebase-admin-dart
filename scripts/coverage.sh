@@ -26,7 +26,11 @@ cd ../../..
 dart pub global activate coverage
 
 # Use test_with_coverage which supports workspaces (dart test --coverage doesn't work with resolution: workspace)
-firebase emulators:exec --config test/firebase.json --project dart-firebase-admin --only auth,firestore,functions,tasks,storage "dart run coverage:test_with_coverage -- --concurrency=1 -P ci"
+firebase emulators:exec \
+  --config test/firebase.json \
+  --project dart-firebase-admin \
+  --only auth,firestore,functions,tasks,storage \
+  "dart run coverage:test_with_coverage -- --concurrency=1 -P ci"
 
 # Prod tests are opt-in: set GOOGLE_APPLICATION_CREDENTIALS to include them.
 # wif tests are handled separately by the test-wif CI job.
