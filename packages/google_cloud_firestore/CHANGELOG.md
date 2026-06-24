@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Updated `Transaction.delete` and `Transaction.update` type constraints to accept `DocumentReference<Object?>`. (thanks to @Levin-Me)
+- Made `Timestamp` encodable by adding `toJson` method. (thanks to @OutdatedGuy)
 
 ## 0.5.2
 
