@@ -197,4 +197,18 @@ final class Timestamp implements _Serializable {
   String toString() {
     return 'Timestamp(seconds=$seconds, nanoseconds=$nanoseconds)';
   }
+
+  /// Converts this Timestamp to a JSON representation.
+  ///
+  /// Returns a Map\<String, int\> containing the seconds and nanoseconds.
+  ///
+  /// Example:
+  /// ```dart
+  /// final timestamp = Timestamp(seconds: 1234567890, nanoseconds: 123456789);
+  /// final json = timestamp.toJson();
+  /// print(json); // {'_seconds': 1234567890, '_nanoseconds': 123456789}
+  /// ```
+  Map<String, int> toJson() {
+    return {'_seconds': seconds, '_nanoseconds': nanoseconds};
+  }
 }
