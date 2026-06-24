@@ -6,21 +6,21 @@ environment:
 
 dev_dependencies:
   dart_flutter_team_lints: ^3.0.0
-  melos: ^7.3.0
+  melos: ^8.0.0
   test: ^1.26.3
 
 workspace:
   - packages/firebase_admin_sdk
-  - packages/google_cloud_firestore
   - packages/firebase_admin_sdk/example
   - packages/firebase_admin_sdk/example_server_app
+  - packages/google_cloud_firestore
 
 melos:
   scripts:
     docs:
       description: Generate documentation for all packages
-      run: ../../scripts/generate-docs.sh
       exec:
+        command: $MELOS_ROOT_PATH/scripts/generate-docs.sh
         concurrency: 1
       select-package:
         - '*'
