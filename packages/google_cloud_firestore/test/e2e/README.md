@@ -9,7 +9,7 @@ Required environment:
 export FIRESTORE_PIPELINE_E2E_PROJECT_ID="your-project-id"
 export FIRESTORE_PIPELINE_E2E_DATABASE_ID="your-enterprise-database-id"
 export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
-dart test test/e2e/pipeline_e2e_test.dart
+dart test -P prod test/e2e/pipeline_e2e_test.dart
 ```
 
 The target database must support Firestore Pipelines. The service account needs
@@ -40,5 +40,5 @@ For CI, store the service account JSON as a secret, write it to a temporary file
 set `GOOGLE_APPLICATION_CREDENTIALS` to that file path, and run:
 
 ```sh
-dart test test/e2e/pipeline_e2e_test.dart
+dart test -P prod test/e2e/pipeline_e2e_test.dart
 ```

@@ -230,7 +230,7 @@ They are skipped unless you provide a project and credentials:
 export FIRESTORE_PIPELINE_E2E_PROJECT_ID="your-project-id"
 export FIRESTORE_PIPELINE_E2E_DATABASE_ID="your-enterprise-database-id"
 export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
-dart test test/e2e/pipeline_e2e_test.dart
+dart test -P prod test/e2e/pipeline_e2e_test.dart
 ```
 
 The E2E suite includes vector nearest-neighbor coverage. Create the vector index
