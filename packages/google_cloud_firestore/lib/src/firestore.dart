@@ -45,6 +45,7 @@ part 'filter.dart';
 part 'geo_point.dart';
 part 'order.dart';
 part 'path.dart';
+part 'pipeline.dart';
 part 'query_partition.dart';
 part 'query_profile.dart';
 part 'rate_limiter.dart';
@@ -466,6 +467,13 @@ class Firestore {
       converter: _jsonConverter,
     );
   }
+
+  /// Creates a [PipelineSource], which defines a Firestore Pipeline operation.
+  ///
+  /// Pipeline operations are available for Firestore Enterprise edition
+  /// databases and support server-side projections, expressions, aggregates,
+  /// and vector search.
+  PipelineSource pipeline() => PipelineSource._(this);
 
   /// Fetches the root collections that are associated with this Firestore
   /// database.

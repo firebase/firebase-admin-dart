@@ -18,15 +18,15 @@ part of '../firestore.dart';
 enum DistanceMeasure {
   /// Euclidean distance - straight-line distance between vectors.
   /// Good for spatial data.
-  euclidean('EUCLIDEAN'),
+  euclidean('euclidean'),
 
   /// Cosine distance - measures the angle between vectors.
   /// Good for text embeddings where magnitude doesn't matter.
-  cosine('COSINE'),
+  cosine('cosine'),
 
   /// Dot product distance - inner product of vectors.
   /// Good for normalized vectors.
-  dotProduct('DOT_PRODUCT');
+  dotProduct('dot_product');
 
   const DistanceMeasure(this.value);
 

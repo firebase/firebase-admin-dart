@@ -160,6 +160,92 @@ for (final doc in querySnapshot.docs) {
 }
 ```
 
+### Firestore Pipeline Operations
+
+Firestore Pipeline operations are available for Firestore Enterprise edition
+databases. They are server-side queries for projections, expressions,
+aggregates, and vector search.
+
+```dart
+final snapshot = await firestore
+    .pipeline()
+    .collection('books')
+    .where(Expression.field('active').equalValue(true))
+    .sort([Expression.field('price').ascending()])
+    .select([
+      Expression.field('title'),
+      Expression.field('price'),
+      Expression.field('title').toUpperCase().as('upperTitle'),
+      Expression.field('tags').arrayLength().as('tagCount'),
+    ])
+    .limit(10)
+    .execute();
+
+for (final result in snapshot.results) {
+  print(result.data());
+}
+```
+
+#### Aggregates
+
+Aggregate stages use aliased aggregate expressions:
+
+```dart
+final snapshot = await firestore
+    .pipeline()
+    .collection('books')
+    .where(Expression.field('active').equalValue(true))
+    .aggregate([
+      Expression.field('price').sum().as('totalPrice'),
+      Expression.field('rating').average().as('averageRating'),
+      PipelineFunctions.count().as('bookCount'),
+    ])
+    .execute();
+
+final data = snapshot.results.single.data();
+print(data);
+```
+
+#### Expressions
+
+Use `Expression.field`, `Expression.constant`, and `Expression.variable` to
+build expressions. Most helpers are also available as fluent methods:
+
+```dart
+final expression = Expression.field('createdAt')
+    .timestampSubtract('day', 7)
+    .timestampToUnixSeconds()
+    .as('createdSeconds');
+```
+
+Expressions can be selected with an alias, used in filters, passed to aggregate
+stages, or composed with other expression helpers.
+
+#### E2E Testing
+
+Real-project Pipeline E2E tests live in `test/e2e/pipeline_e2e_test.dart`.
+They are skipped unless you provide a project and credentials:
+
+```bash
+export FIRESTORE_PIPELINE_E2E_PROJECT_ID="your-project-id"
+export FIRESTORE_PIPELINE_E2E_DATABASE_ID="your-enterprise-database-id"
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
+dart test test/e2e/pipeline_e2e_test.dart
+```
+
+The E2E suite includes vector nearest-neighbor coverage. Create the vector index
+once for the test collection group before running the suite in CI:
+
+```bash
+gcloud firestore indexes composite create \
+  --project="your-project-id" \
+  --database="your-enterprise-database-id" \
+  --collection-group="pipeline_e2e_books" \
+  --query-scope=COLLECTION \
+  --field-config=field-path="runId",order=ASCENDING \
+  --field-config=field-path="embedding",vector-config='{"dimension":"3","flat":"{}"}'
+```
+
 #### Get All
 
 ```dart
