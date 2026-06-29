@@ -14,7 +14,8 @@
 
 import 'dart:typed_data';
 
-import 'package:google_cloud_firestore/src/firestore.dart';
+import 'package:google_cloud_firestore/src/firestore.dart'
+    hide greaterThan, lessThan;
 import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
 import 'package:google_cloud_protobuf/protobuf.dart' as protobuf_v1;
 import 'package:google_cloud_type/type.dart' as type_v1;

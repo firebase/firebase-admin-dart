@@ -137,9 +137,19 @@ PipelineBooleanExpression notEqual(Object? left, Object? right) {
   return _comparison('not_equal', left, right);
 }
 
+/// Creates a less-than expression.
+PipelineBooleanExpression lessThan(Object? left, Object? right) {
+  return _comparison('less_than', left, right);
+}
+
 /// Creates a less-than-or-equal expression.
 PipelineBooleanExpression lessThanOrEqual(Object? left, Object? right) {
   return _comparison('less_than_or_equal', left, right);
+}
+
+/// Creates a greater-than expression.
+PipelineBooleanExpression greaterThan(Object? left, Object? right) {
+  return _comparison('greater_than', left, right);
 }
 
 /// Creates a greater-than-or-equal expression.
@@ -1121,7 +1131,7 @@ final class Pipeline {
       [
         if (vectorField is String) field(vectorField) else vectorField,
         queryVector,
-        distanceMeasure.value,
+        distanceMeasure.value.toLowerCase(),
       ],
       options: _compactOptions({
         'limit': limit,
@@ -1293,13 +1303,15 @@ Object? _decodePipelineResultValue(
   return firestore._serializer.decodeValue(value);
 }
 
+final _documentReferenceRegExp = RegExp(
+  r'^projects/[^/]+/databases/[^/]+(?:/documents(?:/(.*))?)?$',
+);
+
 bool _isDocumentReferenceValue(String referenceValue) {
   final value = referenceValue.startsWith('/')
       ? referenceValue.substring(1)
       : referenceValue;
-  final match = RegExp(
-    r'^projects/[^/]+/databases/[^/]+(?:/documents(?:/(.*))?)?$',
-  ).firstMatch(value);
+  final match = _documentReferenceRegExp.firstMatch(value);
   if (match == null) {
     return false;
   }

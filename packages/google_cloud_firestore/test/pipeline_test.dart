@@ -18,7 +18,7 @@ import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
 import 'package:google_cloud_firestore_v1/testing.dart';
 import 'package:google_cloud_protobuf/protobuf.dart' as protobuf_v1;
 import 'package:mocktail/mocktail.dart';
-import 'package:test/test.dart';
+import 'package:test/test.dart' hide greaterThan, lessThan;
 
 const _projectId = 'test-project';
 
@@ -67,7 +67,12 @@ void main() {
       await firestore
           .pipeline()
           .collection('cities')
-          .where(Expression.field('population').greaterThanValue(100000))
+          .where(
+            and([
+              greaterThan('population', 100000),
+              lessThan('population', 1000000),
+            ]),
+          )
           .sort([field('name').ascending()])
           .select(['name', field('population')])
           .limit(10)
@@ -88,9 +93,22 @@ void main() {
       expect(stages[0].args.single.referenceValue, '/cities');
 
       final whereFunction = stages[1].args.single.functionValue!;
-      expect(whereFunction.name, 'greater_than');
-      expect(whereFunction.args[0].fieldReferenceValue, 'population');
-      expect(whereFunction.args[1].integerValue, 100000);
+      expect(whereFunction.name, 'and');
+      expect(whereFunction.args[0].functionValue!.name, 'greater_than');
+      expect(
+        whereFunction.args[0].functionValue!.args[0].fieldReferenceValue,
+        'population',
+      );
+      expect(whereFunction.args[0].functionValue!.args[1].integerValue, 100000);
+      expect(whereFunction.args[1].functionValue!.name, 'less_than');
+      expect(
+        whereFunction.args[1].functionValue!.args[0].fieldReferenceValue,
+        'population',
+      );
+      expect(
+        whereFunction.args[1].functionValue!.args[1].integerValue,
+        1000000,
+      );
 
       final sortValue = stages[2].args.single.mapValue!;
       expect(sortValue.fields['direction']!.stringValue, 'ascending');
