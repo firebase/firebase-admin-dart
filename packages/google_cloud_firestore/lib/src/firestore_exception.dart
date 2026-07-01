@@ -15,8 +15,10 @@
 import 'dart:convert';
 
 import 'package:google_cloud_rpc/exceptions.dart';
+import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 
+import 'backoff.dart';
 import 'status_code.dart';
 
 /// Extracts error code from error response.
@@ -122,6 +124,54 @@ Never handleFirestoreException(Object exception, StackTrace stackTrace) {
   }
 
   Error.throwWithStackTrace(exception, stackTrace);
+}
+
+/// Delays further operations based on the provided error.
+@internal
+Future<void> maybeBackoff(
+  ExponentialBackoff backoff, [
+  FirestoreException? error,
+]) async {
+  if (error?.errorCode.statusCode == StatusCode.resourceExhausted) {
+    backoff.resetToMax();
+  }
+  await backoff.backoffAndWait();
+}
+
+/// Retries [attempt] with backoff when it throws a transport-level
+/// [http.ClientException] (e.g. a keep-alive connection dropped before any
+/// response was received) — see
+/// https://github.com/firebase/firebase-admin-dart/issues/291.
+///
+/// [attempt] must reset any state it accumulates (e.g. clear a results list)
+/// at the start of each call, since it may be invoked multiple times.
+///
+/// Retrying is only safe when [hasPartialProgress] reports that no data has
+/// been streamed back yet in the failed attempt (otherwise retrying would
+/// duplicate already-received results), and when [allowRetry] is true (reads
+/// within an active transaction are instead retried by the transaction
+/// runner).
+@internal
+Future<T> retryOnConnectionError<T>(
+  Future<T> Function() attempt, {
+  required bool Function() hasPartialProgress,
+  bool allowRetry = true,
+  int maxAttempts = 5,
+}) async {
+  final backoff = ExponentialBackoff();
+  http.ClientException? lastError;
+
+  for (var i = 0; i < maxAttempts; i++) {
+    try {
+      await maybeBackoff(backoff);
+      return await attempt();
+    } on http.ClientException catch (error) {
+      lastError = error;
+      if (!allowRetry || hasPartialProgress()) rethrow;
+    }
+  }
+
+  throw lastError!;
 }
 
 /// Exception thrown by Firestore operations.

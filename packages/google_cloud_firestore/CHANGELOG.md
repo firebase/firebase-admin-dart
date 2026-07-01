@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Fixed intermittent `ClientException: Connection closed before full header was received` on queries and aggregations under high concurrency; these now retry with backoff.
 - Updated `Transaction.delete` and `Transaction.update` type constraints to accept `DocumentReference<Object?>`. (thanks to @Levin-Me)
 - Made `Timestamp` encodable by adding `toJson` method. (thanks to @OutdatedGuy)
 

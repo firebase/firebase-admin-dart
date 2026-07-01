@@ -20,6 +20,11 @@ import 'package:test/test.dart';
 
 const projectId = 'dart-firebase-admin';
 
+/// Project ID used by unit tests that mock the Firestore HTTP client and
+/// never make a real network call (as opposed to [projectId], which points
+/// at the real project used by emulator/production integration tests).
+const mockProjectId = 'test-project';
+
 /// Whether the Firestore emulator is enabled.
 bool isFirestoreEmulatorEnabled() {
   return Platform.environment['FIRESTORE_EMULATOR_HOST'] != null;

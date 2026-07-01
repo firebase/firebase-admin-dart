@@ -529,7 +529,7 @@ class Transaction {
     for (var attempts = 0; attempts < _maxAttempts; attempts++) {
       try {
         _writeBatch.reset();
-        await _maybeBackoff(_backoff, lastError);
+        await maybeBackoff(_backoff, lastError);
 
         return await _runTransactionOnce(updateFunction);
       } on FirestoreException catch (e) {
@@ -565,17 +565,6 @@ class Transaction {
 /// The [TransactionHandler] may be executed multiple times; it should be able
 /// to handle multiple executions.
 typedef TransactionHandler<T> = Future<T> Function(Transaction transaction);
-
-/// Delays further operations based on the provided error.
-Future<void> _maybeBackoff(
-  ExponentialBackoff backoff, [
-  FirestoreException? error,
-]) async {
-  if (error?.errorCode.statusCode == StatusCode.resourceExhausted) {
-    backoff.resetToMax();
-  }
-  await backoff.backoffAndWait();
-}
 
 bool _isRetryableTransactionError(FirestoreException error) {
   switch (error.errorCode.statusCode) {

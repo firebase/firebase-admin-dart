@@ -135,7 +135,7 @@ class WriteBatch {
 
     for (var attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        await _maybeBackoff(backoff, lastError);
+        await maybeBackoff(backoff, lastError);
         return await firestore._firestoreClient.v1((api, projectId) async {
           return api.commit(request);
         });

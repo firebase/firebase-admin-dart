@@ -12,15 +12,119 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-@Tags(['firebase-emulator'])
-library;
+import 'dart:typed_data';
 
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
+import 'package:google_cloud_firestore/src/firestore_http_client.dart';
+import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
+import 'package:http/http.dart' as http;
+import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import 'fixtures/helpers.dart';
 
+class MockFirestoreHttpClient extends Mock implements FirestoreHttpClient {}
+
+final _connectionClosedError = http.ClientException(
+  'Connection closed before full header was received',
+);
+
 void main() {
+  group(
+    'Transaction.getAggregateQuery() retries on transient connection errors (unit)',
+    () {
+      late MockFirestoreHttpClient mockClient;
+      late Firestore firestore;
+
+      setUp(() {
+        mockClient = MockFirestoreHttpClient();
+        firestore = Firestore.internal(
+          settings: const Settings(projectId: mockProjectId),
+          client: mockClient,
+        );
+
+        when(() => mockClient.cachedProjectId).thenReturn(mockProjectId);
+      });
+
+      test(
+        'retries a read-only snapshot read (no active transaction) and succeeds',
+        () async {
+          var callCount = 0;
+          when(
+            () => mockClient
+                .v1<Stream<firestore_v1.RunAggregationQueryResponse>>(any()),
+          ).thenAnswer((_) async {
+            callCount++;
+            if (callCount == 1) {
+              return Stream<firestore_v1.RunAggregationQueryResponse>.error(
+                _connectionClosedError,
+              );
+            }
+            return Stream.fromIterable([
+              firestore_v1.RunAggregationQueryResponse(
+                result: firestore_v1.AggregationResult(
+                  aggregateFields: {
+                    'count': firestore_v1.Value(integerValue: 42),
+                  },
+                ),
+              ),
+            ]);
+          });
+
+          final aggregateQuery = firestore.collection('numbers').count();
+          final snapshot = await firestore.runTransaction(
+            (tx) => tx.getAggregateQuery(aggregateQuery),
+            transactionOptions: ReadOnlyTransactionOptions(
+              readTime: Timestamp.now(),
+            ),
+          );
+
+          expect(callCount, 2);
+          expect(snapshot.count, 42);
+        },
+      );
+
+      test('does not retry a read within an active transaction', () async {
+        // The failed transaction attempt triggers a best-effort rollback.
+        when(() => mockClient.v1<void>(any())).thenAnswer((_) async {});
+
+        var callCount = 0;
+        when(
+          () => mockClient.v1<Stream<firestore_v1.RunAggregationQueryResponse>>(
+            any(),
+          ),
+        ).thenAnswer((_) async {
+          callCount++;
+          if (callCount == 1) {
+            // First read starts the transaction successfully.
+            return Stream.fromIterable([
+              firestore_v1.RunAggregationQueryResponse(
+                transaction: Uint8List.fromList([1, 2, 3]),
+              ),
+            ]);
+          }
+          // Second read, already inside the now-active transaction, fails
+          // and must not be retried by the reader itself.
+          return Stream<firestore_v1.RunAggregationQueryResponse>.error(
+            _connectionClosedError,
+          );
+        });
+
+        final aggregateQuery = firestore.collection('numbers').count();
+
+        await expectLater(
+          firestore.runTransaction((tx) async {
+            await tx.getAggregateQuery(aggregateQuery);
+            return tx.getAggregateQuery(aggregateQuery);
+          }),
+          throwsA(isA<http.ClientException>()),
+        );
+
+        expect(callCount, 2);
+      });
+    },
+  );
+
   group('Transaction - Aggregation Queries', () {
     late Firestore firestore;
     late CollectionReference<DocumentData> collection;
@@ -300,5 +404,5 @@ void main() {
       expect(result['docScore'], 80);
       expect(result['avgScore'], 85.0); // (80 + 90) / 2
     });
-  });
+  }, tags: 'firebase-emulator');
 }
