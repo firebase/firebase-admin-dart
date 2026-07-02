@@ -65,6 +65,7 @@ class _AggregationReader {
     return retryOnConnectionError(
       () async {
         results.clear();
+        _retrievedTransactionId = null;
         Timestamp? aggregationReadTime;
 
         final response = await aggregateQuery.query.firestore._firestoreClient

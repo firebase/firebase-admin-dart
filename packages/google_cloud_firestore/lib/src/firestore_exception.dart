@@ -159,19 +159,19 @@ Future<T> retryOnConnectionError<T>(
   int maxAttempts = 5,
 }) async {
   final backoff = ExponentialBackoff();
-  http.ClientException? lastError;
 
   for (var i = 0; i < maxAttempts; i++) {
     try {
-      await maybeBackoff(backoff);
+      if (i > 0) await maybeBackoff(backoff);
       return await attempt();
-    } on http.ClientException catch (error) {
-      lastError = error;
-      if (!allowRetry || hasPartialProgress()) rethrow;
+    } on http.ClientException {
+      if (!allowRetry || hasPartialProgress() || i == maxAttempts - 1) {
+        rethrow;
+      }
     }
   }
 
-  throw lastError!;
+  throw StateError('Unreachable');
 }
 
 /// Exception thrown by Firestore operations.

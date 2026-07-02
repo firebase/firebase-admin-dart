@@ -65,6 +65,7 @@ class _QueryReader<T> {
     return retryOnConnectionError(
       () async {
         snapshots.clear();
+        _retrievedTransactionId = null;
         Timestamp? queryReadTime;
 
         final response = await query.firestore._firestoreClient.v1((
