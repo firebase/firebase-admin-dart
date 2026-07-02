@@ -23,6 +23,7 @@ import 'package:google_cloud_protobuf/protobuf.dart' as protobuf_v1;
 import 'package:google_cloud_type/type.dart' as type_v1;
 import 'package:intl/intl.dart';
 import 'package:meta/meta.dart';
+import 'package:retry/retry.dart';
 
 import 'backoff.dart';
 import 'credential.dart';

@@ -17,6 +17,7 @@ import 'dart:convert';
 import 'package:google_cloud_rpc/exceptions.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
+import 'package:retry/retry.dart';
 
 import 'backoff.dart';
 import 'status_code.dart';
@@ -126,16 +127,28 @@ Never handleFirestoreException(Object exception, StackTrace stackTrace) {
   Error.throwWithStackTrace(exception, stackTrace);
 }
 
-/// Delays further operations based on the provided error.
+/// The maximum delay between retries for Firestore's own retryable errors
+/// (as opposed to `package:retry`'s smaller 30s default), matching the
+/// ceiling this package has historically used.
+const _maxFirestoreRetryDelay = Duration(
+  milliseconds: ExponentialBackoff.defaultBackOffMaxDelayMs,
+);
+
+/// An `onRetry` callback for `package:retry` that makes RESOURCE_EXHAUSTED
+/// errors back off aggressively (jump straight to the max delay) rather than
+/// the standard gradual ramp-up.
+///
+/// RESOURCE_EXHAUSTED means the server has explicitly signaled it's over
+/// quota — retrying again quickly only adds more load and fails again, so
+/// this waits the maximum delay on top of `package:retry`'s own delay for
+/// that attempt before trying again.
 @internal
-Future<void> maybeBackoff(
-  ExponentialBackoff backoff, [
-  FirestoreException? error,
-]) async {
-  if (error?.errorCode.statusCode == StatusCode.resourceExhausted) {
-    backoff.resetToMax();
+Future<void> backOffHardOnResourceExhausted(Exception error) async {
+  if (error case FirestoreException(
+    :final errorCode,
+  ) when errorCode.statusCode == StatusCode.resourceExhausted) {
+    await Future<void>.delayed(_maxFirestoreRetryDelay);
   }
-  await backoff.backoffAndWait();
 }
 
 /// Retries [attempt] with backoff when it throws a transport-level
@@ -157,21 +170,12 @@ Future<T> retryOnConnectionError<T>(
   required bool Function() hasPartialProgress,
   bool allowRetry = true,
   int maxAttempts = 5,
-}) async {
-  final backoff = ExponentialBackoff();
-
-  for (var i = 0; i < maxAttempts; i++) {
-    try {
-      if (i > 0) await maybeBackoff(backoff);
-      return await attempt();
-    } on http.ClientException {
-      if (!allowRetry || hasPartialProgress() || i == maxAttempts - 1) {
-        rethrow;
-      }
-    }
-  }
-
-  throw StateError('Unreachable');
+}) {
+  return RetryOptions(maxAttempts: maxAttempts).retry(
+    attempt,
+    retryIf: (error) =>
+        error is http.ClientException && allowRetry && !hasPartialProgress(),
+  );
 }
 
 /// Exception thrown by Firestore operations.
