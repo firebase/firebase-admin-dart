@@ -116,6 +116,7 @@ class Settings {
     this.ignoreUndefinedProperties = false,
     this.useBigInt = false,
     this.environmentOverride,
+    this.maxConnectionsPerHost,
   });
 
   /// The project ID from the Google Developer's Console, e.g. 'grape-spaceship-123'.
@@ -186,6 +187,12 @@ class Settings {
   /// ```
   final Map<String, String>? environmentOverride;
 
+  /// The maximum number of concurrent connections allowed per host.
+  ///
+  /// If specified, this configures the underlying HTTP client's
+  /// `maxConnectionsPerHost` property.
+  final int? maxConnectionsPerHost;
+
   /// Creates a copy of this Settings with the given fields replaced.
   Settings copyWith({
     String? projectId,
@@ -196,6 +203,7 @@ class Settings {
     bool? ignoreUndefinedProperties,
     bool? useBigInt,
     Map<String, String>? environmentOverride,
+    int? maxConnectionsPerHost,
   }) {
     return Settings(
       projectId: projectId ?? this.projectId,
@@ -207,6 +215,8 @@ class Settings {
           ignoreUndefinedProperties ?? this.ignoreUndefinedProperties,
       useBigInt: useBigInt ?? this.useBigInt,
       environmentOverride: environmentOverride ?? this.environmentOverride,
+      maxConnectionsPerHost:
+          maxConnectionsPerHost ?? this.maxConnectionsPerHost,
     );
   }
 
@@ -221,7 +231,8 @@ class Settings {
           ssl == other.ssl &&
           credential == other.credential &&
           ignoreUndefinedProperties == other.ignoreUndefinedProperties &&
-          useBigInt == other.useBigInt;
+          useBigInt == other.useBigInt &&
+          maxConnectionsPerHost == other.maxConnectionsPerHost;
 
   @override
   int get hashCode => Object.hash(
@@ -232,6 +243,7 @@ class Settings {
     credential,
     ignoreUndefinedProperties,
     useBigInt,
+    maxConnectionsPerHost,
   );
 }
 

@@ -13,12 +13,14 @@
 // limitations under the License.
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:google_cloud/constants.dart' as google_cloud;
 import 'package:google_cloud/google_cloud.dart' as google_cloud;
 import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
 import 'package:googleapis_auth/auth_io.dart' as googleapis_auth;
 import 'package:http/http.dart';
+import 'package:http/io_client.dart';
 import 'package:meta/meta.dart';
 
 import '../google_cloud_firestore.dart';
@@ -156,9 +158,16 @@ class FirestoreHttpClient {
 
   /// Creates the appropriate HTTP client based on emulator configuration.
   Future<googleapis_auth.AuthClient> _createClient() async {
+    Client? baseClient;
+    final maxConnections = _settings.maxConnectionsPerHost;
+    if (maxConnections != null) {
+      final ioClient = HttpClient()..maxConnectionsPerHost = maxConnections;
+      baseClient = IOClient(ioClient);
+    }
+
     if (_isUsingEmulator) {
       // Emulator: Create unauthenticated client.
-      return EmulatorClient(Client());
+      return EmulatorClient(baseClient ?? Client());
     }
 
     // Production: Create authenticated client.
@@ -166,12 +175,13 @@ class FirestoreHttpClient {
     if (serviceAccountCreds != null) {
       return googleapis_auth.clientViaServiceAccount(serviceAccountCreds, [
         'https://www.googleapis.com/auth/cloud-platform',
-      ]);
+      ], baseClient: baseClient);
     }
 
     // Fall back to Application Default Credentials
     return googleapis_auth.clientViaApplicationDefaultCredentials(
       scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+      baseClient: baseClient,
     );
   }
 
