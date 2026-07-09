@@ -1,3 +1,8 @@
+## 0.5.4-wip
+
+- Update dependency `googleapis_auth: ^2.3.3` to fix `auth/insufficient-permission`
+  errors with Application Default Credentials that have no quota project set.
+
 ## 0.5.3
 
 - Require `google_cloud: '>=0.4.0 <0.6.0'`
