@@ -174,4 +174,11 @@ abstract class Environment {
         Zone.current[envSymbol] as Map<String, String>? ?? Platform.environment;
     return env[cloudTasksEmulatorHost];
   }
+
+  /// Gets the Kit Instance ID if running within a kit.
+  static String? getKitInstanceId() {
+    final env =
+        Zone.current[envSymbol] as Map<String, String>? ?? Platform.environment;
+    return env['FIREBASE_KIT_INSTANCE_ID'];
+  }
 }

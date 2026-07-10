@@ -126,6 +126,7 @@ Future<auth.AuthClient> createTestAuthClient({
 void main() {
   setUpAll(() {
     registerFallbackValue(FakeBaseRequest());
+    registerFallbackValue(const FunctionScope.current());
   });
 
   // ===========================================================================
@@ -203,7 +204,7 @@ void main() {
           () => mockHandler.enqueue(
             {'message': 'Hello, World!'},
             'helloWorld',
-            null,
+            any(),
             null,
           ),
         ).called(1);
@@ -223,7 +224,7 @@ void main() {
           () => mockHandler.enqueue(
             {'message': 'Delayed task'},
             'helloWorld',
-            null,
+            any(),
             options,
           ),
         ).called(1);
@@ -244,7 +245,7 @@ void main() {
           () => mockHandler.enqueue(
             {'message': 'Scheduled task'},
             'helloWorld',
-            null,
+            any(),
             options,
           ),
         ).called(1);
@@ -264,7 +265,7 @@ void main() {
           () => mockHandler.enqueue(
             {'message': 'Task with ID'},
             'helloWorld',
-            null,
+            any(),
             options,
           ),
         ).called(1);
@@ -282,12 +283,8 @@ void main() {
         await queue.enqueue({'data': 'test'});
 
         verify(
-          () => mockHandler.enqueue(
-            {'data': 'test'},
-            'helloWorld',
-            'my-extension',
-            null,
-          ),
+          () =>
+              mockHandler.enqueue({'data': 'test'}, 'helloWorld', any(), null),
         ).called(1);
       });
 
@@ -319,7 +316,7 @@ void main() {
         await queue.delete('task-to-delete');
 
         verify(
-          () => mockHandler.delete('task-to-delete', 'helloWorld', null),
+          () => mockHandler.delete('task-to-delete', 'helloWorld', any()),
         ).called(1);
       });
 
@@ -335,7 +332,7 @@ void main() {
         await queue.delete('task-id');
 
         verify(
-          () => mockHandler.delete('task-id', 'helloWorld', 'my-extension'),
+          () => mockHandler.delete('task-id', 'helloWorld', any()),
         ).called(1);
       });
 
@@ -348,7 +345,7 @@ void main() {
         await queue.delete('non-existent-task');
 
         verify(
-          () => mockHandler.delete('non-existent-task', 'helloWorld', null),
+          () => mockHandler.delete('non-existent-task', 'helloWorld', any()),
         ).called(1);
       });
 
@@ -407,7 +404,7 @@ void main() {
     group('enqueue validation', () {
       test('throws on empty function name', () {
         expect(
-          () => handler.enqueue({}, '', null, null),
+          () => handler.enqueue({}, '', const FunctionScope.current(), null),
           throwsA(isA<ArgumentError>()),
         );
       });
@@ -417,7 +414,7 @@ void main() {
           () => handler.enqueue(
             {},
             'project/abc/locations/east/fname',
-            null,
+            const FunctionScope.current(),
             null,
           ),
           throwsA(isA<FirebaseFunctionsAdminException>()),
@@ -426,14 +423,19 @@ void main() {
 
       test('throws on invalid function name with double slashes', () {
         expect(
-          () => handler.enqueue({}, '//', null, null),
+          () => handler.enqueue({}, '//', const FunctionScope.current(), null),
           throwsA(isA<FirebaseFunctionsAdminException>()),
         );
       });
 
       test('throws on function name with trailing slash', () {
         expect(
-          () => handler.enqueue({}, 'location/west/', null, null),
+          () => handler.enqueue(
+            {},
+            'location/west/',
+            const FunctionScope.current(),
+            null,
+          ),
           throwsA(isA<FirebaseFunctionsAdminException>()),
         );
       });
@@ -442,49 +444,69 @@ void main() {
     group('delete validation', () {
       test('throws on empty task ID', () {
         expect(
-          () => handler.delete('', 'helloWorld', null),
+          () => handler.delete('', 'helloWorld', const FunctionScope.current()),
           throwsA(isA<ArgumentError>()),
         );
       });
 
       test('throws on empty function name', () {
         expect(
-          () => handler.delete('task-id', '', null),
+          () => handler.delete('task-id', '', const FunctionScope.current()),
           throwsA(isA<ArgumentError>()),
         );
       });
 
       test('throws on invalid task ID with special characters', () {
         expect(
-          () => handler.delete('task!', 'helloWorld', null),
+          () => handler.delete(
+            'task!',
+            'helloWorld',
+            const FunctionScope.current(),
+          ),
           throwsA(isA<FirebaseFunctionsAdminException>()),
         );
       });
 
       test('throws on invalid task ID with colons', () {
         expect(
-          () => handler.delete('id:0', 'helloWorld', null),
+          () => handler.delete(
+            'id:0',
+            'helloWorld',
+            const FunctionScope.current(),
+          ),
           throwsA(isA<FirebaseFunctionsAdminException>()),
         );
       });
 
       test('throws on invalid task ID with brackets', () {
         expect(
-          () => handler.delete('[1234]', 'helloWorld', null),
+          () => handler.delete(
+            '[1234]',
+            'helloWorld',
+            const FunctionScope.current(),
+          ),
           throwsA(isA<FirebaseFunctionsAdminException>()),
         );
       });
 
       test('throws on invalid task ID with parentheses', () {
         expect(
-          () => handler.delete('(1234)', 'helloWorld', null),
+          () => handler.delete(
+            '(1234)',
+            'helloWorld',
+            const FunctionScope.current(),
+          ),
           throwsA(isA<FirebaseFunctionsAdminException>()),
         );
       });
 
       test('throws on invalid task ID with slashes', () {
         expect(
-          () => handler.delete('invalid/task/id', 'helloWorld', null),
+          () => handler.delete(
+            'invalid/task/id',
+            'helloWorld',
+            const FunctionScope.current(),
+          ),
           throwsA(isA<FirebaseFunctionsAdminException>()),
         );
       });
@@ -1337,6 +1359,204 @@ void main() {
       } finally {
         await app.close();
       }
+    });
+  });
+
+  group('Task Queue Scopes', () {
+    test('FunctionScope factory constructors create correct types', () {
+      expect(const FunctionScope.current(), isA<FunctionScope>());
+      expect(const FunctionScope.global(), isA<FunctionScope>());
+      expect(const FunctionScope.extension('my-ext'), isA<FunctionScope>());
+    });
+
+    test(
+      'throws ArgumentError when both extensionId and scope are provided',
+      () {
+        final mockHandler = MockRequestHandler();
+        final functions = createFunctionsWithMockHandler(mockHandler);
+        expect(
+          () => functions.taskQueue(
+            'helloWorld',
+            extensionId: 'my-ext',
+            scope: const FunctionScope.global(),
+          ),
+          throwsA(isA<ArgumentError>()),
+        );
+      },
+    );
+
+    test('warns when targeting own kit via legacy string', () {
+      final mockHandler = MockRequestHandler();
+      final functions = createFunctionsWithMockHandler(mockHandler);
+
+      final printedLogs = <String>[];
+      runZoned(
+        () {
+          functions.taskQueue('helloWorld', extensionId: 'my-kit');
+        },
+        zoneValues: {
+          envSymbol: {'FIREBASE_KIT_INSTANCE_ID': 'my-kit'},
+        },
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) {
+            printedLogs.add(line);
+          },
+        ),
+      );
+
+      expect(printedLogs, hasLength(1));
+      expect(
+        printedLogs.first,
+        contains(
+          "Targeting your own extension or kit no longer requires a second parameter, which can have performance implications. Please change the call taskQueue('helloWorld', 'my-kit') to taskQueue('helloWorld') or taskQueue('helloWorld', scope: FunctionScope.current())",
+        ),
+      );
+    });
+
+    test('fallback to kit on 404 for enqueue', () async {
+      final mockHandler = MockRequestHandler();
+      final functions = createFunctionsWithMockHandler(mockHandler);
+      final queue = functions.taskQueue(
+        'helloWorld',
+        extensionId: 'other-inst',
+      );
+
+      var callCount = 0;
+      when(() => mockHandler.enqueue(any(), any(), any(), any())).thenAnswer((
+        invocation,
+      ) async {
+        callCount++;
+        final scope = invocation.positionalArguments[2] as FunctionScope;
+        if (callCount == 1) {
+          expect(
+            scope.toString(),
+            equals('FunctionScope.extensionOrKit(other-inst)'),
+          );
+          throw FirebaseFunctionsAdminException(
+            FunctionsClientErrorCode.notFound,
+            'Queue not found',
+          );
+        } else if (callCount == 2) {
+          expect(scope.toString(), equals('FunctionScope.kit(other-inst)'));
+          return;
+        }
+      });
+
+      final printedLogs = <String>[];
+      await runZoned(
+        () async {
+          await queue.enqueue({'data': 'val'});
+        },
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) {
+            printedLogs.add(line);
+          },
+        ),
+      );
+
+      expect(callCount, equals(2));
+      expect(printedLogs, hasLength(1));
+      expect(
+        printedLogs.first,
+        contains(
+          "Targeting kit other-inst with the legacy extensions API, which has performance implications. Please change the call taskQueue('helloWorld', 'other-inst') to taskQueue('helloWorld')",
+        ),
+      );
+
+      // Verify subsequent enqueue goes directly to kit without fallback/retry or warning
+      callCount = 0;
+      printedLogs.clear();
+      when(() => mockHandler.enqueue(any(), any(), any(), any())).thenAnswer((
+        invocation,
+      ) async {
+        callCount++;
+        final scope = invocation.positionalArguments[2] as FunctionScope;
+        expect(scope.toString(), equals('FunctionScope.kit(other-inst)'));
+        return;
+      });
+
+      await runZoned(
+        () async {
+          await queue.enqueue({'data': 'val'});
+        },
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) {
+            printedLogs.add(line);
+          },
+        ),
+      );
+      expect(callCount, equals(1));
+      expect(printedLogs, isEmpty);
+    });
+
+    test('fallback to kit on 404 for delete', () async {
+      final mockHandler = MockRequestHandler();
+      final functions = createFunctionsWithMockHandler(mockHandler);
+      final queue = functions.taskQueue(
+        'helloWorld',
+        extensionId: 'other-inst',
+      );
+
+      var callCount = 0;
+      when(() => mockHandler.delete(any(), any(), any())).thenAnswer((
+        invocation,
+      ) async {
+        callCount++;
+        final scope = invocation.positionalArguments[2] as FunctionScope;
+        if (callCount == 1) {
+          expect(
+            scope.toString(),
+            equals('FunctionScope.extensionOrKit(other-inst)'),
+          );
+          throw FirebaseFunctionsAdminException(
+            FunctionsClientErrorCode.notFound,
+            'Task or queue not found',
+          );
+        } else if (callCount == 2) {
+          expect(scope.toString(), equals('FunctionScope.kit(other-inst)'));
+          return;
+        }
+      });
+
+      final printedLogs = <String>[];
+      await runZoned(
+        () async {
+          await queue.delete('some-task');
+        },
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) {
+            printedLogs.add(line);
+          },
+        ),
+      );
+
+      expect(callCount, equals(2));
+      expect(printedLogs, hasLength(1));
+
+      // Subsequent delete goes directly to kit
+      callCount = 0;
+      printedLogs.clear();
+      when(() => mockHandler.delete(any(), any(), any())).thenAnswer((
+        invocation,
+      ) async {
+        callCount++;
+        final scope = invocation.positionalArguments[2] as FunctionScope;
+        expect(scope.toString(), equals('FunctionScope.kit(other-inst)'));
+        return;
+      });
+
+      await runZoned(
+        () async {
+          await queue.delete('some-task');
+        },
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) {
+            printedLogs.add(line);
+          },
+        ),
+      );
+      expect(callCount, equals(1));
+      expect(printedLogs, isEmpty);
     });
   });
 }
