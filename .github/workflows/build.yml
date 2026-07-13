@@ -21,6 +21,9 @@ on:
         required: false
         default: 'stable'
 
+permissions:
+  contents: read
+
 jobs:
   # Check license headers on all source files
   check-license-header:
