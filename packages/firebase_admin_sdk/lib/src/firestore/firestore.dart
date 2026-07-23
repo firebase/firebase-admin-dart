@@ -154,7 +154,7 @@ class Firestore implements FirebaseService {
     }
 
     if (settings.headers == null) {
-      settings = settings.copyWith(headers: firebaseUserAgentHeaders);
+      settings = settings.copyWith(headers: firestoreUsageTrackingHeaders);
     }
 
     return settings;
