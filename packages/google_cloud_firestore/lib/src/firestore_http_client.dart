@@ -104,10 +104,13 @@ Future<StreamedResponse> _sendOverHttp2(
   if (bodyBytes.isNotEmpty) stream.sendData(bodyBytes, endStream: true);
 
   final statusCompleter = Completer<int>();
-  final bodyController = StreamController<List<int>>();
+  late final StreamSubscription<StreamMessage> subscription;
+  final bodyController = StreamController<List<int>>(
+    onCancel: () => subscription.cancel(),
+  );
   final responseHeaders = <String, String>{};
 
-  stream.incomingMessages.listen(
+  subscription = stream.incomingMessages.listen(
     (message) {
       if (message is HeadersStreamMessage) {
         for (final header in message.headers) {
@@ -237,7 +240,12 @@ class ClientPool<T> {
     if (!resource.failed && !_hasExcessIdleCapacity) return;
 
     _resources.remove(resource);
-    await _destroy(await resource.future);
+    try {
+      await _destroy(await resource.future);
+    } catch (_) {
+      // Best-effort: a failure here must not shadow the caller's own
+      // request error, since this runs inside run()'s finally block.
+    }
   }
 
   bool get _hasExcessIdleCapacity {
@@ -319,8 +327,14 @@ class Http2ClientPool extends BaseClient {
   Future<StreamedResponse> send(BaseRequest request) =>
       _pool.run((transport) => _sendOverHttp2(transport, request));
 
+  /// Waits for in-flight requests to finish, then closes every connection.
+  ///
+  /// Unlike [close] (constrained by `http.Client`'s synchronous signature),
+  /// this can be awaited by callers who hold a concrete [Http2ClientPool].
+  Future<void> terminate() => _pool.terminate();
+
   @override
-  void close() => unawaited(_pool.terminate());
+  void close() => unawaited(terminate());
 }
 
 /// HTTP client wrapper for Firestore API operations.
@@ -461,6 +475,6 @@ class FirestoreHttpClient {
   Future<void> close() async {
     final client = await _client;
     client.close();
-    _transport?.close();
+    await _transport?.terminate();
   }
 }
