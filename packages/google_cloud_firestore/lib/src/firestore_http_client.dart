@@ -285,25 +285,39 @@ class ClientPool<T> {
   }
 }
 
-/// Sends every request as a stream on a pool of shared HTTP/2 connections
-/// to [host] - see [ClientPool]. Pure transport, no auth: wrapped with
-/// googleapis_auth's client helpers in [FirestoreHttpClient._createClient]
-/// for a refreshing [googleapis_auth.AuthClient].
-class Http2ClientPool extends BaseClient {
-  Http2ClientPool(this.host, {this.maxStreamsPerConnection = 100})
-    : _pool = ClientPool<ClientTransportConnection>(
+/// Sends every request as a stream on a pool of shared HTTP/2 connections,
+/// dialed per-host - see [ClientPool]. Multi-host so it's safe to use for
+/// every request an [googleapis_auth.AuthClient] might send, not just the
+/// actual Firestore calls: credential negotiation (OAuth2 token endpoint,
+/// WIF/OIDC token exchange) targets different hosts entirely, and each
+/// gets its own pool dialed to the right place instead of reusing a
+/// connection meant for somewhere else.
+///
+/// Pure transport, no auth: wrapped with googleapis_auth's client helpers
+/// in [FirestoreHttpClient._createClient] for a refreshing
+/// [googleapis_auth.AuthClient].
+class Http2Client extends BaseClient {
+  Http2Client({this.maxStreamsPerConnection = 100});
+
+  final int maxStreamsPerConnection;
+  final _pools = <String, ClientPool<ClientTransportConnection>>{};
+
+  // Caps concurrent in-flight TCP+TLS handshakes across all hosts,
+  // independent of how many total connections any one pool needs.
+  static final _handshakeGate = Pool(50);
+
+  // Synchronous (no `await`), so concurrent requests to a new host can't
+  // race each other into creating two pools for the same host.
+  ClientPool<ClientTransportConnection> _poolFor(String host) {
+    return _pools.putIfAbsent(
+      host,
+      () => ClientPool<ClientTransportConnection>(
         () => _handshakeGate.withResource(() => _dial(host)),
         maxConcurrentOperations: maxStreamsPerConnection,
         destroy: (transport) => transport.finish(),
-      );
-
-  final String host;
-  final int maxStreamsPerConnection;
-  final ClientPool<ClientTransportConnection> _pool;
-
-  // Caps concurrent in-flight TCP+TLS handshakes across all pools,
-  // independent of how many total connections any one pool needs.
-  static final _handshakeGate = Pool(50);
+      ),
+    );
+  }
 
   static Future<ClientTransportConnection> _dial(String host) async {
     final socket = await SecureSocket.connect(
@@ -320,52 +334,27 @@ class Http2ClientPool extends BaseClient {
     return ClientTransportConnection.viaSocket(socket);
   }
 
-  /// The number of connections currently in the pool.
-  int get connectionCount => _pool.size;
+  /// The number of connections currently pooled, across all hosts.
+  int get connectionCount =>
+      _pools.values.fold(0, (total, pool) => total + pool.size);
 
   @override
-  Future<StreamedResponse> send(BaseRequest request) =>
-      _pool.run((transport) => _sendOverHttp2(transport, request));
+  Future<StreamedResponse> send(BaseRequest request) => _poolFor(
+    request.url.host,
+  ).run((transport) => _sendOverHttp2(transport, request));
 
   /// Waits for in-flight requests to finish, then closes every connection.
   ///
   /// Unlike [close] (constrained by `http.Client`'s synchronous signature),
-  /// this can be awaited by callers who hold a concrete [Http2ClientPool].
-  Future<void> terminate() => _pool.terminate();
+  /// this can be awaited by callers who hold a concrete [Http2Client].
+  Future<void> terminate() async {
+    for (final pool in _pools.values) {
+      await pool.terminate();
+    }
+  }
 
   @override
   void close() => unawaited(terminate());
-}
-
-/// Routes requests to [pooledHost] through [pooled]; everything else -
-/// credential negotiation, WIF/OIDC token exchange, metadata server calls -
-/// falls through to [fallback], since those target hosts the single-host
-/// [pooled] transport was never dialed for.
-class _HostRoutingClient extends BaseClient {
-  _HostRoutingClient(this.pooledHost, this.pooled, this.fallback);
-
-  final String pooledHost;
-  final Http2ClientPool pooled;
-  final Client fallback;
-
-  @override
-  Future<StreamedResponse> send(BaseRequest request) {
-    if (request.url.host == pooledHost) {
-      return pooled.send(request);
-    }
-    return fallback.send(request);
-  }
-
-  @override
-  void close() {
-    pooled.close();
-    fallback.close();
-  }
-
-  Future<void> terminate() async {
-    await pooled.terminate();
-    fallback.close();
-  }
 }
 
 /// HTTP client wrapper for Firestore API operations.
@@ -447,7 +436,7 @@ class FirestoreHttpClient {
 
   // googleapis_auth never closes a caller-supplied baseClient, so
   // close() must reach this transport itself.
-  _HostRoutingClient? _transport;
+  Http2Client? _transport;
 
   /// Creates the appropriate HTTP client based on emulator configuration.
   Future<googleapis_auth.AuthClient> _createClient() async {
@@ -457,8 +446,7 @@ class FirestoreHttpClient {
       return EmulatorClient(Client());
     }
 
-    final host = _settings.host ?? 'firestore.googleapis.com';
-    final transport = _HostRoutingClient(host, Http2ClientPool(host), Client());
+    final transport = Http2Client();
     _transport = transport;
 
     final serviceAccountCreds = credential.serviceAccountCredentials;
