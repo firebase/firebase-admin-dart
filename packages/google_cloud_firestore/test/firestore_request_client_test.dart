@@ -75,8 +75,7 @@ void main() {
           'GET',
           Uri.parse('https://firestore.googleapis.com/'),
         );
-        // Simulates the value package:google_cloud_rpc's ServiceClient
-        // already sets on every request before this wrapper runs.
+        // Simulates the value package:google_cloud_rpc already sets.
         request.headers['X-Goog-Api-Client'] =
             'gl-dart/3.9 gax/1.0 rest/1.0 gapic/1.0';
 

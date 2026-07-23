@@ -231,7 +231,8 @@ class Settings {
           ssl == other.ssl &&
           credential == other.credential &&
           ignoreUndefinedProperties == other.ignoreUndefinedProperties &&
-          useBigInt == other.useBigInt;
+          useBigInt == other.useBigInt &&
+          const MapEquality<String, String>().equals(headers, other.headers);
 
   @override
   int get hashCode => Object.hash(
@@ -240,6 +241,7 @@ class Settings {
     host,
     ssl,
     credential,
+    const MapEquality<String, String>().hash(headers),
     ignoreUndefinedProperties,
     useBigInt,
   );

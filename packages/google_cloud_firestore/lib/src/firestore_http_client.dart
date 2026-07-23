@@ -199,7 +199,7 @@ class FirestoreHttpClient {
     final headers = _settings.headers;
     if (headers == null || headers.isEmpty) return client;
 
-    return FirestoreRequestClient(client, headers);
+    return FirestoreRequestClient(client, Map.unmodifiable(headers));
   }
 
   Future<googleapis_auth.AuthClient> _createBaseClient() async {
