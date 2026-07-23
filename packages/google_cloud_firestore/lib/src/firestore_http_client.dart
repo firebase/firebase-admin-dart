@@ -146,124 +146,169 @@ Future<StreamedResponse> _sendOverHttp2(
   );
 }
 
-class _PooledConnection {
-  _PooledConnection(this.transportFuture);
-  final Future<ClientTransportConnection> transportFuture;
+class _PooledResource<T> {
+  _PooledResource(this.future);
+  final Future<T> future;
   int inFlight = 0;
-
-  /// Set once a send() on this connection throws - matches Node
-  /// ClientPool's RST_STREAM handling: stop routing NEW work here, but let
-  /// requests already in flight finish. Actually removing/closing failed
-  /// connections is deferred (see [Http2ClientPool] doc comment) - this
-  /// pass only stops reusing them.
   bool failed = false;
 }
 
-/// Sends every request as a stream on a pool of shared HTTP/2 connections
-/// to [host], mirroring nodejs-firestore's `ClientPool`
-/// (dev/src/pool.ts): packs load onto the most-full connection under
-/// [maxStreamsPerConnection] (to keep others idle) rather than spreading
-/// evenly, opens a new connection once all existing ones are full, and
-/// stops routing new work to a connection once it's shown a
-/// connection-level failure.
-///
-/// Known gaps vs. Node's ClientPool, deferred to a follow-up:
-/// - No idle-capacity garbage collection - connections opened during a
-///   burst are never closed once traffic quiets down.
-/// - No graceful terminate() draining - close() does not wait for
-///   in-flight requests before finishing connections.
-///
-/// Pure transport: no auth. Wrapped with googleapis_auth's client helpers
-/// below (see [FirestoreHttpClient._createClient]) for a refreshing
-/// AuthClient.
-class Http2ClientPool extends BaseClient {
-  Http2ClientPool(this.host, {this.maxStreamsPerConnection = 100})
-    : _handshakeGate = Pool(_maxConcurrentHandshakes);
+/// A pool of resources of type [T], mirroring nodejs-firestore's
+/// `ClientPool` (dev/src/pool.ts): packs load onto the most-full resource
+/// under [maxConcurrentOperations] instead of spreading evenly, opens a
+/// new resource once existing ones are full, retires a resource once
+/// [run] reports it failed, and garbage collects idle resources past
+/// [maxIdleResources].
+@internal
+class ClientPool<T> {
+  ClientPool(
+    Future<T> Function() create, {
+    required this.maxConcurrentOperations,
+    required Future<void> Function(T resource) destroy,
+    this.maxIdleResources = 1,
+  }) : _create = create,
+       _destroy = destroy;
 
-  final String host;
-  final int maxStreamsPerConnection;
+  final Future<T> Function() _create;
+  final Future<void> Function(T resource) _destroy;
+  final int maxConcurrentOperations;
+  final int maxIdleResources;
 
-  // Caps concurrent in-flight TCP+TLS handshakes, independent of how many
-  // total connections the pool ends up needing - protects against a huge,
-  // unpredictable production burst opening hundreds of handshakes at once.
-  static const _maxConcurrentHandshakes = 50;
-  final Pool _handshakeGate;
+  final _resources = <_PooledResource<T>>[];
+  var _terminated = false;
+  Completer<void>? _drained;
 
-  final List<_PooledConnection> _connections = [];
+  @visibleForTesting
+  int get size => _resources.length;
 
-  Future<ClientTransportConnection> _openConnection() {
-    return _handshakeGate.withResource(() async {
-      final socket = await SecureSocket.connect(
-        host,
-        443,
-        supportedProtocols: ['h2'],
-      );
-      if (socket.selectedProtocol != 'h2') {
-        throw StateError(
-          'Server did not negotiate HTTP/2 (got ${socket.selectedProtocol})',
-        );
+  @visibleForTesting
+  int get opCount =>
+      _resources.fold(0, (total, resource) => total + resource.inFlight);
+
+  /// Runs [operation] on an available (or newly created) resource.
+  Future<R> run<R>(Future<R> Function(T resource) operation) async {
+    if (_terminated) {
+      throw StateError('This pool has already been terminated.');
+    }
+
+    final pooled = _acquire();
+    pooled.inFlight++;
+    try {
+      return await operation(await pooled.future);
+    } catch (_) {
+      pooled.failed = true;
+      rethrow;
+    } finally {
+      pooled.inFlight--;
+      if (_terminated) {
+        _maybeCompleteDrain();
+      } else {
+        await _collectIfIdle(pooled);
       }
-      return ClientTransportConnection.viaSocket(socket);
-    });
+    }
   }
 
-  /// Picks the most-full connection under capacity, or reserves a new one.
-  ///
-  /// Deliberately synchronous (no `await`), so it runs atomically with
-  /// respect to other concurrent calls without needing a lock - otherwise
-  /// many callers arriving before the first connection finishes dialing
-  /// would all see an empty pool and each open their own (a thundering
-  /// herd), instead of piling onto the one already being established.
-  ///
-  /// "Most-full" (not least-loaded) selection matches Node ClientPool's
-  /// intent: pack load onto fewer connections so others stay idle and
-  /// become eligible for future cleanup, rather than spreading evenly.
-  _PooledConnection _acquireConnection() {
-    _PooledConnection? selected;
-    for (final conn in _connections) {
-      if (conn.failed) continue;
-      if (conn.inFlight < maxStreamsPerConnection &&
-          (selected == null || conn.inFlight > selected.inFlight)) {
-        selected = conn;
+  // Synchronous (no `await`), so concurrent calls can't race each other
+  // into both creating a resource before either sees the other's.
+  _PooledResource<T> _acquire() {
+    _PooledResource<T>? selected;
+    for (final resource in _resources) {
+      if (resource.failed) continue;
+      if (resource.inFlight < maxConcurrentOperations &&
+          (selected == null || resource.inFlight > selected.inFlight)) {
+        selected = resource;
       }
     }
     if (selected != null) return selected;
 
-    final pooled = _PooledConnection(_openConnection());
-    _connections.add(pooled);
-    return pooled;
+    final resource = _PooledResource<T>(_create());
+    _resources.add(resource);
+    return resource;
   }
 
-  /// The number of connections currently in the pool (including any that
-  /// have been marked [_PooledConnection.failed] but not yet cleaned up).
-  int get connectionCount => _connections.length;
+  Future<void> _collectIfIdle(_PooledResource<T> resource) async {
+    if (resource.inFlight > 0) return;
+    if (!resource.failed && !_hasExcessIdleCapacity) return;
 
-  @override
-  Future<StreamedResponse> send(BaseRequest request) async {
-    final conn = _acquireConnection();
-    conn.inFlight++;
-    try {
-      final transport = await conn.transportFuture;
-      return await _sendOverHttp2(transport, request);
-    } catch (e) {
-      // Broader than Node's RST_STREAM-specific regex match - our own
-      // testing surfaced multiple distinct http2-level error shapes
-      // (REFUSED_STREAM, "forcefully terminated"/CONNECT_ERROR), so any
-      // thrown error here is treated as a signal this connection is no
-      // longer trustworthy for new work.
-      conn.failed = true;
-      rethrow;
-    } finally {
-      conn.inFlight--;
+    _resources.remove(resource);
+    await _destroy(await resource.future);
+  }
+
+  bool get _hasExcessIdleCapacity {
+    final idleCapacity = _resources.fold(
+      0,
+      (total, resource) => total + (maxConcurrentOperations - resource.inFlight),
+    );
+    return idleCapacity > maxIdleResources * maxConcurrentOperations;
+  }
+
+  void _maybeCompleteDrain() {
+    final drained = _drained;
+    if (drained != null && !drained.isCompleted && opCount == 0) {
+      drained.complete();
     }
   }
 
-  @override
-  void close() {
-    for (final conn in _connections) {
-      conn.transportFuture.then((t) => t.finish());
+  /// Waits for in-flight operations to finish, then destroys every
+  /// resource in the pool. No further operations can run afterward.
+  Future<void> terminate() async {
+    _terminated = true;
+
+    if (opCount > 0) {
+      _drained = Completer<void>();
+      await _drained!.future;
     }
+
+    for (final resource in _resources) {
+      await _destroy(await resource.future);
+    }
+    _resources.clear();
   }
+}
+
+/// Sends every request as a stream on a pool of shared HTTP/2 connections
+/// to [host] - see [ClientPool]. Pure transport, no auth: wrapped with
+/// googleapis_auth's client helpers in [FirestoreHttpClient._createClient]
+/// for a refreshing [googleapis_auth.AuthClient].
+class Http2ClientPool extends BaseClient {
+  Http2ClientPool(this.host, {this.maxStreamsPerConnection = 100})
+    : _pool = ClientPool<ClientTransportConnection>(
+        () => _handshakeGate.withResource(() => _dial(host)),
+        maxConcurrentOperations: maxStreamsPerConnection,
+        destroy: (transport) => transport.finish(),
+      );
+
+  final String host;
+  final int maxStreamsPerConnection;
+  final ClientPool<ClientTransportConnection> _pool;
+
+  // Caps concurrent in-flight TCP+TLS handshakes across all pools,
+  // independent of how many total connections any one pool needs.
+  static final _handshakeGate = Pool(50);
+
+  static Future<ClientTransportConnection> _dial(String host) async {
+    final socket = await SecureSocket.connect(
+      host,
+      443,
+      supportedProtocols: ['h2'],
+    );
+    if (socket.selectedProtocol != 'h2') {
+      throw StateError(
+        'Server did not negotiate HTTP/2 (got ${socket.selectedProtocol})',
+      );
+    }
+    return ClientTransportConnection.viaSocket(socket);
+  }
+
+  /// The number of connections currently in the pool.
+  int get connectionCount => _pool.size;
+
+  @override
+  Future<StreamedResponse> send(BaseRequest request) =>
+      _pool.run((transport) => _sendOverHttp2(transport, request));
+
+  @override
+  void close() => unawaited(_pool.terminate());
 }
 
 /// HTTP client wrapper for Firestore API operations.
@@ -343,23 +388,22 @@ class FirestoreHttpClient {
   /// Lazy-initialized HTTP client that's cached for reuse.
   late final Future<googleapis_auth.AuthClient> _client = _createClient();
 
+  // googleapis_auth never closes a caller-supplied baseClient, so
+  // close() must reach this transport itself.
+  Http2ClientPool? _transport;
+
   /// Creates the appropriate HTTP client based on emulator configuration.
   Future<googleapis_auth.AuthClient> _createClient() async {
     if (_isUsingEmulator) {
-      // Emulator: plain HTTP/1.1, matching nodejs-firestore's own REST-mode
-      // behavior for the emulator (it forces `protocol: 'http'` when ssl is
-      // false in REST fallback - see index.ts's clientFactory). Node's
-      // gRPC-mode client does use HTTP/2 for the emulator, but that's a
-      // separate transport with no equivalent here - our SDK is REST-only,
-      // so its REST-mode behavior is the correct comparison, not gRPC's.
+      // Emulator: plain HTTP/1.1, matching nodejs-firestore's REST-mode
+      // behavior (its gRPC mode uses HTTP/2, but this SDK is REST-only).
       return EmulatorClient(Client());
     }
 
-    // Production: every request multiplexes over a pool of shared HTTP/2
-    // connections instead of dart:io's default one-connection-per-request
-    // HTTP/1.1 behavior. googleapis_auth wraps this transport with its
-    // token-refresh logic - the pool itself has no auth concept.
-    final transport = Http2ClientPool(_settings.host ?? 'firestore.googleapis.com');
+    final transport = Http2ClientPool(
+      _settings.host ?? 'firestore.googleapis.com',
+    );
+    _transport = transport;
 
     final serviceAccountCreds = credential.serviceAccountCredentials;
     if (serviceAccountCreds != null) {
@@ -370,7 +414,6 @@ class FirestoreHttpClient {
       );
     }
 
-    // Fall back to Application Default Credentials
     return googleapis_auth.clientViaApplicationDefaultCredentials(
       scopes: ['https://www.googleapis.com/auth/cloud-platform'],
       baseClient: transport,
@@ -406,5 +449,6 @@ class FirestoreHttpClient {
   Future<void> close() async {
     final client = await _client;
     client.close();
+    _transport?.close();
   }
 }
