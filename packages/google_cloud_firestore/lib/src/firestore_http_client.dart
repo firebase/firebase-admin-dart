@@ -42,6 +42,33 @@ class _RequestImpl extends BaseRequest {
   }
 }
 
+/// HTTP client wrapper that adds custom headers to every outgoing Firestore
+/// request.
+///
+/// Used to attach [Settings.headers] (e.g. usage-tracking headers set by a
+/// caller like the Firebase Admin SDK) without altering how the underlying
+/// client authenticates requests.
+@internal
+class FirestoreRequestClient extends BaseClient
+    implements googleapis_auth.AuthClient {
+  FirestoreRequestClient(this._client, this._headers);
+
+  final googleapis_auth.AuthClient _client;
+  final Map<String, String> _headers;
+
+  @override
+  googleapis_auth.AccessCredentials get credentials => _client.credentials;
+
+  @override
+  Future<StreamedResponse> send(BaseRequest request) {
+    request.headers.addAll(_headers);
+    return _client.send(request);
+  }
+
+  @override
+  void close() => _client.close();
+}
+
 /// HTTP client wrapper that adds Firebase emulator authentication.
 ///
 /// This client wraps another HTTP client and automatically adds the
@@ -156,6 +183,15 @@ class FirestoreHttpClient {
 
   /// Creates the appropriate HTTP client based on emulator configuration.
   Future<googleapis_auth.AuthClient> _createClient() async {
+    final client = await _createBaseClient();
+
+    final headers = _settings.headers;
+    if (headers == null || headers.isEmpty) return client;
+
+    return FirestoreRequestClient(client, headers);
+  }
+
+  Future<googleapis_auth.AuthClient> _createBaseClient() async {
     if (_isUsingEmulator) {
       // Emulator: Create unauthenticated client.
       return EmulatorClient(Client());

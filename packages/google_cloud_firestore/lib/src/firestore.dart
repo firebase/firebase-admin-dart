@@ -116,6 +116,7 @@ class Settings {
     this.ignoreUndefinedProperties = false,
     this.useBigInt = false,
     this.environmentOverride,
+    this.headers,
   });
 
   /// The project ID from the Google Developer's Console, e.g. 'grape-spaceship-123'.
@@ -186,6 +187,13 @@ class Settings {
   /// ```
   final Map<String, String>? environmentOverride;
 
+  /// Additional HTTP headers to send with every Firestore request.
+  ///
+  /// Useful for attaching usage-tracking or tracing headers (e.g.
+  /// `X-Firebase-Client`, `X-Goog-Api-Client`) without needing to supply a
+  /// custom HTTP client.
+  final Map<String, String>? headers;
+
   /// Creates a copy of this Settings with the given fields replaced.
   Settings copyWith({
     String? projectId,
@@ -196,6 +204,7 @@ class Settings {
     bool? ignoreUndefinedProperties,
     bool? useBigInt,
     Map<String, String>? environmentOverride,
+    Map<String, String>? headers,
   }) {
     return Settings(
       projectId: projectId ?? this.projectId,
@@ -207,6 +216,7 @@ class Settings {
           ignoreUndefinedProperties ?? this.ignoreUndefinedProperties,
       useBigInt: useBigInt ?? this.useBigInt,
       environmentOverride: environmentOverride ?? this.environmentOverride,
+      headers: headers ?? this.headers,
     );
   }
 
