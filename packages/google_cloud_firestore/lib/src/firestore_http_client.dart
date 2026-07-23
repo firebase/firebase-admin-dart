@@ -81,80 +81,6 @@ class EmulatorClient extends BaseClient implements googleapis_auth.AuthClient {
   void close() => client.close();
 }
 
-/// Sends [request] as a single HTTP/2 stream on [transport], translating
-/// between `BaseRequest`/`StreamedResponse` and http2's frames.
-Future<StreamedResponse> _sendOverHttp2(
-  ClientTransportConnection transport,
-  BaseRequest request,
-) async {
-  final bodyBytes = await request.finalize().toBytes();
-  final path = request.url.hasQuery
-      ? '${request.url.path}?${request.url.query}'
-      : request.url.path;
-
-  final stream = transport.makeRequest([
-    Header.ascii(':method', request.method),
-    Header.ascii(':scheme', 'https'),
-    Header.ascii(':authority', request.url.host),
-    Header.ascii(':path', path),
-    for (final entry in request.headers.entries)
-      Header.ascii(entry.key.toLowerCase(), entry.value),
-  ], endStream: bodyBytes.isEmpty);
-
-  if (bodyBytes.isNotEmpty) stream.sendData(bodyBytes, endStream: true);
-
-  final statusCompleter = Completer<int>();
-  late final StreamSubscription<StreamMessage> subscription;
-  final bodyController = StreamController<List<int>>(
-    onCancel: () => subscription.cancel(),
-  );
-  final responseHeaders = <String, String>{};
-
-  subscription = stream.incomingMessages.listen(
-    (message) {
-      if (message is HeadersStreamMessage) {
-        for (final header in message.headers) {
-          final name = ascii.decode(header.name);
-          final value = ascii.decode(header.value);
-          if (name == ':status') {
-            if (!statusCompleter.isCompleted) {
-              statusCompleter.complete(int.parse(value));
-            }
-          } else {
-            responseHeaders[name] = value;
-          }
-        }
-      } else if (message is DataStreamMessage) {
-        bodyController.add(message.bytes);
-      }
-    },
-    onDone: () {
-      if (!statusCompleter.isCompleted) {
-        statusCompleter.completeError(
-          StateError('Stream closed before a response status was received'),
-        );
-      }
-      if (!bodyController.isClosed) bodyController.close();
-    },
-    onError: (Object error, StackTrace stackTrace) {
-      if (!statusCompleter.isCompleted) {
-        statusCompleter.completeError(error, stackTrace);
-      }
-      bodyController.addError(error, stackTrace);
-      if (!bodyController.isClosed) bodyController.close();
-    },
-    cancelOnError: true,
-  );
-
-  final statusCode = await statusCompleter.future;
-  return StreamedResponse(
-    bodyController.stream,
-    statusCode,
-    headers: responseHeaders,
-    request: request,
-  );
-}
-
 class _PooledResource<T> {
   _PooledResource(this.future);
   final Future<T> future;
@@ -319,7 +245,7 @@ class Http2Client extends BaseClient {
     );
   }
 
-  static Future<ClientTransportConnection> _dial(String host) async {
+  Future<ClientTransportConnection> _dial(String host) async {
     final socket = await SecureSocket.connect(
       host,
       443,
@@ -334,14 +260,89 @@ class Http2Client extends BaseClient {
     return ClientTransportConnection.viaSocket(socket);
   }
 
+  /// Sends [request] as a single HTTP/2 stream on [transport], translating
+  /// between `BaseRequest`/`StreamedResponse` and http2's frames.
+  Future<StreamedResponse> _sendOverHttp2(
+    ClientTransportConnection transport,
+    BaseRequest request,
+  ) async {
+    final bodyBytes = await request.finalize().toBytes();
+    final path = request.url.hasQuery
+        ? '${request.url.path}?${request.url.query}'
+        : request.url.path;
+
+    final stream = transport.makeRequest([
+      Header.ascii(':method', request.method),
+      Header.ascii(':scheme', 'https'),
+      Header.ascii(':authority', request.url.host),
+      Header.ascii(':path', path),
+      for (final entry in request.headers.entries)
+        Header.ascii(entry.key.toLowerCase(), entry.value),
+    ], endStream: bodyBytes.isEmpty);
+
+    if (bodyBytes.isNotEmpty) stream.sendData(bodyBytes, endStream: true);
+
+    final statusCompleter = Completer<int>();
+    late final StreamSubscription<StreamMessage> subscription;
+    final bodyController = StreamController<List<int>>(
+      onCancel: () => subscription.cancel(),
+    );
+    final responseHeaders = <String, String>{};
+
+    subscription = stream.incomingMessages.listen(
+      (message) {
+        if (message is HeadersStreamMessage) {
+          for (final header in message.headers) {
+            final name = ascii.decode(header.name);
+            final value = ascii.decode(header.value);
+            if (name == ':status') {
+              if (!statusCompleter.isCompleted) {
+                statusCompleter.complete(int.parse(value));
+              }
+            } else {
+              responseHeaders[name] = value;
+            }
+          }
+        } else if (message is DataStreamMessage) {
+          bodyController.add(message.bytes);
+        }
+      },
+      onDone: () {
+        if (!statusCompleter.isCompleted) {
+          statusCompleter.completeError(
+            StateError('Stream closed before a response status was received'),
+          );
+        }
+        if (!bodyController.isClosed) bodyController.close();
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (!statusCompleter.isCompleted) {
+          statusCompleter.completeError(error, stackTrace);
+        }
+        bodyController.addError(error, stackTrace);
+        if (!bodyController.isClosed) bodyController.close();
+      },
+      cancelOnError: true,
+    );
+
+    final statusCode = await statusCompleter.future;
+    return StreamedResponse(
+      bodyController.stream,
+      statusCode,
+      headers: responseHeaders,
+      request: request,
+    );
+  }
+
   /// The number of connections currently pooled, across all hosts.
   int get connectionCount =>
       _pools.values.fold(0, (total, pool) => total + pool.size);
 
   @override
-  Future<StreamedResponse> send(BaseRequest request) => _poolFor(
-    request.url.host,
-  ).run((transport) => _sendOverHttp2(transport, request));
+  Future<StreamedResponse> send(BaseRequest request) =>
+      _poolFor(request.url.host).run(
+        (transport) => _sendOverHttp2(transport, request),
+      );
 
   /// Waits for in-flight requests to finish, then closes every connection.
   ///
