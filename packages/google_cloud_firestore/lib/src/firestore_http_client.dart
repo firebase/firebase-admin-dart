@@ -346,8 +346,12 @@ class FirestoreHttpClient {
   /// Creates the appropriate HTTP client based on emulator configuration.
   Future<googleapis_auth.AuthClient> _createClient() async {
     if (_isUsingEmulator) {
-      // Emulator: Create unauthenticated client. The emulator has no TLS
-      // and doesn't negotiate HTTP/2, so this stays on plain HTTP/1.1.
+      // Emulator: plain HTTP/1.1, matching nodejs-firestore's own REST-mode
+      // behavior for the emulator (it forces `protocol: 'http'` when ssl is
+      // false in REST fallback - see index.ts's clientFactory). Node's
+      // gRPC-mode client does use HTTP/2 for the emulator, but that's a
+      // separate transport with no equivalent here - our SDK is REST-only,
+      // so its REST-mode behavior is the correct comparison, not gRPC's.
       return EmulatorClient(Client());
     }
 
