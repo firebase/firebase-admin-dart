@@ -48,6 +48,12 @@ class _RequestImpl extends BaseRequest {
 /// Used to attach [Settings.headers] (e.g. usage-tracking headers set by a
 /// caller like the Firebase Admin SDK) without altering how the underlying
 /// client authenticates requests.
+///
+/// Values are appended (space-joined) onto any existing header of the same
+/// name rather than replacing it, since the transport layer
+/// (`package:google_cloud_rpc`) already sets its own `X-Goog-Api-Client`
+/// value identifying this library — matching the multi-token convention
+/// that header uses (e.g. `gl-dart/3.9 gax/1.0 gccl/0.5 fire-admin/0.5`).
 @internal
 class FirestoreRequestClient extends BaseClient
     implements googleapis_auth.AuthClient {
@@ -61,7 +67,12 @@ class FirestoreRequestClient extends BaseClient
 
   @override
   Future<StreamedResponse> send(BaseRequest request) {
-    request.headers.addAll(_headers);
+    for (final entry in _headers.entries) {
+      final existing = request.headers[entry.key];
+      request.headers[entry.key] = existing == null
+          ? entry.value
+          : '$existing ${entry.value}';
+    }
     return _client.send(request);
   }
 
