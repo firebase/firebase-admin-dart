@@ -98,7 +98,7 @@ Future<StreamedResponse> _sendOverHttp2(
     Header.ascii(':authority', request.url.host),
     Header.ascii(':path', path),
     for (final entry in request.headers.entries)
-      Header.ascii(entry.key, entry.value),
+      Header.ascii(entry.key.toLowerCase(), entry.value),
   ], endStream: bodyBytes.isEmpty);
 
   if (bodyBytes.isNotEmpty) stream.sendData(bodyBytes, endStream: true);
@@ -126,6 +126,11 @@ Future<StreamedResponse> _sendOverHttp2(
       }
     },
     onDone: () {
+      if (!statusCompleter.isCompleted) {
+        statusCompleter.completeError(
+          StateError('Stream closed before a response status was received'),
+        );
+      }
       if (!bodyController.isClosed) bodyController.close();
     },
     onError: (Object error, StackTrace stackTrace) {
@@ -133,6 +138,7 @@ Future<StreamedResponse> _sendOverHttp2(
         statusCompleter.completeError(error, stackTrace);
       }
       bodyController.addError(error, stackTrace);
+      if (!bodyController.isClosed) bodyController.close();
     },
     cancelOnError: true,
   );
@@ -260,7 +266,12 @@ class ClientPool<T> {
     }
 
     for (final resource in _resources) {
-      await _destroy(await resource.future);
+      try {
+        await _destroy(await resource.future);
+      } catch (_) {
+        // Best-effort: one resource failing to close shouldn't stop the
+        // rest from being destroyed.
+      }
     }
     _resources.clear();
   }
@@ -293,6 +304,7 @@ class Http2ClientPool extends BaseClient {
       supportedProtocols: ['h2'],
     );
     if (socket.selectedProtocol != 'h2') {
+      socket.destroy();
       throw StateError(
         'Server did not negotiate HTTP/2 (got ${socket.selectedProtocol})',
       );
