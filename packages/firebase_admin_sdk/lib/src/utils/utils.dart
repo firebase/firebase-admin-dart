@@ -14,9 +14,23 @@
 
 import 'dart:io';
 
+import '../version.g.dart';
+
 /// The current Dart SDK version in semver format (e.g. "3.3.0").
 String get dartVersion =>
     Platform.version.split(RegExp('[^0-9]')).take(3).join('.');
+
+/// Headers that identify a request as originating from this SDK, for
+/// Firebase backend usage tracking.
+///
+/// Shared by `FirebaseUserAgentClient` (used by Auth, Messaging, and other
+/// services that go through `FirebaseApp.client`) and the Firestore service,
+/// which builds its own HTTP client and can't be wrapped by
+/// `FirebaseUserAgentClient` directly.
+Map<String, String> get firebaseUserAgentHeaders => {
+  'X-Firebase-Client': 'fire-admin-dart/$packageVersion',
+  'X-Goog-Api-Client': 'gl-dart/$dartVersion fire-admin/$packageVersion',
+};
 
 /// Generates the update mask for the provided object.
 /// Note this will ignore the last key with value `null`.
