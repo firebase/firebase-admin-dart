@@ -337,6 +337,37 @@ class Http2ClientPool extends BaseClient {
   void close() => unawaited(terminate());
 }
 
+/// Routes requests to [pooledHost] through [pooled]; everything else -
+/// credential negotiation, WIF/OIDC token exchange, metadata server calls -
+/// falls through to [fallback], since those target hosts the single-host
+/// [pooled] transport was never dialed for.
+class _HostRoutingClient extends BaseClient {
+  _HostRoutingClient(this.pooledHost, this.pooled, this.fallback);
+
+  final String pooledHost;
+  final Http2ClientPool pooled;
+  final Client fallback;
+
+  @override
+  Future<StreamedResponse> send(BaseRequest request) {
+    if (request.url.host == pooledHost) {
+      return pooled.send(request);
+    }
+    return fallback.send(request);
+  }
+
+  @override
+  void close() {
+    pooled.close();
+    fallback.close();
+  }
+
+  Future<void> terminate() async {
+    await pooled.terminate();
+    fallback.close();
+  }
+}
+
 /// HTTP client wrapper for Firestore API operations.
 ///
 /// Provides authenticated API access with automatic project ID discovery.
@@ -416,7 +447,7 @@ class FirestoreHttpClient {
 
   // googleapis_auth never closes a caller-supplied baseClient, so
   // close() must reach this transport itself.
-  Http2ClientPool? _transport;
+  _HostRoutingClient? _transport;
 
   /// Creates the appropriate HTTP client based on emulator configuration.
   Future<googleapis_auth.AuthClient> _createClient() async {
@@ -426,9 +457,8 @@ class FirestoreHttpClient {
       return EmulatorClient(Client());
     }
 
-    final transport = Http2ClientPool(
-      _settings.host ?? 'firestore.googleapis.com',
-    );
+    final host = _settings.host ?? 'firestore.googleapis.com';
+    final transport = _HostRoutingClient(host, Http2ClientPool(host), Client());
     _transport = transport;
 
     final serviceAccountCreds = credential.serviceAccountCredentials;
