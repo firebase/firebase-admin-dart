@@ -20,6 +20,12 @@ import '../version.g.dart';
 String get dartVersion =>
     Platform.version.split(RegExp('[^0-9]')).take(3).join('.');
 
+/// The Firebase Admin SDK's `X-Firebase-Client` identity.
+const String _fireAdminFirebaseClientId = 'fire-admin-dart/$packageVersion';
+
+/// The Firebase Admin SDK's tag within `X-Goog-Api-Client`.
+const String _fireAdminApiClientTag = 'fire-admin/$packageVersion';
+
 /// Headers that identify a request as originating from this SDK, for
 /// Firebase backend usage tracking.
 ///
@@ -27,8 +33,8 @@ String get dartVersion =>
 /// Messaging, and other services that go through `FirebaseApp.client`) that
 /// don't already set a client-identification header of their own.
 final Map<String, String> firebaseUserAgentHeaders = Map.unmodifiable({
-  'X-Firebase-Client': 'fire-admin-dart/$packageVersion',
-  'X-Goog-Api-Client': 'gl-dart/$dartVersion fire-admin/$packageVersion',
+  'X-Firebase-Client': _fireAdminFirebaseClientId,
+  'X-Goog-Api-Client': 'gl-dart/$dartVersion $_fireAdminApiClientTag',
 });
 
 /// Headers to attach to Firestore requests to identify them as originating
@@ -40,8 +46,8 @@ final Map<String, String> firebaseUserAgentHeaders = Map.unmodifiable({
 /// `package:google_cloud_rpc` already set (which already carries that tag),
 /// so repeating it here would duplicate it.
 const Map<String, String> firestoreUsageTrackingHeaders = {
-  'X-Firebase-Client': 'fire-admin-dart/$packageVersion',
-  'X-Goog-Api-Client': 'fire-admin/$packageVersion',
+  'X-Firebase-Client': _fireAdminFirebaseClientId,
+  'X-Goog-Api-Client': _fireAdminApiClientTag,
 };
 
 /// Generates the update mask for the provided object.
