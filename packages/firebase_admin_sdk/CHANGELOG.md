@@ -1,6 +1,7 @@
 ## 0.5.4-wip
 
-- Fixed `Firestore` requests not carrying the SDK's usage-tracking headers (`X-Firebase-Client`, `X-Goog-Api-Client`).
+- Fixed `Firestore` requests not carrying the SDK's usage-tracking headers
+  (`X-Firebase-Client`, `X-Goog-Api-Client`).
 - Update dependency `googleapis_auth: ^2.3.3` to fix `auth/insufficient-permission`
   errors with Application Default Credentials that have no quota project set.
 
