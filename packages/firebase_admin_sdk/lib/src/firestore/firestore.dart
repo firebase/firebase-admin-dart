@@ -19,6 +19,7 @@ import 'package:google_cloud_firestore/google_cloud_firestore.dart'
 import 'package:meta/meta.dart';
 
 import '../app.dart';
+import '../utils/utils.dart';
 
 /// Default database ID used by Firestore
 const String kDefaultDatabaseId = '(default)';
@@ -151,6 +152,10 @@ class Firestore implements FirebaseService {
     if (projectId != null && settings.projectId == null) {
       settings = settings.copyWith(projectId: projectId);
     }
+
+    settings = settings.copyWith(
+      headers: {...firestoreUsageTrackingHeaders, ...?settings.headers},
+    );
 
     return settings;
   }
