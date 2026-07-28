@@ -1,28 +1,17 @@
+## Description
+
+*Replace this paragraph with a description of what this PR is doing. If you're modifying existing behavior, describe the existing behavior, how this PR is changing it, and what motivated the change.*
+
 ## Related Issues
 
-fixes #your-issue-number
-
-<!--
-  Update to link the issue that is going to be fixed by this.
-  Unless this concerns documentation, make sure to create an issue first
-  before raising a PR.
-
-  You do not need to describe what this PR is doing, as this should
-  already be covered by the associated issue.
-  If the linked issue isn't enough, then chances are a new issue
-  is needed.
-
-  Don't hesitate to create many issues! This can avoid working
-  on something, only to have your PR closed or have to be rewritten
-  due to a disagreement/misunderstanding.
- -->
+*Link any related issues, e.g. `Fixes #123`.*
 
 ## Checklist
 
 Before you create this PR confirm that it meets all requirements listed below by checking the relevant checkboxes (`[x]`).
 
-- [ ] I have updated the `CHANGELOG.md` of the relevant packages.
-      Changelog files must be edited under the form:
+- [ ] I read the [Contributing Guide] and followed the process outlined there for submitting PRs.
+- [ ] I have updated the `CHANGELOG.md` of the relevant packages:
 
   ```md
   ## Unreleased fix/major/minor
@@ -30,5 +19,19 @@ Before you create this PR confirm that it meets all requirements listed below by
   - Description of your change. (thanks to @yourGithubId)
   ```
 
-- [ ] If this contains new features or behavior changes,
-      I have updated the documentation to match those changes.
+- [ ] My PR includes tests for any new or changed behavior.
+- [ ] I ran the [local validation steps] (`dart format`, `dart analyze`, and the test suite) and everything passes.
+- [ ] I updated relevant documentation (doc comments, README) if this contains new features or behavior changes.
+- [ ] I signed the [CLA].
+
+## Breaking Change
+
+Does this PR require users to manually update their apps to accommodate your change?
+
+- [ ] Yes, this is a breaking change.
+- [ ] No, this is *not* a breaking change.
+
+<!-- Links -->
+[Contributing Guide]: https://github.com/firebase/firebase-admin-dart/blob/main/CONTRIBUTING.md
+[local validation steps]: https://github.com/firebase/firebase-admin-dart/blob/main/CONTRIBUTING.md#local-validation
+[CLA]: https://cla.developers.google.com/
