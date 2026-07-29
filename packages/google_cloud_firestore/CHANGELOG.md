@@ -5,6 +5,7 @@
 - Updated `Transaction.delete` and `Transaction.update` type constraints to accept `DocumentReference<Object?>`. (thanks to @Levin-Me)
 - Made `Timestamp` encodable by adding `toJson` method. (thanks to @OutdatedGuy)
 - Update dependency `googleapis_auth: ^2.3.3` to fix `auth/insufficient-permission` errors with Application Default Credentials that have no quota project set.
+- Fixed slow and failing requests under high concurrency by pooling shared HTTP/2 connections by default instead of opening a new HTTP/1.1 connection per request.
 
 ## 0.5.2
 
