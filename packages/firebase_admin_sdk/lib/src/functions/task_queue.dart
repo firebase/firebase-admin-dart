@@ -51,7 +51,7 @@ class TaskQueue {
         print(
           'Targeting your own extension or kit no longer requires a second parameter, '
           'which can have performance implications. Please change the call '
-          "taskQueue('$_functionName', '$instance') to taskQueue('$_functionName') "
+          "taskQueue('$_functionName', extensionId: '$instance') to taskQueue('$_functionName') "
           "or taskQueue('$_functionName', scope: FunctionScope.current())",
         );
       }
@@ -153,7 +153,7 @@ class TaskQueue {
     print(
       'Targeting kit $instance with the legacy extensions API, '
       'which has performance implications. Please change the call '
-      "taskQueue('$functionName', '$instance') to taskQueue('$functionName')",
+      "taskQueue('$functionName', extensionId: '$instance') to taskQueue('$functionName')",
     );
   }
 }

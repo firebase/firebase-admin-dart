@@ -1408,7 +1408,7 @@ void main() {
       expect(
         printedLogs.first,
         contains(
-          "Targeting your own extension or kit no longer requires a second parameter, which can have performance implications. Please change the call taskQueue('helloWorld', 'my-kit') to taskQueue('helloWorld') or taskQueue('helloWorld', scope: FunctionScope.current())",
+          "Targeting your own extension or kit no longer requires a second parameter, which can have performance implications. Please change the call taskQueue('helloWorld', extensionId: 'my-kit') to taskQueue('helloWorld') or taskQueue('helloWorld', scope: FunctionScope.current())",
         ),
       );
     });
@@ -1459,7 +1459,7 @@ void main() {
       expect(
         printedLogs.first,
         contains(
-          "Targeting kit other-inst with the legacy extensions API, which has performance implications. Please change the call taskQueue('helloWorld', 'other-inst') to taskQueue('helloWorld')",
+          "Targeting kit other-inst with the legacy extensions API, which has performance implications. Please change the call taskQueue('helloWorld', extensionId: 'other-inst') to taskQueue('helloWorld')",
         ),
       );
 
