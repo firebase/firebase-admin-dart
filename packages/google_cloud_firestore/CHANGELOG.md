@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Added `Settings.headers` to attach custom HTTP headers to every outgoing Firestore request.
 - Fixed intermittent `ClientException: Connection closed before full header was received` on queries and aggregations under high concurrency; these now retry with backoff.
 - Fixed `Firestore.getAll()` retrying transient errors indefinitely; it now retries a bounded number of times before surfacing the error.
 - Updated `Transaction.delete` and `Transaction.update` type constraints to accept `DocumentReference<Object?>`. (thanks to @Levin-Me)

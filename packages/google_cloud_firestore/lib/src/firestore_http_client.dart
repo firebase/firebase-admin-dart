@@ -42,6 +42,44 @@ class _RequestImpl extends BaseRequest {
   }
 }
 
+/// HTTP client wrapper that adds custom headers to every outgoing Firestore
+/// request.
+///
+/// Used to attach [Settings.headers] (e.g. usage-tracking headers set by a
+/// caller like the Firebase Admin SDK) without altering how the underlying
+/// client authenticates requests.
+///
+/// Values are appended (space-joined) onto any existing header of the same
+/// name rather than replacing it, since the transport layer
+/// (`package:google_cloud_rpc`) already sets its own `X-Goog-Api-Client`
+/// value identifying this library — matching the multi-token convention
+/// that header uses (e.g. `gl-dart/3.9 gax/1.0 gccl/0.5 fire-admin/0.5`).
+@internal
+class FirestoreRequestClient extends BaseClient
+    implements googleapis_auth.AuthClient {
+  FirestoreRequestClient(this._client, this._headers);
+
+  final googleapis_auth.AuthClient _client;
+  final Map<String, String> _headers;
+
+  @override
+  googleapis_auth.AccessCredentials get credentials => _client.credentials;
+
+  @override
+  Future<StreamedResponse> send(BaseRequest request) {
+    for (final entry in _headers.entries) {
+      final existing = request.headers[entry.key];
+      request.headers[entry.key] = existing == null
+          ? entry.value
+          : '$existing ${entry.value}';
+    }
+    return _client.send(request);
+  }
+
+  @override
+  void close() => _client.close();
+}
+
 /// HTTP client wrapper that adds Firebase emulator authentication.
 ///
 /// This client wraps another HTTP client and automatically adds the
@@ -156,6 +194,15 @@ class FirestoreHttpClient {
 
   /// Creates the appropriate HTTP client based on emulator configuration.
   Future<googleapis_auth.AuthClient> _createClient() async {
+    final client = await _createBaseClient();
+
+    final headers = _settings.headers;
+    if (headers == null || headers.isEmpty) return client;
+
+    return FirestoreRequestClient(client, Map.unmodifiable(headers));
+  }
+
+  Future<googleapis_auth.AuthClient> _createBaseClient() async {
     if (_isUsingEmulator) {
       // Emulator: Create unauthenticated client.
       return EmulatorClient(Client());
