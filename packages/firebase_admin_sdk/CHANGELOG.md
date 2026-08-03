@@ -1,5 +1,6 @@
-## 0.5.4-wip
+## 0.5.4
 
+- Fixed double-close errors when calling `Storage.delete()` prior to `FirebaseApp.close()`.
 - Fixed `Firestore` requests not carrying the SDK's usage-tracking headers
   (`X-Firebase-Client`, `X-Goog-Api-Client`).
 - Update dependency `googleapis_auth: ^2.3.3` to fix `auth/insufficient-permission`
