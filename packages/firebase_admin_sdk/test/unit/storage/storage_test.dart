@@ -350,6 +350,20 @@ void main() {
         await testApp.close();
       });
 
+      test('should handle delete() called multiple times gracefully', () async {
+        final testApp = FirebaseApp.initializeApp(
+          name: 'multi-delete-test-${DateTime.now().millisecondsSinceEpoch}',
+          options: AppOptions(projectId: projectId, httpClient: mockClient),
+        );
+
+        final storage = Storage.internal(testApp);
+        expect(storage, isNotNull);
+
+        await storage.delete();
+        await storage.delete();
+        await testApp.close();
+      });
+
       test('should throw when accessing storage after app.close()', () async {
         final testApp = FirebaseApp.initializeApp(
           name: 'close-test-${DateTime.now().millisecondsSinceEpoch}',
