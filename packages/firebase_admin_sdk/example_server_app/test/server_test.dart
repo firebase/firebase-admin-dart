@@ -32,6 +32,7 @@ void main() {
     // Wait for server to start and print to stdout that it is running.
     await p.stdout
         .transform(utf8.decoder)
+        .transform(const LineSplitter())
         .firstWhere((line) => line.contains('Server running on port'));
   });
 
