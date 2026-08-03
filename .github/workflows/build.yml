@@ -168,6 +168,14 @@ jobs:
       - name: Run google_cloud_firestore tests with coverage
         run: ${{ github.workspace }}/scripts/firestore-coverage.sh
 
+      - name: Run firebase_admin_sdk example tests
+        working-directory: packages/firebase_admin_sdk/example
+        run: dart test
+
+      - name: Run firebase_admin_sdk example_server_app tests
+        working-directory: packages/firebase_admin_sdk/example_server_app
+        run: dart test
+
       - name: Process coverage and check threshold
         if: matrix.dart-version == 'stable'
         id: coverage
