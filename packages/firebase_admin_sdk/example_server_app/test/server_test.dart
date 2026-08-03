@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart';
@@ -24,26 +25,23 @@ void main() {
 
   setUp(() async {
     p = await Process.start(
-      'dart',
+      Platform.resolvedExecutable,
       ['run', 'bin/server.dart'],
       environment: {'PORT': port},
     );
-    // Wait for server to start and print to stdout.
-    await p.stdout.first;
+    // Wait for server to start and print to stdout that it is running.
+    await p.stdout
+        .transform(utf8.decoder)
+        .firstWhere((line) => line.contains('Server running on port'));
   });
 
   tearDown(() => p.kill());
 
-  test('Root', () async {
-    final response = await get(Uri.parse('$host/'));
+  test('Health', () async {
+    final response = await get(Uri.parse('$host/health'));
     expect(response.statusCode, 200);
-    expect(response.body, 'Hello, World!\n');
-  });
-
-  test('Echo', () async {
-    final response = await get(Uri.parse('$host/echo/hello'));
-    expect(response.statusCode, 200);
-    expect(response.body, 'hello\n');
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    expect(body['status'], 'healthy');
   });
 
   test('404', () async {
