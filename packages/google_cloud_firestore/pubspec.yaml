@@ -4,7 +4,7 @@ description: >-
   database for mobile, web, and server development from Firebase and
   Google Cloud.
 resolution: workspace
-version: 0.5.2
+version: 0.5.3
 repository: https://github.com/firebase/firebase-admin-dart/tree/main/packages/google_cloud_firestore
 
 environment:
