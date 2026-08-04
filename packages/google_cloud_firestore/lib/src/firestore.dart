@@ -483,9 +483,22 @@ class Firestore {
 
   /// Creates a [PipelineSource], which defines a Firestore Pipeline operation.
   ///
-  /// Pipeline operations are available for Firestore Enterprise edition
-  /// databases and support server-side projections, expressions, aggregates,
-  /// and vector search.
+  /// Pipeline operations support server-side projections, expressions,
+  /// aggregates, and vector search.
+  ///
+  /// Pipelines require a Firestore **Enterprise edition** database; see
+  /// [Pipeline.execute] for the failure behavior elsewhere. An existing [Query]
+  /// or [VectorQuery] can be converted with [PipelineSource.createFrom].
+  ///
+  /// ```dart
+  /// final snapshot = await firestore
+  ///     .pipeline()
+  ///     .collection('books')
+  ///     .where(field('rating').greaterThanValue(4.0))
+  ///     .select(['title', field('rating')])
+  ///     .limit(10)
+  ///     .execute();
+  /// ```
   PipelineSource pipeline() => PipelineSource._(this);
 
   /// Fetches the root collections that are associated with this Firestore

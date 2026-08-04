@@ -1421,6 +1421,14 @@ final class Pipeline {
   }
 
   /// Executes this Pipeline and returns the results.
+  ///
+  /// Pipelines require a Firestore **Enterprise edition** database. Executing
+  /// against a Standard edition database throws a [FirestoreException] with
+  /// [FirestoreClientErrorCode.unimplemented].
+  ///
+  /// Pass [transaction] to read inside an existing transaction, or [readTime] to
+  /// read the database as it was at a past timestamp. Providing both throws an
+  /// [ArgumentError].
   Future<PipelineSnapshot> execute({
     String? transaction,
     Timestamp? readTime,
