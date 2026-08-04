@@ -15,8 +15,11 @@
 import 'dart:convert';
 
 import 'package:google_cloud_rpc/exceptions.dart';
+import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
+import 'package:retry/retry.dart';
 
+import 'backoff.dart';
 import 'status_code.dart';
 
 /// Extracts error code from error response.
@@ -122,6 +125,57 @@ Never handleFirestoreException(Object exception, StackTrace stackTrace) {
   }
 
   Error.throwWithStackTrace(exception, stackTrace);
+}
+
+/// The maximum delay between retries for Firestore's own retryable errors
+/// (as opposed to `package:retry`'s smaller 30s default), matching the
+/// ceiling this package has historically used.
+const _maxFirestoreRetryDelay = Duration(
+  milliseconds: ExponentialBackoff.defaultBackOffMaxDelayMs,
+);
+
+/// An `onRetry` callback for `package:retry` that makes RESOURCE_EXHAUSTED
+/// errors back off aggressively (jump straight to the max delay) rather than
+/// the standard gradual ramp-up.
+///
+/// RESOURCE_EXHAUSTED means the server has explicitly signaled it's over
+/// quota — retrying again quickly only adds more load and fails again, so
+/// this waits the maximum delay on top of `package:retry`'s own delay for
+/// that attempt before trying again.
+@internal
+Future<void> backOffHardOnResourceExhausted(Exception error) async {
+  if (error case FirestoreException(
+    :final errorCode,
+  ) when errorCode.statusCode == StatusCode.resourceExhausted) {
+    await Future<void>.delayed(_maxFirestoreRetryDelay);
+  }
+}
+
+/// Retries [attempt] with backoff when it throws a transport-level
+/// [http.ClientException] (e.g. a keep-alive connection dropped before any
+/// response was received) — see
+/// https://github.com/firebase/firebase-admin-dart/issues/291.
+///
+/// [attempt] must reset any state it accumulates (e.g. clear a results list)
+/// at the start of each call, since it may be invoked multiple times.
+///
+/// Retrying is only safe when [hasPartialProgress] reports that no data has
+/// been streamed back yet in the failed attempt (otherwise retrying would
+/// duplicate already-received results), and when [allowRetry] is true (reads
+/// within an active transaction are instead retried by the transaction
+/// runner).
+@internal
+Future<T> retryOnConnectionError<T>(
+  Future<T> Function() attempt, {
+  required bool Function() hasPartialProgress,
+  bool allowRetry = true,
+  int maxAttempts = 5,
+}) {
+  return RetryOptions(maxAttempts: maxAttempts).retry(
+    attempt,
+    retryIf: (error) =>
+        error is http.ClientException && allowRetry && !hasPartialProgress(),
+  );
 }
 
 /// Exception thrown by Firestore operations.

@@ -130,40 +130,44 @@ class AggregateQuery {
       readTime: null,
     );
 
-    final response = await firestore._firestoreClient.v1((
-      api,
-      projectId,
-    ) async {
-      return api.runAggregationQuery(request);
-    });
-
     final results = <String, Object?>{};
-    Timestamp? readTime;
 
-    await for (final result in response) {
-      if (result.result case final aggregationResult?) {
-        for (final entry in aggregationResult.aggregateFields.entries) {
-          final value = entry.value;
-          if (value.integerValue != null) {
-            results[entry.key] = value.integerValue;
-          } else if (value.doubleValue != null) {
-            results[entry.key] = value.doubleValue;
-          } else if (value.nullValue != null) {
-            results[entry.key] = null;
+    return retryOnConnectionError(() async {
+      results.clear();
+      Timestamp? readTime;
+
+      final response = await firestore._firestoreClient.v1((
+        api,
+        projectId,
+      ) async {
+        return api.runAggregationQuery(request);
+      });
+
+      await for (final result in response) {
+        if (result.result case final aggregationResult?) {
+          for (final entry in aggregationResult.aggregateFields.entries) {
+            final value = entry.value;
+            if (value.integerValue != null) {
+              results[entry.key] = value.integerValue;
+            } else if (value.doubleValue != null) {
+              results[entry.key] = value.doubleValue;
+            } else if (value.nullValue != null) {
+              results[entry.key] = null;
+            }
           }
+        }
+
+        if (result.readTime != null) {
+          readTime = Timestamp._fromProto(result.readTime!);
         }
       }
 
-      if (result.readTime != null) {
-        readTime = Timestamp._fromProto(result.readTime!);
-      }
-    }
-
-    return AggregateQuerySnapshot._(
-      query: this,
-      readTime: readTime,
-      data: results,
-    );
+      return AggregateQuerySnapshot._(
+        query: this,
+        readTime: readTime,
+        data: results,
+      );
+    }, hasPartialProgress: () => results.isNotEmpty);
   }
 
   /// Converts this aggregation query to a proto representation.

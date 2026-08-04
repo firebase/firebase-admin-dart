@@ -60,49 +60,56 @@ class _AggregationReader {
       transactionOptions: transactionOptions,
     );
 
-    final response = await aggregateQuery.query.firestore._firestoreClient.v1((
-      api,
-      projectId,
-    ) async {
-      return api.runAggregationQuery(request);
-    });
-
     final results = <String, Object?>{};
-    Timestamp? aggregationReadTime;
 
-    // Process streaming response
-    await for (final result in response) {
-      // Capture transaction ID from response (if present)
-      if (result.transaction.isNotEmpty) {
-        _retrievedTransactionId = base64Encode(result.transaction);
-      }
+    return retryOnConnectionError(
+      () async {
+        results.clear();
+        _retrievedTransactionId = null;
+        Timestamp? aggregationReadTime;
 
-      if (result.result != null) {
-        for (final entry in result.result!.aggregateFields.entries) {
-          final value = entry.value;
-          if (value.integerValue != null) {
-            results[entry.key] = value.integerValue;
-          } else if (value.doubleValue != null) {
-            results[entry.key] = value.doubleValue;
-          } else if (value.nullValue != null) {
-            results[entry.key] = null;
+        final response = await aggregateQuery.query.firestore._firestoreClient
+            .v1((api, projectId) async {
+              return api.runAggregationQuery(request);
+            });
+
+        // Process streaming response
+        await for (final result in response) {
+          // Capture transaction ID from response (if present)
+          if (result.transaction.isNotEmpty) {
+            _retrievedTransactionId = base64Encode(result.transaction);
+          }
+
+          if (result.result != null) {
+            for (final entry in result.result!.aggregateFields.entries) {
+              final value = entry.value;
+              if (value.integerValue != null) {
+                results[entry.key] = value.integerValue;
+              } else if (value.doubleValue != null) {
+                results[entry.key] = value.doubleValue;
+              } else if (value.nullValue != null) {
+                results[entry.key] = null;
+              }
+            }
+          }
+
+          if (result.readTime != null) {
+            aggregationReadTime = Timestamp._fromProto(result.readTime!);
           }
         }
-      }
 
-      if (result.readTime != null) {
-        aggregationReadTime = Timestamp._fromProto(result.readTime!);
-      }
-    }
-
-    // Return both aggregation results and transaction ID
-    return _AggregationReaderResponse(
-      AggregateQuerySnapshot._(
-        query: aggregateQuery,
-        readTime: aggregationReadTime,
-        data: results,
-      ),
-      _retrievedTransactionId,
+        // Return both aggregation results and transaction ID
+        return _AggregationReaderResponse(
+          AggregateQuerySnapshot._(
+            query: aggregateQuery,
+            readTime: aggregationReadTime,
+            data: results,
+          ),
+          _retrievedTransactionId,
+        );
+      },
+      hasPartialProgress: () => results.isNotEmpty,
+      allowRetry: transactionId == null && transactionOptions == null,
     );
   }
 }

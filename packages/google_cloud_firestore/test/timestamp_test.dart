@@ -106,5 +106,11 @@ void main() {
       final timestamp = Timestamp.fromMillis(millis);
       expect(timestamp.toMillis(), millis);
     });
+
+    test('toJson() returns correct JSON representation', () {
+      final timestamp = Timestamp(seconds: 1234567890, nanoseconds: 123456789);
+      final json = timestamp.toJson();
+      expect(json, {'_seconds': 1234567890, '_nanoseconds': 123456789});
+    });
   });
 }

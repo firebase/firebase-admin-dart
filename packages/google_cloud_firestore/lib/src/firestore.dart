@@ -23,6 +23,7 @@ import 'package:google_cloud_protobuf/protobuf.dart' as protobuf_v1;
 import 'package:google_cloud_type/type.dart' as type_v1;
 import 'package:intl/intl.dart';
 import 'package:meta/meta.dart';
+import 'package:retry/retry.dart';
 
 import 'backoff.dart';
 import 'credential.dart';
@@ -116,6 +117,7 @@ class Settings {
     this.ignoreUndefinedProperties = false,
     this.useBigInt = false,
     this.environmentOverride,
+    this.headers,
   });
 
   /// The project ID from the Google Developer's Console, e.g. 'grape-spaceship-123'.
@@ -186,6 +188,13 @@ class Settings {
   /// ```
   final Map<String, String>? environmentOverride;
 
+  /// Additional HTTP headers to send with every Firestore request.
+  ///
+  /// Useful for attaching usage-tracking or tracing headers (e.g.
+  /// `X-Firebase-Client`, `X-Goog-Api-Client`) without needing to supply a
+  /// custom HTTP client.
+  final Map<String, String>? headers;
+
   /// Creates a copy of this Settings with the given fields replaced.
   Settings copyWith({
     String? projectId,
@@ -196,6 +205,7 @@ class Settings {
     bool? ignoreUndefinedProperties,
     bool? useBigInt,
     Map<String, String>? environmentOverride,
+    Map<String, String>? headers,
   }) {
     return Settings(
       projectId: projectId ?? this.projectId,
@@ -207,6 +217,7 @@ class Settings {
           ignoreUndefinedProperties ?? this.ignoreUndefinedProperties,
       useBigInt: useBigInt ?? this.useBigInt,
       environmentOverride: environmentOverride ?? this.environmentOverride,
+      headers: headers ?? this.headers,
     );
   }
 
@@ -221,7 +232,8 @@ class Settings {
           ssl == other.ssl &&
           credential == other.credential &&
           ignoreUndefinedProperties == other.ignoreUndefinedProperties &&
-          useBigInt == other.useBigInt;
+          useBigInt == other.useBigInt &&
+          const MapEquality<String, String>().equals(headers, other.headers);
 
   @override
   int get hashCode => Object.hash(
@@ -230,6 +242,7 @@ class Settings {
     host,
     ssl,
     credential,
+    const MapEquality<String, String>().hash(headers),
     ignoreUndefinedProperties,
     useBigInt,
   );

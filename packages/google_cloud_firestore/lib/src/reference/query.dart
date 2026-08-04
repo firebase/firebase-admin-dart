@@ -480,50 +480,64 @@ interface class Query<T> {
   }
 
   Future<QuerySnapshot<T>> _get({required String? transactionId}) async {
-    final response = await firestore._firestoreClient.v1((
-      api,
-      projectId,
-    ) async {
-      final request = _toProto(
-        parent: _buildProtoParentPath(),
-        transactionId: transactionId,
-        readTime: null,
-      );
-      return api.runQuery(request);
-    });
+    final request = _toProto(
+      parent: _buildProtoParentPath(),
+      transactionId: transactionId,
+      readTime: null,
+    );
 
-    Timestamp? readTime;
     final snapshots = <QueryDocumentSnapshot<T>>[];
-    await for (final e in response) {
-      final document = e.document;
-      if (document == null) {
-        readTime = e.readTime.let(Timestamp._fromProto);
-        continue;
-      }
 
-      final snapshot = DocumentSnapshot._fromDocument(
-        document,
-        e.readTime,
-        firestore,
-      );
-      final finalDoc =
-          _DocumentSnapshotBuilder(
-              snapshot.ref.withConverter<T>(
-                fromFirestore: _queryOptions.converter.fromFirestore,
-                toFirestore: _queryOptions.converter.toFirestore,
-              ),
-            )
-            // Recreate the QueryDocumentSnapshot with the DocumentReference
-            // containing the original converter.
-            ..fieldsProto = firestore_v1.MapValue(fields: document.fields)
-            ..readTime = snapshot.readTime
-            ..createTime = snapshot.createTime
-            ..updateTime = snapshot.updateTime;
+    return retryOnConnectionError(
+      () async {
+        snapshots.clear();
+        Timestamp? readTime;
 
-      snapshots.add(finalDoc.build() as QueryDocumentSnapshot<T>);
-    }
+        final response = await firestore._firestoreClient.v1((
+          api,
+          projectId,
+        ) async {
+          return api.runQuery(request);
+        });
 
-    return QuerySnapshot<T>._(query: this, readTime: readTime, docs: snapshots);
+        await for (final e in response) {
+          final document = e.document;
+          if (document == null) {
+            readTime = e.readTime.let(Timestamp._fromProto);
+            continue;
+          }
+
+          final snapshot = DocumentSnapshot._fromDocument(
+            document,
+            e.readTime,
+            firestore,
+          );
+          final finalDoc =
+              _DocumentSnapshotBuilder(
+                  snapshot.ref.withConverter<T>(
+                    fromFirestore: _queryOptions.converter.fromFirestore,
+                    toFirestore: _queryOptions.converter.toFirestore,
+                  ),
+                )
+                // Recreate the QueryDocumentSnapshot with the
+                // DocumentReference containing the original converter.
+                ..fieldsProto = firestore_v1.MapValue(fields: document.fields)
+                ..readTime = snapshot.readTime
+                ..createTime = snapshot.createTime
+                ..updateTime = snapshot.updateTime;
+
+          snapshots.add(finalDoc.build() as QueryDocumentSnapshot<T>);
+        }
+
+        return QuerySnapshot<T>._(
+          query: this,
+          readTime: readTime,
+          docs: snapshots,
+        );
+      },
+      hasPartialProgress: () => snapshots.isNotEmpty,
+      allowRetry: transactionId == null,
+    );
   }
 
   String _buildProtoParentPath() {

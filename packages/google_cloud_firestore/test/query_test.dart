@@ -12,16 +12,116 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-@Tags(['firebase-emulator'])
-library;
-
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
+import 'package:google_cloud_firestore/src/firestore_http_client.dart';
 import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
+import 'package:google_cloud_protobuf/protobuf.dart' as protobuf_v1;
+import 'package:http/http.dart' as http;
+import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import 'fixtures/helpers.dart';
 
+class MockFirestoreHttpClient extends Mock implements FirestoreHttpClient {}
+
+firestore_v1.RunQueryResponse _documentResponse({
+  required String documentPath,
+  required Map<String, Object?> fields,
+  required Firestore firestore,
+}) {
+  final now = protobuf_v1.Timestamp(
+    seconds: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+  );
+  return firestore_v1.RunQueryResponse(
+    document: firestore_v1.Document(
+      name:
+          'projects/$mockProjectId/databases/(default)/documents/$documentPath',
+      fields: fields.map((key, value) {
+        final encoded = firestore.serializer.encodeValue(value);
+        return MapEntry(key, encoded!);
+      }),
+      createTime: now,
+      updateTime: now,
+    ),
+    readTime: now,
+  );
+}
+
+final _connectionClosedError = http.ClientException(
+  'Connection closed before full header was received',
+);
+
 void main() {
+  group('Query.get() retries on transient connection errors (unit)', () {
+    late MockFirestoreHttpClient mockClient;
+    late Firestore firestore;
+
+    setUp(() {
+      mockClient = MockFirestoreHttpClient();
+      firestore = Firestore.internal(
+        settings: const Settings(projectId: mockProjectId),
+        client: mockClient,
+      );
+
+      when(() => mockClient.cachedProjectId).thenReturn(mockProjectId);
+    });
+
+    test('retries once and succeeds after a ClientException', () async {
+      var callCount = 0;
+      when(
+        () => mockClient.v1<Stream<firestore_v1.RunQueryResponse>>(any()),
+      ).thenAnswer((_) async {
+        callCount++;
+        if (callCount == 1) {
+          return Stream<firestore_v1.RunQueryResponse>.error(
+            _connectionClosedError,
+          );
+        }
+        return Stream.fromIterable([
+          _documentResponse(
+            documentPath: 'numbers/0',
+            fields: {'number': 0},
+            firestore: firestore,
+          ),
+        ]);
+      });
+
+      final snapshot = await firestore
+          .collection('numbers')
+          .where('number', WhereFilter.equal, 0)
+          .limit(1)
+          .get();
+
+      expect(callCount, 2);
+      expect(snapshot.docs, hasLength(1));
+      expect(snapshot.docs.single.get('number')?.value, 0);
+    });
+
+    test('gives up and rethrows after repeated ClientExceptions', () async {
+      var callCount = 0;
+      when(
+        () => mockClient.v1<Stream<firestore_v1.RunQueryResponse>>(any()),
+      ).thenAnswer((_) async {
+        callCount++;
+        return Stream<firestore_v1.RunQueryResponse>.error(
+          _connectionClosedError,
+        );
+      });
+
+      await expectLater(
+        firestore
+            .collection('numbers')
+            .where('number', WhereFilter.equal, 0)
+            .limit(1)
+            .get(),
+        throwsA(isA<http.ClientException>()),
+      );
+
+      // Retries a bounded number of times rather than forever or exactly once.
+      expect(callCount, greaterThan(1));
+    });
+  });
+
   group('query interface', () {
     late Firestore firestore;
 
@@ -230,7 +330,7 @@ void main() {
 
       expect(snapshot.docs.map((doc) => doc.id), ['2', '4', '5']);
     });
-  });
+  }, tags: 'firebase-emulator');
 
   group('where()', () {
     late Firestore firestore;
@@ -446,7 +546,7 @@ void main() {
         throwsA(isA<ArgumentError>()),
       );
     });
-  });
+  }, tags: 'firebase-emulator');
 
   group('orderBy', () {
     late Firestore firestore;
@@ -494,7 +594,7 @@ void main() {
       final snapshot = await collection.orderBy('foo').orderBy('bar').get();
       expect(snapshot.docs.map((doc) => doc.id), ['d', 'c', 'b', 'a']);
     });
-  });
+  }, tags: 'firebase-emulator');
 
   group('limit()', () {
     late Firestore firestore;
@@ -511,7 +611,7 @@ void main() {
       final snapshot = await collection.limit(1).limit(2).get();
       expect(snapshot.docs.map((doc) => doc.id), ['a', 'b']);
     });
-  });
+  }, tags: 'firebase-emulator');
 
   group('limitToLatest()', () {
     late Firestore firestore;
@@ -532,5 +632,5 @@ void main() {
           .get();
       expect(snapshot.docs.map((doc) => doc.id), ['c', 'b']);
     });
-  });
+  }, tags: 'firebase-emulator');
 }

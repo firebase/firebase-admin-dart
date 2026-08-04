@@ -60,61 +60,70 @@ class _QueryReader<T> {
       transactionOptions: transactionOptions,
     );
 
-    final response = await query.firestore._firestoreClient.v1((
-      api,
-      projectId,
-    ) async {
-      return api.runQuery(request);
-    });
-
-    Timestamp? queryReadTime;
     final snapshots = <QueryDocumentSnapshot<T>>[];
 
-    // Process streaming response
-    await for (final e in response) {
-      // Capture transaction ID from response (if present)
-      if (e.transaction.isNotEmpty) {
-        _retrievedTransactionId = base64Encode(e.transaction);
-      }
+    return retryOnConnectionError(
+      () async {
+        snapshots.clear();
+        _retrievedTransactionId = null;
+        Timestamp? queryReadTime;
 
-      final document = e.document;
-      if (document == null) {
-        // End of stream marker
-        queryReadTime = e.readTime?.let(Timestamp._fromProto);
-        continue;
-      }
+        final response = await query.firestore._firestoreClient.v1((
+          api,
+          projectId,
+        ) async {
+          return api.runQuery(request);
+        });
 
-      // Convert proto document to DocumentSnapshot
-      final snapshot = DocumentSnapshot._fromDocument(
-        document,
-        e.readTime,
-        query.firestore,
-      );
+        // Process streaming response
+        await for (final e in response) {
+          // Capture transaction ID from response (if present)
+          if (e.transaction.isNotEmpty) {
+            _retrievedTransactionId = base64Encode(e.transaction);
+          }
 
-      // Recreate with proper converter
-      final finalDoc =
-          _DocumentSnapshotBuilder(
-              snapshot.ref.withConverter<T>(
-                fromFirestore: query._queryOptions.converter.fromFirestore,
-                toFirestore: query._queryOptions.converter.toFirestore,
-              ),
-            )
-            ..fieldsProto = firestore_v1.MapValue(fields: document.fields)
-            ..readTime = snapshot.readTime
-            ..createTime = snapshot.createTime
-            ..updateTime = snapshot.updateTime;
+          final document = e.document;
+          if (document == null) {
+            // End of stream marker
+            queryReadTime = e.readTime?.let(Timestamp._fromProto);
+            continue;
+          }
 
-      snapshots.add(finalDoc.build() as QueryDocumentSnapshot<T>);
-    }
+          // Convert proto document to DocumentSnapshot
+          final snapshot = DocumentSnapshot._fromDocument(
+            document,
+            e.readTime,
+            query.firestore,
+          );
 
-    // Return both query results and transaction ID
-    return _QueryReaderResponse<T>(
-      QuerySnapshot<T>._(
-        query: query,
-        readTime: queryReadTime,
-        docs: snapshots,
-      ),
-      _retrievedTransactionId,
+          // Recreate with proper converter
+          final finalDoc =
+              _DocumentSnapshotBuilder(
+                  snapshot.ref.withConverter<T>(
+                    fromFirestore: query._queryOptions.converter.fromFirestore,
+                    toFirestore: query._queryOptions.converter.toFirestore,
+                  ),
+                )
+                ..fieldsProto = firestore_v1.MapValue(fields: document.fields)
+                ..readTime = snapshot.readTime
+                ..createTime = snapshot.createTime
+                ..updateTime = snapshot.updateTime;
+
+          snapshots.add(finalDoc.build() as QueryDocumentSnapshot<T>);
+        }
+
+        // Return both query results and transaction ID
+        return _QueryReaderResponse<T>(
+          QuerySnapshot<T>._(
+            query: query,
+            readTime: queryReadTime,
+            docs: snapshots,
+          ),
+          _retrievedTransactionId,
+        );
+      },
+      hasPartialProgress: () => snapshots.isNotEmpty,
+      allowRetry: transactionId == null && transactionOptions == null,
     );
   }
 }

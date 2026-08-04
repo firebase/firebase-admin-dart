@@ -62,6 +62,16 @@ firestore_v1.BatchGetDocumentsResponse createMissingResponse(
   );
 }
 
+/// A stream that yields [response] (simulating partial progress) then fails
+/// with a retryable [FirestoreException], as if the connection dropped
+/// mid-batch.
+Stream<firestore_v1.BatchGetDocumentsResponse> _partialThenUnavailable(
+  firestore_v1.BatchGetDocumentsResponse response,
+) async* {
+  yield response;
+  throw FirestoreException(FirestoreClientErrorCode.unavailable);
+}
+
 void main() {
   group('Firestore.getAll()', () {
     late MockFirestoreHttpClient mockClient;
@@ -319,6 +329,113 @@ void main() {
       // Should return successfully with field mask
       expect(results, hasLength(1));
       expect(results[0].get('foo')?.value, 'bar');
+    });
+  });
+
+  group('Firestore.getAll() retries on transient errors', () {
+    late MockFirestoreHttpClient mockClient;
+    late Firestore firestore;
+
+    setUp(() {
+      mockClient = MockFirestoreHttpClient();
+      firestore = Firestore.internal(
+        settings: const Settings(projectId: _unitTestProjectId),
+        client: mockClient,
+      );
+
+      when(() => mockClient.cachedProjectId).thenReturn(_unitTestProjectId);
+    });
+
+    test('retries after partial progress and succeeds', () async {
+      var callCount = 0;
+      when(
+        () => mockClient.v1<Stream<firestore_v1.BatchGetDocumentsResponse>>(
+          any(),
+        ),
+      ).thenAnswer((_) async {
+        callCount++;
+        if (callCount == 1) {
+          // First attempt fetches doc "a", then the connection drops before
+          // doc "b" is received.
+          return _partialThenUnavailable(
+            createFoundResponse(
+              documentPath: 'col/a',
+              fields: {'v': 1},
+              firestore: firestore,
+            ),
+          );
+        }
+        // Retry only re-requests the still-outstanding doc "b".
+        return Stream.fromIterable([
+          createFoundResponse(
+            documentPath: 'col/b',
+            fields: {'v': 2},
+            firestore: firestore,
+          ),
+        ]);
+      });
+
+      final docA = firestore.doc('col/a');
+      final docB = firestore.doc('col/b');
+      final results = await firestore.getAll([docA, docB]);
+
+      expect(callCount, 2);
+      expect(results, hasLength(2));
+      expect(results[0].get('v')?.value, 1);
+      expect(results[1].get('v')?.value, 2);
+    });
+
+    test('does not retry when no progress was made', () async {
+      var callCount = 0;
+      when(
+        () => mockClient.v1<Stream<firestore_v1.BatchGetDocumentsResponse>>(
+          any(),
+        ),
+      ).thenAnswer((_) async {
+        callCount++;
+        return Stream<firestore_v1.BatchGetDocumentsResponse>.error(
+          FirestoreException(FirestoreClientErrorCode.unavailable),
+        );
+      });
+
+      final doc = firestore.doc('col/a');
+
+      await expectLater(
+        firestore.getAll([doc]),
+        throwsA(isA<FirestoreException>()),
+      );
+
+      expect(callCount, 1);
+    });
+
+    test('gives up after max attempts (bounded, not infinite)', () async {
+      var callCount = 0;
+      when(
+        () => mockClient.v1<Stream<firestore_v1.BatchGetDocumentsResponse>>(
+          any(),
+        ),
+      ).thenAnswer((_) async {
+        callCount++;
+        // Doc "a" is (re-)found every attempt, but doc "b" is never
+        // returned, so this would previously have retried forever.
+        return _partialThenUnavailable(
+          createFoundResponse(
+            documentPath: 'col/a',
+            fields: {'v': 1},
+            firestore: firestore,
+          ),
+        );
+      });
+
+      final docA = firestore.doc('col/a');
+      final docB = firestore.doc('col/b');
+
+      await expectLater(
+        firestore.getAll([docA, docB]),
+        throwsA(isA<FirestoreException>()),
+      );
+
+      expect(callCount, 5);
     });
   });
 

@@ -1,6 +1,11 @@
-## Unreleased
+## 0.5.3
 
+- Added `Settings.headers` to attach custom HTTP headers to every outgoing Firestore request.
+- Fixed intermittent `ClientException: Connection closed before full header was received` on queries and aggregations under high concurrency; these now retry with backoff.
+- Fixed `Firestore.getAll()` retrying transient errors indefinitely; it now retries a bounded number of times before surfacing the error.
 - Updated `Transaction.delete` and `Transaction.update` type constraints to accept `DocumentReference<Object?>`. (thanks to @Levin-Me)
+- Made `Timestamp` encodable by adding `toJson` method. (thanks to @OutdatedGuy)
+- Update dependency `googleapis_auth: ^2.3.3` to fix `auth/insufficient-permission` errors with Application Default Credentials that have no quota project set.
 
 ## 0.5.2
 

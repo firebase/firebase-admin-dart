@@ -55,7 +55,6 @@ class Transaction {
         _writeBatch = null;
       default:
         _writeBatch = WriteBatch._(_firestore);
-        _backoff = ExponentialBackoff();
     }
   }
 
@@ -77,9 +76,6 @@ class Transaction {
 
   /// `null` if transaction is read only
   late final WriteBatch? _writeBatch;
-
-  /// `null` if transaction is read only
-  late final ExponentialBackoff _backoff;
 
   /// Future that resolves to the transaction ID of the current attempt.
   /// It is lazily initialised upon the first read. Upon retry, it is reset and
@@ -521,30 +517,31 @@ class Transaction {
 
   Future<T> _runTransaction<T>(TransactionHandler<T> updateFunction) async {
     // No backoff is set for readonly transactions (i.e. attempts == 1)
-    if (_writeBatch == null) {
+    final writeBatch = _writeBatch;
+    if (writeBatch == null) {
       return _runTransactionOnce(updateFunction);
     }
-    FirestoreException? lastError;
 
-    for (var attempts = 0; attempts < _maxAttempts; attempts++) {
-      try {
-        _writeBatch.reset();
-        await _maybeBackoff(_backoff, lastError);
-
-        return await _runTransactionOnce(updateFunction);
-      } on FirestoreException catch (e) {
-        lastError = e;
-
-        if (!_isRetryableTransactionError(e)) {
-          rethrow;
-        }
+    try {
+      return await RetryOptions(maxAttempts: _maxAttempts).retry(
+        () {
+          writeBatch.reset();
+          return _runTransactionOnce(updateFunction);
+        },
+        retryIf: (error) =>
+            error is FirestoreException && _isRetryableTransactionError(error),
+        onRetry: backOffHardOnResourceExhausted,
+      );
+    } on FirestoreException catch (e) {
+      if (_isRetryableTransactionError(e)) {
+        // All attempts were exhausted on a retryable error.
+        throw FirestoreException(
+          FirestoreClientErrorCode.aborted,
+          'Transaction max attempts exceeded',
+        );
       }
+      rethrow;
     }
-
-    throw FirestoreException(
-      FirestoreClientErrorCode.aborted,
-      'Transaction max attempts exceeded',
-    );
   }
 
   Future<T> _runTransactionOnce<T>(TransactionHandler<T> updateFunction) async {
@@ -565,17 +562,6 @@ class Transaction {
 /// The [TransactionHandler] may be executed multiple times; it should be able
 /// to handle multiple executions.
 typedef TransactionHandler<T> = Future<T> Function(Transaction transaction);
-
-/// Delays further operations based on the provided error.
-Future<void> _maybeBackoff(
-  ExponentialBackoff backoff, [
-  FirestoreException? error,
-]) async {
-  if (error?.errorCode.statusCode == StatusCode.resourceExhausted) {
-    backoff.resetToMax();
-  }
-  await backoff.backoffAndWait();
-}
 
 bool _isRetryableTransactionError(FirestoreException error) {
   switch (error.errorCode.statusCode) {

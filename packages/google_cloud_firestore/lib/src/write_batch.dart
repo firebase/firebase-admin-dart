@@ -128,26 +128,19 @@ class WriteBatch {
     }
 
     const retryCodes = StatusCode.resourceExhaustedAbortedUnavailable;
-    const maxAttempts = 5;
 
-    final backoff = ExponentialBackoff();
-    FirestoreException? lastError;
-
-    for (var attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        await _maybeBackoff(backoff, lastError);
-        return await firestore._firestoreClient.v1((api, projectId) async {
-          return api.commit(request);
-        });
-      } on FirestoreException catch (e) {
-        lastError = e;
-        if (!retryCodes.contains(e.errorCode.statusCode)) {
-          rethrow;
-        }
-      }
-    }
-
-    throw lastError!;
+    return const RetryOptions(maxAttempts: 5).retry(
+      () => firestore._firestoreClient.v1((api, projectId) async {
+        return api.commit(request);
+      }),
+      retryIf: (error) => switch (error) {
+        FirestoreException(:final errorCode) => retryCodes.contains(
+          errorCode.statusCode,
+        ),
+        _ => false,
+      },
+      onRetry: backOffHardOnResourceExhausted,
+    );
   }
 
   ///Resets the WriteBatch and dequeues all pending operations.

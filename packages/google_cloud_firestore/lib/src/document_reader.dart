@@ -79,75 +79,81 @@ class _DocumentReader<T> {
   Future<void> _fetchDocuments() async {
     if (_outstandingDocuments.isEmpty) return;
 
-    final request = firestore_v1.BatchGetDocumentsRequest(
-      database: firestore._formattedDatabaseName,
-      documents: _outstandingDocuments.toList(),
-      mask: fieldMask.let((fieldMask) {
-        return firestore_v1.DocumentMask(
-          fieldPaths: fieldMask.map((e) => e._formattedName).toList(),
-        );
-      }),
-      transaction: transactionId.let(base64Decode),
-      newTransaction: transactionOptions,
-      readTime: readTime?._toProto().timestampValue,
-    );
-
+    // Each attempt only requests documents still outstanding from the
+    // previous one, since already-received documents are removed below.
     var resultCount = 0;
-    try {
-      final documents = await firestore._firestoreClient.v1((
-        api,
-        projectId,
-      ) async {
-        return api.batchGetDocuments(request);
-      });
 
-      await for (final response in documents) {
-        DocumentSnapshot<DocumentData>? documentSnapshot;
+    await const RetryOptions(maxAttempts: 5).retry(
+      () async {
+        // A prior failed attempt may have already fetched every outstanding
+        // document before erroring; nothing left to (re)request.
+        if (_outstandingDocuments.isEmpty) return;
 
-        if (response.transaction.isNotEmpty) {
-          _retrievedTransactionId = base64Encode(response.transaction);
+        resultCount = 0;
+
+        final request = firestore_v1.BatchGetDocumentsRequest(
+          database: firestore._formattedDatabaseName,
+          documents: _outstandingDocuments.toList(),
+          mask: fieldMask.let((fieldMask) {
+            return firestore_v1.DocumentMask(
+              fieldPaths: fieldMask.map((e) => e._formattedName).toList(),
+            );
+          }),
+          transaction: transactionId.let(base64Decode),
+          newTransaction: transactionOptions,
+          readTime: readTime?._toProto().timestampValue,
+        );
+
+        final documents = await firestore._firestoreClient.v1((
+          api,
+          projectId,
+        ) async {
+          return api.batchGetDocuments(request);
+        });
+
+        await for (final response in documents) {
+          DocumentSnapshot<DocumentData>? documentSnapshot;
+
+          if (response.transaction.isNotEmpty) {
+            _retrievedTransactionId = base64Encode(response.transaction);
+          }
+
+          final found = response.found;
+          if (found != null) {
+            documentSnapshot = DocumentSnapshot._fromDocument(
+              found,
+              response.readTime,
+              firestore,
+            );
+          } else if (response.missing != null && response.missing!.isNotEmpty) {
+            final missing = response.missing!;
+            documentSnapshot = DocumentSnapshot._missing(
+              missing,
+              response.readTime,
+              firestore,
+            );
+          }
+
+          if (documentSnapshot != null) {
+            final path = documentSnapshot.ref._formattedName;
+            _outstandingDocuments.remove(path);
+            _retreivedDocuments[path] = documentSnapshot;
+            resultCount++;
+          }
         }
-
-        final found = response.found;
-        if (found != null) {
-          documentSnapshot = DocumentSnapshot._fromDocument(
-            found,
-            response.readTime,
-            firestore,
-          );
-        } else if (response.missing != null && response.missing!.isNotEmpty) {
-          final missing = response.missing!;
-          documentSnapshot = DocumentSnapshot._missing(
-            missing,
-            response.readTime,
-            firestore,
-          );
-        }
-
-        if (documentSnapshot != null) {
-          final path = documentSnapshot.ref._formattedName;
-          _outstandingDocuments.remove(path);
-          _retreivedDocuments[path] = documentSnapshot;
-          resultCount++;
-        }
-      }
-    } on FirestoreException catch (firestoreError) {
-      final shouldRetry =
+      },
+      retryIf: (error) => switch (error) {
+        FirestoreException(:final errorCode) =>
           // Transactional reads are retried via the transaction runner
-          request.transaction == null &&
-          request.newTransaction == null &&
-          // Only retry if we made progress
-          resultCount > 0 &&
-          // Don't retry permanent errors
-          StatusCode.batchGetRetryCodes.contains(
-            firestoreError.errorCode.statusCode,
-          );
-
-      if (shouldRetry) {
-        return _fetchDocuments();
-      } else {
-        rethrow;
-      }
-    }
+          transactionId == null &&
+              transactionOptions == null &&
+              // Only retry if we made progress
+              resultCount > 0 &&
+              // Don't retry permanent errors
+              StatusCode.batchGetRetryCodes.contains(errorCode.statusCode),
+        _ => false,
+      },
+      onRetry: backOffHardOnResourceExhausted,
+    );
   }
 }

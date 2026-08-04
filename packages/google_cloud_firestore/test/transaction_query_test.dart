@@ -2,14 +2,109 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-@Tags(['firebase-emulator'])
-library;
+import 'dart:typed_data';
 
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
+import 'package:google_cloud_firestore/src/firestore_http_client.dart';
+import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
+import 'package:http/http.dart' as http;
+import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 import 'fixtures/helpers.dart' as helpers;
 
+class MockFirestoreHttpClient extends Mock implements FirestoreHttpClient {}
+
+final _connectionClosedError = http.ClientException(
+  'Connection closed before full header was received',
+);
+
 void main() {
+  group(
+    'Transaction.getQuery() retries on transient connection errors (unit)',
+    () {
+      late MockFirestoreHttpClient mockClient;
+      late Firestore firestore;
+
+      setUp(() {
+        mockClient = MockFirestoreHttpClient();
+        firestore = Firestore.internal(
+          settings: const Settings(projectId: helpers.mockProjectId),
+          client: mockClient,
+        );
+
+        when(
+          () => mockClient.cachedProjectId,
+        ).thenReturn(helpers.mockProjectId);
+      });
+
+      test(
+        'retries a read-only snapshot read (no active transaction) and succeeds',
+        () async {
+          var callCount = 0;
+          when(
+            () => mockClient.v1<Stream<firestore_v1.RunQueryResponse>>(any()),
+          ).thenAnswer((_) async {
+            callCount++;
+            if (callCount == 1) {
+              return Stream<firestore_v1.RunQueryResponse>.error(
+                _connectionClosedError,
+              );
+            }
+            return Stream.fromIterable([firestore_v1.RunQueryResponse()]);
+          });
+
+          final query = firestore.collection('numbers');
+          final snapshot = await firestore.runTransaction(
+            (tx) => tx.getQuery(query),
+            transactionOptions: ReadOnlyTransactionOptions(
+              readTime: Timestamp.now(),
+            ),
+          );
+
+          expect(callCount, 2);
+          expect(snapshot.docs, isEmpty);
+        },
+      );
+
+      test('does not retry a read within an active transaction', () async {
+        // The failed transaction attempt triggers a best-effort rollback.
+        when(() => mockClient.v1<void>(any())).thenAnswer((_) async {});
+
+        var callCount = 0;
+        when(
+          () => mockClient.v1<Stream<firestore_v1.RunQueryResponse>>(any()),
+        ).thenAnswer((_) async {
+          callCount++;
+          if (callCount == 1) {
+            // First read starts the transaction successfully.
+            return Stream.fromIterable([
+              firestore_v1.RunQueryResponse(
+                transaction: Uint8List.fromList([1, 2, 3]),
+              ),
+            ]);
+          }
+          // Second read, already inside the now-active transaction, fails and
+          // must not be retried by the reader itself.
+          return Stream<firestore_v1.RunQueryResponse>.error(
+            _connectionClosedError,
+          );
+        });
+
+        final query = firestore.collection('numbers');
+
+        await expectLater(
+          firestore.runTransaction((tx) async {
+            await tx.getQuery(query);
+            return tx.getQuery(query);
+          }),
+          throwsA(isA<http.ClientException>()),
+        );
+
+        expect(callCount, 2);
+      });
+    },
+  );
+
   group('Transaction Query', () {
     late Firestore firestore;
 
@@ -313,5 +408,5 @@ void main() {
       expect(result['singleValue'], 1);
       expect(result['queryCount'], 2);
     });
-  });
+  }, tags: 'firebase-emulator');
 }

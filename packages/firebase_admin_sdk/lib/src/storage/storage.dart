@@ -112,8 +112,12 @@ class Storage implements FirebaseService {
     return '$endpoint/b/${bucket.name}/o/$encodedName?alt=media&token=$token';
   }
 
+  bool _isDeleted = false;
+
   @override
   Future<void> delete() async {
+    if (_isDeleted) return;
+    _isDeleted = true;
     _delegate.close();
   }
 }

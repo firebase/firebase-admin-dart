@@ -12,15 +12,91 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-@Tags(['firebase-emulator'])
-library;
-
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
+import 'package:google_cloud_firestore/src/firestore_http_client.dart';
+import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
+import 'package:http/http.dart' as http;
+import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import 'fixtures/helpers.dart';
 
+class MockFirestoreHttpClient extends Mock implements FirestoreHttpClient {}
+
+firestore_v1.RunAggregationQueryResponse _countResponse(int count) {
+  return firestore_v1.RunAggregationQueryResponse(
+    result: firestore_v1.AggregationResult(
+      aggregateFields: {'count': firestore_v1.Value(integerValue: count)},
+    ),
+  );
+}
+
+final _connectionClosedError = http.ClientException(
+  'Connection closed before full header was received',
+);
+
 void main() {
+  group(
+    'AggregateQuery.get() retries on transient connection errors (unit)',
+    () {
+      late MockFirestoreHttpClient mockClient;
+      late Firestore firestore;
+
+      setUp(() {
+        mockClient = MockFirestoreHttpClient();
+        firestore = Firestore.internal(
+          settings: const Settings(projectId: mockProjectId),
+          client: mockClient,
+        );
+
+        when(() => mockClient.cachedProjectId).thenReturn(mockProjectId);
+      });
+
+      test('retries once and succeeds after a ClientException', () async {
+        var callCount = 0;
+        when(
+          () => mockClient.v1<Stream<firestore_v1.RunAggregationQueryResponse>>(
+            any(),
+          ),
+        ).thenAnswer((_) async {
+          callCount++;
+          if (callCount == 1) {
+            return Stream<firestore_v1.RunAggregationQueryResponse>.error(
+              _connectionClosedError,
+            );
+          }
+          return Stream.fromIterable([_countResponse(42)]);
+        });
+
+        final snapshot = await firestore.collection('numbers').count().get();
+
+        expect(callCount, 2);
+        expect(snapshot.count, 42);
+      });
+
+      test('gives up and rethrows after repeated ClientExceptions', () async {
+        var callCount = 0;
+        when(
+          () => mockClient.v1<Stream<firestore_v1.RunAggregationQueryResponse>>(
+            any(),
+          ),
+        ).thenAnswer((_) async {
+          callCount++;
+          return Stream<firestore_v1.RunAggregationQueryResponse>.error(
+            _connectionClosedError,
+          );
+        });
+
+        await expectLater(
+          firestore.collection('numbers').count().get(),
+          throwsA(isA<http.ClientException>()),
+        );
+
+        expect(callCount, greaterThan(1));
+      });
+    },
+  );
+
   group('AggregateQuery', () {
     late Firestore firestore;
     late CollectionReference<DocumentData> collection;
@@ -875,5 +951,5 @@ void main() {
         expect(() => collection.average(123), throwsA(isA<AssertionError>()));
       });
     });
-  });
+  }, tags: 'firebase-emulator');
 }
