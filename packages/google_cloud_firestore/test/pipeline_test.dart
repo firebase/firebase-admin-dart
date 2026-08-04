@@ -358,15 +358,21 @@ void main() {
         'genre',
       );
 
-      expect(stages[3].args.single.fieldReferenceValue, 'genre');
-      expect(stages[4].args.single.fieldReferenceValue, 'tags');
-      expect(stages[4].options['index_field']!.stringValue, 'tagIndex');
-      expect(stages[5].args.single.fieldReferenceValue, 'summary');
+      expect(
+        stages[3].args.single.mapValue!.fields['genre']!.fieldReferenceValue,
+        'genre',
+      );
+      expect(stages[4].args[0].fieldReferenceValue, 'tags');
+      expect(stages[4].args[1].fieldReferenceValue, 'tags');
+      expect(stages[4].options['index_field']!.fieldReferenceValue, 'tagIndex');
+      expect(stages[5].args[0].fieldReferenceValue, 'summary');
+      expect(stages[5].args[1].stringValue, 'full_replace');
       expect(
         stages[6].args.single.pipelineValue!.stages.first.name,
         'collection',
       );
-      expect(stages[7].options['documents']!.integerValue, 5);
+      expect(stages[7].args[0].integerValue, 5);
+      expect(stages[7].args[1].stringValue, 'documents');
       expect(stages[8].args.first.fieldReferenceValue, 'embedding');
       expect(stages[8].args[2].stringValue, 'cosine');
       expect(stages[8].options['limit']!.integerValue, 3);
@@ -500,6 +506,136 @@ void main() {
         expect(isTypeFunction.args.last.stringValue, 'number');
       },
     );
+
+    // Golden encodings, asserted arg-by-arg against the canonical Node SDK
+    // stage definitions (`dev/src/pipelines/stage.ts`). These catch wire-format
+    // drift without needing an Enterprise database.
+    group('stage proto encoding', () {
+      late firestore_v1.Pipeline_Stage stage;
+
+      Future<void> capture(Pipeline pipeline) async {
+        firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+        when(
+          () => mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(
+            any(),
+          ),
+        ).thenAnswer((invocation) async {
+          final callback =
+              invocation.positionalArguments.single
+                  as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                  Function(firestore_v1.Firestore api, String projectId);
+
+          final api = FakeFirestore(
+            executePipeline: (firestore_v1.ExecutePipelineRequest request) {
+              capturedRequest = request;
+              return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+            },
+          );
+
+          return callback(api, _projectId);
+        });
+
+        await pipeline.execute();
+        stage = capturedRequest!.structuredPipeline!.pipeline!.stages.last;
+      }
+
+      Pipeline base() => firestore.pipeline().collection('books');
+
+      group('unnest', () {
+        test('sends the array expression and its alias', () async {
+          await capture(base().unnest(field('tags').as('tag')));
+
+          expect(stage.name, 'unnest');
+          expect(stage.args, hasLength(2));
+          expect(stage.args[0].fieldReferenceValue, 'tags');
+          // The alias is a required second arg; without it the backend has no
+          // name to assign each emitted element to.
+          expect(stage.args[1].fieldReferenceValue, 'tag');
+          expect(stage.options, isEmpty);
+        });
+
+        test('defaults the alias to the field name', () async {
+          await capture(base().unnest('tags'));
+
+          expect(stage.args[0].fieldReferenceValue, 'tags');
+          expect(stage.args[1].fieldReferenceValue, 'tags');
+        });
+
+        test('encodes indexField as a field reference', () async {
+          await capture(base().unnest('tags', indexField: 'tagIndex'));
+
+          expect(stage.options['index_field']!.fieldReferenceValue, 'tagIndex');
+          expect(stage.options['index_field']!.stringValue, isNull);
+        });
+
+        test('rejects an unaliased computed expression', () {
+          expect(
+            () => base().unnest(PipelineFunctions.array([1, 2])),
+            throwsA(isA<ArgumentError>()),
+          );
+        });
+      });
+
+      test('replace_with sends the map and the replace mode', () async {
+        await capture(base().replaceWith('summary'));
+
+        expect(stage.name, 'replace_with');
+        expect(stage.args, hasLength(2));
+        expect(stage.args[0].fieldReferenceValue, 'summary');
+        expect(stage.args[1].stringValue, 'full_replace');
+      });
+
+      group('sample', () {
+        test('sends rate and documents mode', () async {
+          await capture(base().sample(documents: 10));
+
+          expect(stage.name, 'sample');
+          expect(stage.args, hasLength(2));
+          expect(stage.args[0].integerValue, 10);
+          expect(stage.args[1].stringValue, 'documents');
+          // The rate and mode are positional args, not options.
+          expect(stage.options, isEmpty);
+        });
+
+        test('sends rate and percent mode', () async {
+          await capture(base().sample(percentage: 0.25));
+
+          expect(stage.args[0].doubleValue, 0.25);
+          expect(stage.args[1].stringValue, 'percent');
+          expect(stage.options, isEmpty);
+        });
+      });
+
+      group('distinct', () {
+        test('sends a single map argument', () async {
+          await capture(base().distinct(['genre', 'author']));
+
+          expect(stage.name, 'distinct');
+          expect(stage.args, hasLength(1));
+          final groups = stage.args.single.mapValue!.fields;
+          expect(groups.keys, ['genre', 'author']);
+          expect(groups['genre']!.fieldReferenceValue, 'genre');
+        });
+
+        test('keys the map by alias for computed groups', () async {
+          await capture(
+            base().distinct([PipelineFunctions.toLower('genre').as('g')]),
+          );
+
+          final groups = stage.args.single.mapValue!.fields;
+          expect(groups.keys, ['g']);
+          expect(groups['g']!.functionValue!.name, 'to_lower');
+        });
+      });
+
+      test('select and aggregate use the same projection map', () async {
+        await capture(base().select(['title', field('rating')]));
+
+        expect(stage.args, hasLength(1));
+        expect(stage.args.single.mapValue!.fields.keys, ['title', 'rating']);
+      });
+    });
 
     group('String arguments in a field position', () {
       late List<firestore_v1.Pipeline_Stage> stages;

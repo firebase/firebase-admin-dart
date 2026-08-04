@@ -256,20 +256,18 @@ abstract final class PipelineFunctions {
     return _expr('average', [_fieldOrExpression(fieldName)]);
   }
 
-  /// MINIMUM function.
-  static PipelineExpression minimum(Object? fieldName, [Object? second]) {
-    return _expr('minimum', [
-      _fieldOrExpression(fieldName),
-      ..._optionalArg(second),
-    ]);
+  /// MINIMUM aggregate function.
+  ///
+  /// For the element-wise form over several operands, use [logicalMinimum].
+  static PipelineExpression minimum(Object? fieldName) {
+    return _expr('minimum', [_fieldOrExpression(fieldName)]);
   }
 
-  /// MAXIMUM function.
-  static PipelineExpression maximum(Object? fieldName, [Object? second]) {
-    return _expr('maximum', [
-      _fieldOrExpression(fieldName),
-      ..._optionalArg(second),
-    ]);
+  /// MAXIMUM aggregate function.
+  ///
+  /// For the element-wise form over several operands, use [logicalMaximum].
+  static PipelineExpression maximum(Object? fieldName) {
+    return _expr('maximum', [_fieldOrExpression(fieldName)]);
   }
 
   /// MINIMUM function over two or more operands.
@@ -1272,15 +1270,15 @@ final class Pipeline {
   }
 
   /// Returns unique combinations of the provided grouping expressions.
+  ///
+  /// Entries may be [String] field names, [PipelineField] references, or
+  /// [PipelineAliasedExpression] values.
   Pipeline distinct(Iterable<Object> groups) {
     final values = groups.toList();
     if (values.isEmpty) {
       throw ArgumentError.value(groups, 'groups', 'Must not be empty.');
     }
-    return rawStage('distinct', [
-      for (final group in values)
-        if (group is String) field(group) else group,
-    ]);
+    return rawStage('distinct', [_projectionMap(values)]);
   }
 
   /// Removes fields from the inputs.
@@ -1316,17 +1314,31 @@ final class Pipeline {
     return rawStage('limit', [limit]);
   }
 
-  /// Emits a document for each element in [expression].
-  Pipeline unnest(Object expression, {String? indexField}) {
-    return rawStage('unnest', [
-      if (expression is String) field(expression) else expression,
-    ], options: _compactOptions({'index_field': indexField}));
+  /// Emits a document for each element of the array selected by [selectable].
+  ///
+  /// Each emitted document has the array element assigned to the selection's
+  /// alias. [selectable] may be a [String] field name, a [PipelineField], or a
+  /// [PipelineAliasedExpression] created with [PipelineExpression.as] when the
+  /// element should land on a different field than the source array.
+  ///
+  /// When [indexField] is given, the element's zero-based index is assigned to
+  /// that field.
+  Pipeline unnest(Object selectable, {String? indexField}) {
+    final (expression, alias) = _selectableParts(selectable);
+    return rawStage(
+      'unnest',
+      [expression, field(alias)],
+      options: _compactOptions({
+        'index_field': indexField == null ? null : field(indexField),
+      }),
+    );
   }
 
-  /// Replaces each input document with [expression].
+  /// Replaces each input document with the map produced by [expression].
   Pipeline replaceWith(Object expression) {
     return rawStage('replace_with', [
-      if (expression is String) field(expression) else expression,
+      _fieldOrExpression(expression),
+      'full_replace',
     ]);
   }
 
@@ -1356,14 +1368,13 @@ final class Pipeline {
         'Must be between 0 and 1.',
       );
     }
-    return rawStage(
-      'sample',
-      const [],
-      options: _compactOptions({
-        'documents': documents,
-        'percentage': percentage,
-      }),
-    );
+
+    // The backend takes the rate and the mode that interprets it.
+    final (num rate, String mode) = documents != null
+        ? (documents, 'documents')
+        : (percentage!, 'percent');
+
+    return rawStage('sample', [rate, mode]);
   }
 
   /// Performs vector nearest-neighbor search.
@@ -2776,6 +2787,25 @@ Map<String, Object?> _compactOptions(Map<String, Object?> options) {
 
 Map<String, Object?> _projectionMap(Iterable<Object> selections) {
   return Map.fromEntries(selections.map(_projectionEntry));
+}
+
+/// Splits a selectable into the expression it computes and the alias it lands
+/// on.
+///
+/// A [String] or [PipelineField] is its own alias, matching the Node SDK where
+/// `Field._alias` is the field name.
+(Object expression, String alias) _selectableParts(Object selectable) {
+  return switch (selectable) {
+    String() => (field(selectable), selectable),
+    PipelineField() => (selectable, selectable.path),
+    PipelineAliasedExpression() => (selectable.expression, selectable.name),
+    _ => throw ArgumentError.value(
+      selectable,
+      'selectable',
+      'Expected a String, PipelineField, or PipelineAliasedExpression. '
+          'Computed expressions must be aliased with as().',
+    ),
+  };
 }
 
 MapEntry<String, Object?> _projectionEntry(Object selection) {
