@@ -500,5 +500,489 @@ void main() {
         expect(isTypeFunction.args.last.stringValue, 'number');
       },
     );
+
+    group('String arguments in a field position', () {
+      late List<firestore_v1.Pipeline_Stage> stages;
+
+      Future<void> run(Pipeline pipeline) async {
+        firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+        when(
+          () => mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(
+            any(),
+          ),
+        ).thenAnswer((invocation) async {
+          final callback =
+              invocation.positionalArguments.single
+                  as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                  Function(firestore_v1.Firestore api, String projectId);
+
+          final api = FakeFirestore(
+            executePipeline: (firestore_v1.ExecutePipelineRequest request) {
+              capturedRequest = request;
+              return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+            },
+          );
+
+          return callback(api, _projectId);
+        });
+
+        await pipeline.execute();
+        stages = capturedRequest!.structuredPipeline!.pipeline!.stages;
+      }
+
+      test('encode as field references, not string literals', () async {
+        await run(
+          firestore
+              .pipeline()
+              .collection('books')
+              .where(PipelineFunctions.startsWith('title', 'Harry')),
+        );
+
+        final function = stages[1].args.single.functionValue!;
+        expect(function.name, 'starts_with');
+        // Regression: 'title' used to encode as the literal text "title", so
+        // the filter compared "title" against "Harry" instead of reading the
+        // `title` field.
+        expect(function.args[0].fieldReferenceValue, 'title');
+        expect(function.args[0].stringValue, isNull);
+        // The value position keeps strings as literals.
+        expect(function.args[1].stringValue, 'Harry');
+        expect(function.args[1].fieldReferenceValue, isNull);
+      });
+
+      test('apply across the function catalog', () async {
+        await run(
+          firestore.pipeline().collection('books').select([
+            PipelineFunctions.equal('title', 'Harry').alias('isHarry'),
+            PipelineFunctions.lessThan('price', 10).alias('isCheap'),
+            PipelineFunctions.arrayContains('tags', 'dart').alias('isDart'),
+            PipelineFunctions.mapGet('metadata', 'lang').alias('lang'),
+            PipelineFunctions.toUpper('title').alias('upper'),
+            PipelineFunctions.sum('price').alias('total'),
+            PipelineFunctions.arrayLength('tags').alias('tagCount'),
+            PipelineFunctions.timestampToUnixMillis('createdAt').alias('ms'),
+            PipelineFunctions.vectorLength('embedding').alias('dims'),
+            PipelineFunctions.exists('title').alias('hasTitle'),
+          ]),
+        );
+
+        final fields = stages[1].args.single.mapValue!.fields;
+        for (final entry in fields.entries) {
+          expect(
+            entry.value.functionValue!.args.first.fieldReferenceValue,
+            isNotNull,
+            reason: '${entry.key} should reference a field',
+          );
+        }
+
+        expect(
+          fields['isHarry']!.functionValue!.args[1].stringValue,
+          'Harry',
+          reason: 'the value position stays a literal',
+        );
+        expect(fields['lang']!.functionValue!.args[1].stringValue, 'lang');
+      });
+
+      test('leave value positions and variadic tails alone', () async {
+        await run(
+          firestore.pipeline().collection('books').select([
+            // Only the first entry is a field position.
+            PipelineFunctions.stringConcat([
+              'title',
+              ' by ',
+              'Anon',
+            ]).alias('byline'),
+            PipelineFunctions.array(['a', 'b']).alias('letters'),
+            // A document path is a value, matching the Node SDK.
+            PipelineFunctions.documentId('books/book-1').alias('id'),
+          ]),
+        );
+
+        final fields = stages[1].args.single.mapValue!.fields;
+
+        final concat = fields['byline']!.functionValue!;
+        expect(concat.args[0].fieldReferenceValue, 'title');
+        expect(concat.args[1].stringValue, ' by ');
+        expect(concat.args[2].stringValue, 'Anon');
+
+        final letters = fields['letters']!.functionValue!;
+        expect(letters.args.map((arg) => arg.stringValue), ['a', 'b']);
+
+        expect(
+          fields['id']!.functionValue!.args.single.stringValue,
+          'books/book-1',
+        );
+      });
+    });
+
+    test('serializes newly added expressions', () async {
+      firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+      when(
+        () =>
+            mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                Function(firestore_v1.Firestore api, String projectId);
+
+        final api = FakeFirestore(
+          executePipeline: (firestore_v1.ExecutePipelineRequest request) {
+            capturedRequest = request;
+            return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+          },
+        );
+
+        return callback(api, _projectId);
+      });
+
+      await firestore
+          .pipeline()
+          .collection('books')
+          .where(documentMatches('dart'))
+          .select([
+            PipelineFunctions.coalesce(
+              'nickname',
+              field('title'),
+            ).alias('name'),
+            PipelineFunctions.length('tags').alias('size'),
+            PipelineFunctions.reverse('tags').alias('reversed'),
+            PipelineFunctions.concat('tags', ['extra']).alias('joined'),
+            PipelineFunctions.getField('metadata', 'lang').alias('lang'),
+            PipelineFunctions.geoDistance(
+              'location',
+              GeoPoint(latitude: 1, longitude: 2),
+            ).alias('distance'),
+            score().alias('relevance'),
+            field('title').charLength().alias('titleChars'),
+            field('rating').logicalMaximum(0).alias('clampedRating'),
+          ])
+          .execute();
+
+      final stages = capturedRequest!.structuredPipeline!.pipeline!.stages;
+      expect(stages[1].args.single.functionValue!.name, 'document_matches');
+
+      final fields = stages[2].args.single.mapValue!.fields;
+      expect(fields['name']!.functionValue!.name, 'coalesce');
+      expect(fields['size']!.functionValue!.name, 'length');
+      expect(fields['reversed']!.functionValue!.name, 'reverse');
+      expect(fields['joined']!.functionValue!.name, 'concat');
+      expect(fields['lang']!.functionValue!.name, 'get_field');
+      expect(fields['distance']!.functionValue!.name, 'geo_distance');
+      expect(fields['relevance']!.functionValue!.name, 'score');
+      expect(fields['relevance']!.functionValue!.args, isEmpty);
+      // `length` is the generic sized-value function; `char_length` stays
+      // string-specific.
+      expect(fields['titleChars']!.functionValue!.name, 'char_length');
+      expect(fields['clampedRating']!.functionValue!.name, 'maximum');
+    });
+
+    group('createFrom', () {
+      late List<firestore_v1.Pipeline_Stage> stages;
+
+      Future<void> run(Object query) async {
+        firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+        when(
+          () => mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(
+            any(),
+          ),
+        ).thenAnswer((invocation) async {
+          final callback =
+              invocation.positionalArguments.single
+                  as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                  Function(firestore_v1.Firestore api, String projectId);
+
+          final api = FakeFirestore(
+            executePipeline: (firestore_v1.ExecutePipelineRequest request) {
+              capturedRequest = request;
+              return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+            },
+          );
+
+          return callback(api, _projectId);
+        });
+
+        await firestore.pipeline().createFrom(query).execute();
+        stages = capturedRequest!.structuredPipeline!.pipeline!.stages;
+      }
+
+      test('converts filters into where stages', () async {
+        await run(
+          firestore
+              .collection('books')
+              .where('genre', WhereFilter.equal, 'fiction')
+              .where('rating', WhereFilter.greaterThan, 4),
+        );
+
+        expect(stages.map((stage) => stage.name), [
+          'collection',
+          'where', // genre == fiction
+          'where', // rating > 4
+          'where', // implicit existence checks
+          'sort',
+        ]);
+        expect(stages[0].args.single.referenceValue, '/books');
+
+        // Each field filter is paired with an existence check so that the
+        // Pipeline matches Query semantics for missing fields.
+        final genre = stages[1].args.single.functionValue!;
+        expect(genre.name, 'and');
+        expect(genre.args[0].functionValue!.name, 'exists');
+        expect(genre.args[1].functionValue!.name, 'equal');
+        expect(
+          genre.args[1].functionValue!.args[0].fieldReferenceValue,
+          'genre',
+        );
+        expect(genre.args[1].functionValue!.args[1].stringValue, 'fiction');
+
+        expect(
+          stages[2].args.single.functionValue!.args[1].functionValue!.name,
+          'greater_than',
+        );
+      });
+
+      test('orders by the inequality field then the document key', () async {
+        await run(
+          firestore
+              .collection('books')
+              .where('rating', WhereFilter.greaterThan, 4),
+        );
+
+        final orderings = stages.last.args
+            .map(
+              (arg) => arg.mapValue!.fields['expression']!.fieldReferenceValue,
+            )
+            .toList();
+        expect(orderings, ['rating', '__name__']);
+      });
+
+      test('keeps the document key ordering for key inequalities', () async {
+        await run(
+          firestore
+              .collection('books')
+              .where(
+                FieldPath.documentId,
+                WhereFilter.greaterThan,
+                firestore.doc('books/book-1'),
+              ),
+        );
+
+        final orderings = stages.last.args
+            .map(
+              (arg) => arg.mapValue!.fields['expression']!.fieldReferenceValue,
+            )
+            .toList();
+        // The key must still be ordered exactly once, not dropped.
+        expect(orderings, ['__name__']);
+      });
+
+      test('converts composite filters', () async {
+        await run(
+          firestore
+              .collection('books')
+              .whereFilter(
+                Filter.or([
+                  Filter.where('genre', WhereFilter.equal, 'fiction'),
+                  Filter.where('genre', WhereFilter.equal, 'poetry'),
+                ]),
+              ),
+        );
+
+        final composite = stages[1].args.single.functionValue!;
+        expect(composite.name, 'or');
+        expect(composite.args, hasLength(2));
+        for (final arg in composite.args) {
+          expect(arg.functionValue!.name, 'and');
+          expect(arg.functionValue!.args[1].functionValue!.name, 'equal');
+        }
+      });
+
+      test('unpacks isIn filters into equal_any', () async {
+        await run(
+          firestore.collection('books').where('genre', WhereFilter.isIn, [
+            'fiction',
+            'poetry',
+          ]),
+        );
+
+        final equalAny =
+            stages[1].args.single.functionValue!.args[1].functionValue!;
+        expect(equalAny.name, 'equal_any');
+        expect(equalAny.args[1].arrayValue!.values.map((v) => v.stringValue), [
+          'fiction',
+          'poetry',
+        ]);
+      });
+
+      test('omits the existence check for notIn filters', () async {
+        await run(
+          firestore.collection('books').where('genre', WhereFilter.notIn, [
+            'fiction',
+          ]),
+        );
+
+        // notIn matches absent fields on Enterprise, so it must not be paired
+        // with `exists`.
+        final filter = stages[1].args.single.functionValue!;
+        expect(filter.name, 'not_equal_any');
+      });
+
+      test('converts collection group queries', () async {
+        await run(firestore.collectionGroup('books'));
+
+        expect(stages.first.name, 'collection_group');
+        expect(stages.first.args.single.stringValue, 'books');
+      });
+
+      test('converts orderBy, limit and offset', () async {
+        await run(
+          firestore
+              .collection('books')
+              .orderBy('rating', descending: true)
+              .limit(5)
+              .offset(2),
+        );
+
+        expect(stages.map((stage) => stage.name), [
+          'collection',
+          'where',
+          'sort',
+          'limit',
+          'offset',
+        ]);
+
+        final orderings = stages[2].args;
+        expect(
+          orderings[0].mapValue!.fields['direction']!.stringValue,
+          'descending',
+        );
+        expect(
+          orderings[0].mapValue!.fields['expression']!.fieldReferenceValue,
+          'rating',
+        );
+        // The document key inherits the last explicit direction.
+        expect(
+          orderings[1].mapValue!.fields['direction']!.stringValue,
+          'descending',
+        );
+        expect(stages[3].args.single.integerValue, 5);
+        expect(stages[4].args.single.integerValue, 2);
+      });
+
+      test('converts cursors into where stages', () async {
+        await run(
+          firestore
+              .collection('books')
+              .orderBy('rating')
+              .startAt([4])
+              .endBefore([5]),
+        );
+
+        expect(stages.map((stage) => stage.name), [
+          'collection',
+          'where', // existence checks
+          'sort',
+          'where', // startAt
+          'where', // endBefore
+        ]);
+
+        // startAt is inclusive, so it admits values equal to the cursor.
+        final startAt = stages[3].args.single.functionValue!;
+        expect(startAt.name, 'or');
+        expect(startAt.args[0].functionValue!.name, 'greater_than');
+        expect(startAt.args[1].functionValue!.name, 'equal');
+
+        // endBefore is exclusive.
+        final endBefore = stages[4].args.single.functionValue!;
+        expect(endBefore.name, 'less_than');
+      });
+
+      test('sorts twice for limitToLast queries', () async {
+        await run(
+          firestore.collection('books').orderBy('rating').limitToLast(3),
+        );
+
+        expect(stages.map((stage) => stage.name), [
+          'collection',
+          'where',
+          'sort', // reversed, so the last N documents come first
+          'limit',
+          'sort', // restores the requested order
+        ]);
+
+        expect(
+          stages[2].args.first.mapValue!.fields['direction']!.stringValue,
+          'descending',
+        );
+        expect(
+          stages[4].args.first.mapValue!.fields['direction']!.stringValue,
+          'ascending',
+        );
+      });
+
+      test('converts a VectorQuery into a find_nearest stage', () async {
+        await run(
+          firestore
+              .collection('books')
+              .findNearest(
+                vectorField: 'embedding',
+                queryVector: [1.0, 2.0, 3.0],
+                limit: 5,
+                distanceMeasure: DistanceMeasure.cosine,
+                distanceResultField: 'distance',
+              ),
+        );
+
+        expect(stages.map((stage) => stage.name), [
+          'collection',
+          'where', // existence checks
+          'sort',
+          'where', // embedding exists
+          'find_nearest',
+        ]);
+
+        final findNearest = stages.last;
+        expect(findNearest.args[0].fieldReferenceValue, 'embedding');
+        // Pipelines take a lowercase distance measure even though the
+        // DistanceMeasure enum keeps the uppercase proto values.
+        expect(findNearest.args[2].stringValue, 'cosine');
+        expect(findNearest.options['limit']!.integerValue, 5);
+        expect(
+          findNearest.options['distance_field']!.fieldReferenceValue,
+          'distance',
+        );
+      });
+
+      test('rejects a query from a different database', () {
+        final other = Firestore.internal(
+          settings: const Settings(
+            projectId: _projectId,
+            databaseId: 'other-db',
+          ),
+          client: MockFirestoreHttpClient(),
+        );
+
+        expect(
+          () => firestore.pipeline().createFrom(other.collection('books')),
+          throwsA(
+            isA<ArgumentError>().having(
+              (e) => e.message,
+              'message',
+              contains('does not match the target database'),
+            ),
+          ),
+        );
+      });
+
+      test('rejects values that are not queries', () {
+        expect(
+          () => firestore.pipeline().createFrom('books'),
+          throwsA(isA<ArgumentError>()),
+        );
+      });
+    });
   });
 }

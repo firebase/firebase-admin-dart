@@ -1,3 +1,8 @@
+## Unreleased
+
+- Added support for Firestore Pipelines: `Firestore.pipeline()`, the `Pipeline` stage builders, and the `PipelineFunctions` expression catalog.
+- Added `PipelineSource.createFrom()` to convert a `Query` or `VectorQuery` into an equivalent Pipeline.
+
 ## 0.5.3
 
 - Added `Settings.headers` to attach custom HTTP headers to every outgoing Firestore request.

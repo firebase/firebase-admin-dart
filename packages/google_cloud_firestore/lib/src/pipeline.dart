@@ -162,10 +162,28 @@ PipelineBooleanExpression _comparison(
   Object? left,
   Object? right,
 ) {
-  return _PipelineBooleanExpression(name, [
-    if (left is String) field(left) else left,
-    right,
-  ]);
+  return _PipelineBooleanExpression(name, [_fieldOrExpression(left), right]);
+}
+
+/// Interprets a [String] in a field position as a field reference.
+///
+/// Mirrors the Node SDK's `fieldOrExpression`: arguments that name the target
+/// of a function accept either a field name or an expression, so a bare
+/// [String] means [field]. Arguments in a value position keep [String]s as
+/// string literals, which is what [_encodePipelineValue] does by default.
+Object? _fieldOrExpression(Object? value) {
+  return value is String ? field(value) : value;
+}
+
+/// Applies [_fieldOrExpression] to the first entry of [values].
+///
+/// Used by variadic functions whose first argument is the target field.
+List<Object?> _fieldOrExpressionFirst(Iterable<Object?> values) {
+  final list = values.toList();
+  if (list.isNotEmpty) {
+    list[0] = _fieldOrExpression(list[0]);
+  }
+  return list;
 }
 
 /// Creates a logical AND expression.
@@ -185,6 +203,14 @@ PipelineBooleanExpression not(PipelineBooleanExpression expression) {
 
 /// Returns the current document as a Pipeline expression.
 PipelineExpression currentDocument() => PipelineFunctions.currentDocument();
+
+/// Returns the relevance score assigned by a preceding search stage.
+PipelineExpression score() => PipelineFunctions.score();
+
+/// Creates an expression matching documents against the query string [rquery].
+PipelineBooleanExpression documentMatches(Object? rquery) {
+  return PipelineFunctions.documentMatches(rquery);
+}
 
 /// Convenience wrappers for the Firestore Pipeline function catalog.
 ///
@@ -206,121 +232,169 @@ abstract final class PipelineFunctions {
   }
 
   /// COUNT aggregate function.
-  static PipelineExpression count([Object? expression]) {
-    return _expr('count', _optionalArg(expression));
+  static PipelineExpression count([Object? fieldName]) {
+    return _expr('count', _optionalArg(_fieldOrExpression(fieldName)));
   }
 
   /// COUNT_IF aggregate function.
-  static PipelineExpression countIf(Object? expression) {
-    return _expr('count_if', [expression]);
+  static PipelineExpression countIf(Object? condition) {
+    return _expr('count_if', [condition]);
   }
 
   /// COUNT_DISTINCT aggregate function.
-  static PipelineExpression countDistinct(Object? expression) {
-    return _expr('count_distinct', [expression]);
+  static PipelineExpression countDistinct(Object? fieldName) {
+    return _expr('count_distinct', [_fieldOrExpression(fieldName)]);
   }
 
   /// SUM function.
-  static PipelineExpression sum(Object? expression) {
-    return _expr('sum', [expression]);
+  static PipelineExpression sum(Object? fieldName) {
+    return _expr('sum', [_fieldOrExpression(fieldName)]);
   }
 
   /// AVERAGE aggregate function.
-  static PipelineExpression average(Object? expression) {
-    return _expr('average', [expression]);
+  static PipelineExpression average(Object? fieldName) {
+    return _expr('average', [_fieldOrExpression(fieldName)]);
   }
 
   /// MINIMUM function.
-  static PipelineExpression minimum(Object? first, [Object? second]) {
-    return _expr('minimum', [first, ..._optionalArg(second)]);
+  static PipelineExpression minimum(Object? fieldName, [Object? second]) {
+    return _expr('minimum', [
+      _fieldOrExpression(fieldName),
+      ..._optionalArg(second),
+    ]);
   }
 
   /// MAXIMUM function.
-  static PipelineExpression maximum(Object? first, [Object? second]) {
-    return _expr('maximum', [first, ..._optionalArg(second)]);
+  static PipelineExpression maximum(Object? fieldName, [Object? second]) {
+    return _expr('maximum', [
+      _fieldOrExpression(fieldName),
+      ..._optionalArg(second),
+    ]);
+  }
+
+  /// MINIMUM function over two or more operands.
+  static PipelineExpression logicalMinimum(
+    Object? fieldName,
+    Object? second, [
+    Iterable<Object?> others = const [],
+  ]) {
+    return _expr('minimum', [_fieldOrExpression(fieldName), second, ...others]);
+  }
+
+  /// MAXIMUM function over two or more operands.
+  static PipelineExpression logicalMaximum(
+    Object? fieldName,
+    Object? second, [
+    Iterable<Object?> others = const [],
+  ]) {
+    return _expr('maximum', [_fieldOrExpression(fieldName), second, ...others]);
   }
 
   /// FIRST aggregate function.
-  static PipelineExpression first(Object? expression) {
-    return _expr('first', [expression]);
+  static PipelineExpression first(Object? fieldName) {
+    return _expr('first', [_fieldOrExpression(fieldName)]);
   }
 
   /// LAST aggregate function.
-  static PipelineExpression last(Object? expression) {
-    return _expr('last', [expression]);
+  static PipelineExpression last(Object? fieldName) {
+    return _expr('last', [_fieldOrExpression(fieldName)]);
   }
 
   /// ARRAY_AGG aggregate function.
-  static PipelineExpression arrayAgg(Object? expression) {
-    return _expr('array_agg', [expression]);
+  static PipelineExpression arrayAgg(Object? fieldName) {
+    return _expr('array_agg', [_fieldOrExpression(fieldName)]);
   }
 
   /// ARRAY_AGG_DISTINCT aggregate function.
-  static PipelineExpression arrayAggDistinct(Object? expression) {
-    return _expr('array_agg_distinct', [expression]);
+  static PipelineExpression arrayAggDistinct(Object? fieldName) {
+    return _expr('array_agg_distinct', [_fieldOrExpression(fieldName)]);
   }
 
   /// ABS arithmetic function.
-  static PipelineExpression abs(Object? value) => _expr('abs', [value]);
+  static PipelineExpression abs(Object? fieldName) {
+    return _expr('abs', [_fieldOrExpression(fieldName)]);
+  }
 
   /// ADD arithmetic function.
   static PipelineExpression add(Object? left, Object? right) {
-    return _expr('add', [left, right]);
+    return _expr('add', [_fieldOrExpression(left), right]);
   }
 
   /// SUBTRACT arithmetic function.
   static PipelineExpression subtract(Object? left, Object? right) {
-    return _expr('subtract', [left, right]);
+    return _expr('subtract', [_fieldOrExpression(left), right]);
   }
 
   /// MULTIPLY arithmetic function.
   static PipelineExpression multiply(Object? left, Object? right) {
-    return _expr('multiply', [left, right]);
+    return _expr('multiply', [_fieldOrExpression(left), right]);
   }
 
   /// DIVIDE arithmetic function.
   static PipelineExpression divide(Object? left, Object? right) {
-    return _expr('divide', [left, right]);
+    return _expr('divide', [_fieldOrExpression(left), right]);
   }
 
   /// MOD arithmetic function.
   static PipelineExpression mod(Object? left, Object? right) {
-    return _expr('mod', [left, right]);
+    return _expr('mod', [_fieldOrExpression(left), right]);
   }
 
   /// CEIL arithmetic function.
-  static PipelineExpression ceil(Object? value) => _expr('ceil', [value]);
+  static PipelineExpression ceil(Object? fieldName) {
+    return _expr('ceil', [_fieldOrExpression(fieldName)]);
+  }
 
   /// FLOOR arithmetic function.
-  static PipelineExpression floor(Object? value) => _expr('floor', [value]);
+  static PipelineExpression floor(Object? fieldName) {
+    return _expr('floor', [_fieldOrExpression(fieldName)]);
+  }
 
   /// ROUND arithmetic function.
-  static PipelineExpression round(Object? value) => _expr('round', [value]);
+  static PipelineExpression round(Object? fieldName, [Object? decimalPlaces]) {
+    return _expr('round', [
+      _fieldOrExpression(fieldName),
+      ..._optionalArg(decimalPlaces),
+    ]);
+  }
 
   /// TRUNC arithmetic function.
-  static PipelineExpression trunc(Object? value) => _expr('trunc', [value]);
+  static PipelineExpression trunc(Object? fieldName, [Object? decimalPlaces]) {
+    return _expr('trunc', [
+      _fieldOrExpression(fieldName),
+      ..._optionalArg(decimalPlaces),
+    ]);
+  }
 
   /// POW arithmetic function.
   static PipelineExpression pow(Object? base, Object? exponent) {
-    return _expr('pow', [base, exponent]);
+    return _expr('pow', [_fieldOrExpression(base), exponent]);
   }
 
   /// SQRT arithmetic function.
-  static PipelineExpression sqrt(Object? value) => _expr('sqrt', [value]);
+  static PipelineExpression sqrt(Object? fieldName) {
+    return _expr('sqrt', [_fieldOrExpression(fieldName)]);
+  }
 
   /// EXP arithmetic function.
-  static PipelineExpression exp(Object? exponent) => _expr('exp', [exponent]);
+  static PipelineExpression exp(Object? fieldName) {
+    return _expr('exp', [_fieldOrExpression(fieldName)]);
+  }
 
   /// LN arithmetic function.
-  static PipelineExpression ln(Object? value) => _expr('ln', [value]);
+  static PipelineExpression ln(Object? fieldName) {
+    return _expr('ln', [_fieldOrExpression(fieldName)]);
+  }
 
   /// LOG arithmetic function.
-  static PipelineExpression log(Object? number, [Object? base]) {
-    return _expr('log', [number, ..._optionalArg(base)]);
+  static PipelineExpression log(Object? fieldName, [Object? base]) {
+    return _expr('log', [_fieldOrExpression(fieldName), ..._optionalArg(base)]);
   }
 
   /// LOG10 arithmetic function.
-  static PipelineExpression log10(Object? value) => _expr('log10', [value]);
+  static PipelineExpression log10(Object? fieldName) {
+    return _expr('log10', [_fieldOrExpression(fieldName)]);
+  }
 
   /// RAND arithmetic function.
   static PipelineExpression rand() => _expr('rand', const []);
@@ -332,12 +406,12 @@ abstract final class PipelineFunctions {
 
   /// ARRAY_CONCAT function.
   static PipelineExpression arrayConcat(Iterable<Object?> arrays) {
-    return _expr('array_concat', arrays);
+    return _expr('array_concat', _fieldOrExpressionFirst(arrays));
   }
 
   /// ARRAY_CONTAINS function.
   static PipelineBooleanExpression arrayContains(Object? array, Object? value) {
-    return _bool('array_contains', [array, value]);
+    return _bool('array_contains', [_fieldOrExpression(array), value]);
   }
 
   /// ARRAY_CONTAINS_ALL function.
@@ -345,7 +419,10 @@ abstract final class PipelineFunctions {
     Object? array,
     Object? searchValues,
   ) {
-    return _bool('array_contains_all', [array, searchValues]);
+    return _bool('array_contains_all', [
+      _fieldOrExpression(array),
+      searchValues,
+    ]);
   }
 
   /// ARRAY_CONTAINS_ANY function.
@@ -353,7 +430,10 @@ abstract final class PipelineFunctions {
     Object? array,
     Object? searchValues,
   ) {
-    return _bool('array_contains_any', [array, searchValues]);
+    return _bool('array_contains_any', [
+      _fieldOrExpression(array),
+      searchValues,
+    ]);
   }
 
   /// ARRAY_FILTER function.
@@ -362,57 +442,61 @@ abstract final class PipelineFunctions {
     String variableName,
     Object? predicate,
   ) {
-    return _expr('array_filter', [array, variableName, predicate]);
+    return _expr('array_filter', [
+      _fieldOrExpression(array),
+      variableName,
+      predicate,
+    ]);
   }
 
   /// ARRAY_GET function.
   static PipelineExpression arrayGet(Object? array, Object? index) {
-    return _expr('array_get', [array, index]);
+    return _expr('array_get', [_fieldOrExpression(array), index]);
   }
 
   /// ARRAY_LENGTH function.
   static PipelineExpression arrayLength(Object? array) {
-    return _expr('array_length', [array]);
+    return _expr('array_length', [_fieldOrExpression(array)]);
   }
 
   /// ARRAY_REVERSE function.
   static PipelineExpression arrayReverse(Object? array) {
-    return _expr('array_reverse', [array]);
+    return _expr('array_reverse', [_fieldOrExpression(array)]);
   }
 
   /// ARRAY_FIRST function.
   static PipelineExpression arrayFirst(Object? array) {
-    return _expr('array_first', [array]);
+    return _expr('array_first', [_fieldOrExpression(array)]);
   }
 
   /// ARRAY_FIRST_N function.
   static PipelineExpression arrayFirstN(Object? array, Object? n) {
-    return _expr('array_first_n', [array, n]);
+    return _expr('array_first_n', [_fieldOrExpression(array), n]);
   }
 
   /// ARRAY_INDEX_OF function.
   static PipelineExpression arrayIndexOf(Object? array, Object? value) {
-    return _expr('array_index_of', [array, value, 'first']);
+    return _expr('array_index_of', [_fieldOrExpression(array), value, 'first']);
   }
 
   /// ARRAY_INDEX_OF_ALL function.
   static PipelineExpression arrayIndexOfAll(Object? array, Object? value) {
-    return _expr('array_index_of_all', [array, value]);
+    return _expr('array_index_of_all', [_fieldOrExpression(array), value]);
   }
 
   /// ARRAY_LAST function.
   static PipelineExpression arrayLast(Object? array) {
-    return _expr('array_last', [array]);
+    return _expr('array_last', [_fieldOrExpression(array)]);
   }
 
   /// ARRAY_LAST_N function.
   static PipelineExpression arrayLastN(Object? array, Object? n) {
-    return _expr('array_last_n', [array, n]);
+    return _expr('array_last_n', [_fieldOrExpression(array), n]);
   }
 
   /// ARRAY_LAST_INDEX_OF function.
   static PipelineExpression arrayLastIndexOf(Object? array, Object? value) {
-    return _expr('array_index_of', [array, value, 'last']);
+    return _expr('array_index_of', [_fieldOrExpression(array), value, 'last']);
   }
 
   /// ARRAY_SLICE function.
@@ -421,7 +505,7 @@ abstract final class PipelineFunctions {
     Object? offset,
     Object? length,
   ) {
-    return _expr('array_slice', [array, offset, length]);
+    return _expr('array_slice', [_fieldOrExpression(array), offset, length]);
   }
 
   /// ARRAY_TRANSFORM function.
@@ -431,10 +515,11 @@ abstract final class PipelineFunctions {
     Object? expression, [
     String? indexVariableName,
   ]) {
+    final target = _fieldOrExpression(array);
     return indexVariableName == null
-        ? _expr('array_transform', [array, variableName, expression])
+        ? _expr('array_transform', [target, variableName, expression])
         : _expr('array_transform', [
-            array,
+            target,
             variableName,
             indexVariableName,
             expression,
@@ -443,27 +528,30 @@ abstract final class PipelineFunctions {
 
   /// MAXIMUM_N array function.
   static PipelineExpression maximumN(Object? array, Object? n) {
-    return _expr('maximum_n', [array, n]);
+    return _expr('maximum_n', [_fieldOrExpression(array), n]);
   }
 
   /// MINIMUM_N array function.
   static PipelineExpression minimumN(Object? array, Object? n) {
-    return _expr('minimum_n', [array, n]);
+    return _expr('minimum_n', [_fieldOrExpression(array), n]);
   }
 
   /// JOIN function.
   static PipelineExpression join(Object? array, [Object? separator]) {
-    return _expr('join', [array, ..._optionalArg(separator)]);
+    return _expr('join', [
+      _fieldOrExpression(array),
+      ..._optionalArg(separator),
+    ]);
   }
 
   /// EQUAL comparison function.
   static PipelineBooleanExpression equal(Object? left, Object? right) {
-    return _bool('equal', [left, right]);
+    return _bool('equal', [_fieldOrExpression(left), right]);
   }
 
   /// GREATER_THAN comparison function.
   static PipelineBooleanExpression greaterThan(Object? left, Object? right) {
-    return _bool('greater_than', [left, right]);
+    return _bool('greater_than', [_fieldOrExpression(left), right]);
   }
 
   /// GREATER_THAN_OR_EQUAL comparison function.
@@ -471,12 +559,12 @@ abstract final class PipelineFunctions {
     Object? left,
     Object? right,
   ) {
-    return _bool('greater_than_or_equal', [left, right]);
+    return _bool('greater_than_or_equal', [_fieldOrExpression(left), right]);
   }
 
   /// LESS_THAN comparison function.
   static PipelineBooleanExpression lessThan(Object? left, Object? right) {
-    return _bool('less_than', [left, right]);
+    return _bool('less_than', [_fieldOrExpression(left), right]);
   }
 
   /// LESS_THAN_OR_EQUAL comparison function.
@@ -484,32 +572,32 @@ abstract final class PipelineFunctions {
     Object? left,
     Object? right,
   ) {
-    return _bool('less_than_or_equal', [left, right]);
+    return _bool('less_than_or_equal', [_fieldOrExpression(left), right]);
   }
 
   /// NOT_EQUAL comparison function.
   static PipelineBooleanExpression notEqual(Object? left, Object? right) {
-    return _bool('not_equal', [left, right]);
+    return _bool('not_equal', [_fieldOrExpression(left), right]);
   }
 
   /// CMP comparison function.
   static PipelineExpression cmp(Object? left, Object? right) {
-    return _expr('cmp', [left, right]);
+    return _expr('cmp', [_fieldOrExpression(left), right]);
   }
 
   /// EXISTS debugging function.
-  static PipelineBooleanExpression exists(Object? value) {
-    return _bool('exists', [value]);
+  static PipelineBooleanExpression exists(Object? fieldName) {
+    return _bool('exists', [_fieldOrExpression(fieldName)]);
   }
 
   /// IS_ABSENT debugging function.
-  static PipelineBooleanExpression isAbsent(Object? value) {
-    return _bool('is_absent', [value]);
+  static PipelineBooleanExpression isAbsent(Object? fieldName) {
+    return _bool('is_absent', [_fieldOrExpression(fieldName)]);
   }
 
   /// IF_ABSENT debugging function.
-  static PipelineExpression ifAbsent(Object? value, Object? replacement) {
-    return _expr('if_absent', [value, replacement]);
+  static PipelineExpression ifAbsent(Object? fieldName, Object? replacement) {
+    return _expr('if_absent', [_fieldOrExpression(fieldName), replacement]);
   }
 
   /// IS_ERROR debugging function.
@@ -524,7 +612,7 @@ abstract final class PipelineFunctions {
 
   /// COLLECTION_ID reference function.
   static PipelineExpression collectionId(Object? reference) {
-    return _expr('collection_id', [reference]);
+    return _expr('collection_id', [_fieldOrExpression(reference)]);
   }
 
   /// DOCUMENT_ID reference function.
@@ -543,7 +631,11 @@ abstract final class PipelineFunctions {
     Object? offset,
     Object? length,
   ) {
-    return _expr('reference_slice', [reference, offset, length]);
+    return _expr('reference_slice', [
+      _fieldOrExpression(reference),
+      offset,
+      length,
+    ]);
   }
 
   /// AND logical function.
@@ -581,8 +673,23 @@ abstract final class PipelineFunctions {
   }
 
   /// IF_NULL logical function.
-  static PipelineExpression ifNull(Object? expression, Object? replacement) {
-    return _expr('if_null', [expression, replacement]);
+  static PipelineExpression ifNull(Object? fieldName, Object? replacement) {
+    return _expr('if_null', [_fieldOrExpression(fieldName), replacement]);
+  }
+
+  /// COALESCE logical function.
+  ///
+  /// Returns the first argument that is neither absent nor null.
+  static PipelineExpression coalesce(
+    Object? fieldName,
+    Object? replacement, [
+    Iterable<Object?> others = const [],
+  ]) {
+    return _expr('coalesce', [
+      _fieldOrExpression(fieldName),
+      replacement,
+      ...others,
+    ]);
   }
 
   /// SWITCH_ON logical function.
@@ -592,18 +699,18 @@ abstract final class PipelineFunctions {
 
   /// EQUAL_ANY logical function.
   static PipelineBooleanExpression equalAny(
-    Object? value,
+    Object? fieldName,
     Object? searchSpace,
   ) {
-    return _bool('equal_any', [value, searchSpace]);
+    return _bool('equal_any', [_fieldOrExpression(fieldName), searchSpace]);
   }
 
   /// NOT_EQUAL_ANY logical function.
   static PipelineBooleanExpression notEqualAny(
-    Object? value,
+    Object? fieldName,
     Object? searchSpace,
   ) {
-    return _bool('not_equal_any', [value, searchSpace]);
+    return _bool('not_equal_any', [_fieldOrExpression(fieldName), searchSpace]);
   }
 
   /// MAP construction function.
@@ -613,22 +720,29 @@ abstract final class PipelineFunctions {
 
   /// MAP_GET function.
   static PipelineExpression mapGet(Object? map, Object? key) {
-    return _expr('map_get', [map, key]);
+    return _expr('map_get', [_fieldOrExpression(map), key]);
+  }
+
+  /// GET_FIELD function.
+  ///
+  /// Reads [key] from [map], which may be any map-valued expression.
+  static PipelineExpression getField(Object? map, Object? key) {
+    return _expr('get_field', [_fieldOrExpression(map), key]);
   }
 
   /// MAP_SET function.
   static PipelineExpression mapSet(Object? map, Iterable<Object?> keyValues) {
-    return _expr('map_set', [map, ...keyValues]);
+    return _expr('map_set', [_fieldOrExpression(map), ...keyValues]);
   }
 
   /// MAP_REMOVE function.
   static PipelineExpression mapRemove(Object? map, Iterable<Object?> keys) {
-    return _expr('map_remove', [map, ...keys]);
+    return _expr('map_remove', [_fieldOrExpression(map), ...keys]);
   }
 
   /// MAP_MERGE function.
   static PipelineExpression mapMerge(Iterable<Object?> maps) {
-    return _expr('map_merge', maps);
+    return _expr('map_merge', _fieldOrExpressionFirst(maps));
   }
 
   /// CURRENT_DOCUMENT function.
@@ -637,149 +751,214 @@ abstract final class PipelineFunctions {
   }
 
   /// MAP_KEYS function.
-  static PipelineExpression mapKeys(Object? map) => _expr('map_keys', [map]);
+  static PipelineExpression mapKeys(Object? map) {
+    return _expr('map_keys', [_fieldOrExpression(map)]);
+  }
 
   /// MAP_VALUES function.
   static PipelineExpression mapValues(Object? map) {
-    return _expr('map_values', [map]);
+    return _expr('map_values', [_fieldOrExpression(map)]);
   }
 
   /// MAP_ENTRIES function.
   static PipelineExpression mapEntries(Object? map) {
-    return _expr('map_entries', [map]);
+    return _expr('map_entries', [_fieldOrExpression(map)]);
   }
 
   /// BYTE_LENGTH string function.
-  static PipelineExpression byteLength(Object? value) {
-    return _expr('byte_length', [value]);
+  static PipelineExpression byteLength(Object? fieldName) {
+    return _expr('byte_length', [_fieldOrExpression(fieldName)]);
   }
 
   /// CHAR_LENGTH string function.
-  static PipelineExpression charLength(Object? value) {
-    return _expr('char_length', [value]);
+  static PipelineExpression charLength(Object? fieldName) {
+    return _expr('char_length', [_fieldOrExpression(fieldName)]);
+  }
+
+  /// LENGTH function.
+  ///
+  /// Unlike [charLength], this works on any sized value: strings, bytes,
+  /// arrays, maps and vectors.
+  static PipelineExpression length(Object? fieldName) {
+    return _expr('length', [_fieldOrExpression(fieldName)]);
+  }
+
+  /// REVERSE function.
+  ///
+  /// Unlike [stringReverse] and [arrayReverse], this works on both strings and
+  /// arrays.
+  static PipelineExpression reverse(Object? fieldName) {
+    return _expr('reverse', [_fieldOrExpression(fieldName)]);
+  }
+
+  /// CONCAT function.
+  ///
+  /// Unlike [stringConcat], this also concatenates arrays.
+  static PipelineExpression concat(
+    Object? fieldName,
+    Object? second, [
+    Iterable<Object?> others = const [],
+  ]) {
+    return _expr('concat', [_fieldOrExpression(fieldName), second, ...others]);
   }
 
   /// STARTS_WITH string function.
-  static PipelineBooleanExpression startsWith(Object? value, Object? prefix) {
-    return _bool('starts_with', [value, prefix]);
+  static PipelineBooleanExpression startsWith(
+    Object? fieldName,
+    Object? prefix,
+  ) {
+    return _bool('starts_with', [_fieldOrExpression(fieldName), prefix]);
   }
 
   /// ENDS_WITH string function.
-  static PipelineBooleanExpression endsWith(Object? value, Object? postfix) {
-    return _bool('ends_with', [value, postfix]);
+  static PipelineBooleanExpression endsWith(
+    Object? fieldName,
+    Object? postfix,
+  ) {
+    return _bool('ends_with', [_fieldOrExpression(fieldName), postfix]);
   }
 
   /// LIKE string function.
-  static PipelineBooleanExpression like(Object? value, Object? pattern) {
-    return _bool('like', [value, pattern]);
+  static PipelineBooleanExpression like(Object? fieldName, Object? pattern) {
+    return _bool('like', [_fieldOrExpression(fieldName), pattern]);
   }
 
   /// REGEX_CONTAINS string function.
   static PipelineBooleanExpression regexContains(
-    Object? value,
+    Object? fieldName,
     Object? pattern,
   ) {
-    return _bool('regex_contains', [value, pattern]);
+    return _bool('regex_contains', [_fieldOrExpression(fieldName), pattern]);
   }
 
   /// REGEX_MATCH string function.
-  static PipelineBooleanExpression regexMatch(Object? value, Object? pattern) {
-    return _bool('regex_match', [value, pattern]);
+  static PipelineBooleanExpression regexMatch(
+    Object? fieldName,
+    Object? pattern,
+  ) {
+    return _bool('regex_match', [_fieldOrExpression(fieldName), pattern]);
   }
 
   /// REGEX_FIND string function.
-  static PipelineExpression regexFind(Object? value, Object? pattern) {
-    return _expr('regex_find', [value, pattern]);
+  static PipelineExpression regexFind(Object? fieldName, Object? pattern) {
+    return _expr('regex_find', [_fieldOrExpression(fieldName), pattern]);
   }
 
   /// REGEX_FIND_ALL string function.
-  static PipelineExpression regexFindAll(Object? value, Object? pattern) {
-    return _expr('regex_find_all', [value, pattern]);
+  static PipelineExpression regexFindAll(Object? fieldName, Object? pattern) {
+    return _expr('regex_find_all', [_fieldOrExpression(fieldName), pattern]);
   }
 
   /// STRING_CONCAT string function.
   static PipelineExpression stringConcat(Iterable<Object?> values) {
-    return _expr('string_concat', values);
+    return _expr('string_concat', _fieldOrExpressionFirst(values));
   }
 
   /// STRING_CONTAINS string function.
   static PipelineBooleanExpression stringContains(
-    Object? value,
+    Object? fieldName,
     Object? substring,
   ) {
-    return _bool('string_contains', [value, substring]);
+    return _bool('string_contains', [_fieldOrExpression(fieldName), substring]);
   }
 
   /// STRING_INDEX_OF string function.
-  static PipelineExpression stringIndexOf(Object? value, Object? substring) {
-    return _expr('string_index_of', [value, substring]);
+  static PipelineExpression stringIndexOf(
+    Object? fieldName,
+    Object? substring,
+  ) {
+    return _expr('string_index_of', [_fieldOrExpression(fieldName), substring]);
   }
 
   /// TO_UPPER string function.
-  static PipelineExpression toUpper(Object? value) {
-    return _expr('to_upper', [value]);
+  static PipelineExpression toUpper(Object? fieldName) {
+    return _expr('to_upper', [_fieldOrExpression(fieldName)]);
   }
 
   /// TO_LOWER string function.
-  static PipelineExpression toLower(Object? value) {
-    return _expr('to_lower', [value]);
+  static PipelineExpression toLower(Object? fieldName) {
+    return _expr('to_lower', [_fieldOrExpression(fieldName)]);
   }
 
   /// SUBSTRING string function.
   static PipelineExpression substring(
-    Object? value,
+    Object? fieldName,
     Object? offset, [
     Object? length,
   ]) {
-    return _expr('substring', [value, offset, ..._optionalArg(length)]);
+    return _expr('substring', [
+      _fieldOrExpression(fieldName),
+      offset,
+      ..._optionalArg(length),
+    ]);
   }
 
   /// STRING_REVERSE string function.
-  static PipelineExpression stringReverse(Object? value) {
-    return _expr('string_reverse', [value]);
+  static PipelineExpression stringReverse(Object? fieldName) {
+    return _expr('string_reverse', [_fieldOrExpression(fieldName)]);
   }
 
   /// STRING_REPEAT string function.
-  static PipelineExpression stringRepeat(Object? value, Object? count) {
-    return _expr('string_repeat', [value, count]);
+  static PipelineExpression stringRepeat(Object? fieldName, Object? count) {
+    return _expr('string_repeat', [_fieldOrExpression(fieldName), count]);
   }
 
   /// STRING_REPLACE_ALL string function.
   static PipelineExpression stringReplaceAll(
-    Object? value,
+    Object? fieldName,
     Object? from,
     Object? to,
   ) {
-    return _expr('string_replace_all', [value, from, to]);
+    return _expr('string_replace_all', [
+      _fieldOrExpression(fieldName),
+      from,
+      to,
+    ]);
   }
 
   /// STRING_REPLACE_ONE string function.
   static PipelineExpression stringReplaceOne(
-    Object? value,
+    Object? fieldName,
     Object? from,
     Object? to,
   ) {
-    return _expr('string_replace_one', [value, from, to]);
+    return _expr('string_replace_one', [
+      _fieldOrExpression(fieldName),
+      from,
+      to,
+    ]);
   }
 
   /// TRIM string function.
-  static PipelineExpression trim(Object? value, [Object? characters]) {
-    return _expr('trim', [value, ..._optionalArg(characters)]);
+  static PipelineExpression trim(Object? fieldName, [Object? characters]) {
+    return _expr('trim', [
+      _fieldOrExpression(fieldName),
+      ..._optionalArg(characters),
+    ]);
   }
 
   /// LTRIM string function.
-  static PipelineExpression ltrim(Object? value, [Object? characters]) {
-    return _expr('ltrim', [value, ..._optionalArg(characters)]);
+  static PipelineExpression ltrim(Object? fieldName, [Object? characters]) {
+    return _expr('ltrim', [
+      _fieldOrExpression(fieldName),
+      ..._optionalArg(characters),
+    ]);
   }
 
   /// RTRIM string function.
-  static PipelineExpression rtrim(Object? value, [Object? characters]) {
-    return _expr('rtrim', [value, ..._optionalArg(characters)]);
+  static PipelineExpression rtrim(Object? fieldName, [Object? characters]) {
+    return _expr('rtrim', [
+      _fieldOrExpression(fieldName),
+      ..._optionalArg(characters),
+    ]);
   }
 
   /// SPLIT string function.
-  static PipelineExpression split(Object? input, [Object? delimiter]) {
-    return _expr('split', [input, ..._optionalArg(delimiter)]);
+  static PipelineExpression split(Object? fieldName, [Object? delimiter]) {
+    return _expr('split', [
+      _fieldOrExpression(fieldName),
+      ..._optionalArg(delimiter),
+    ]);
   }
 
   /// CURRENT_TIMESTAMP function.
@@ -789,63 +968,71 @@ abstract final class PipelineFunctions {
 
   /// TIMESTAMP_TRUNC function.
   static PipelineExpression timestampTrunc(
-    Object? timestamp,
+    Object? fieldName,
     Object? granularity, [
     Object? timezone,
   ]) {
     return _expr('timestamp_trunc', [
-      timestamp,
+      _fieldOrExpression(fieldName),
       granularity,
       ..._optionalArg(timezone),
     ]);
   }
 
   /// UNIX_MICROS_TO_TIMESTAMP function.
-  static PipelineExpression unixMicrosToTimestamp(Object? input) {
-    return _expr('unix_micros_to_timestamp', [input]);
+  static PipelineExpression unixMicrosToTimestamp(Object? fieldName) {
+    return _expr('unix_micros_to_timestamp', [_fieldOrExpression(fieldName)]);
   }
 
   /// UNIX_MILLIS_TO_TIMESTAMP function.
-  static PipelineExpression unixMillisToTimestamp(Object? input) {
-    return _expr('unix_millis_to_timestamp', [input]);
+  static PipelineExpression unixMillisToTimestamp(Object? fieldName) {
+    return _expr('unix_millis_to_timestamp', [_fieldOrExpression(fieldName)]);
   }
 
   /// UNIX_SECONDS_TO_TIMESTAMP function.
-  static PipelineExpression unixSecondsToTimestamp(Object? input) {
-    return _expr('unix_seconds_to_timestamp', [input]);
+  static PipelineExpression unixSecondsToTimestamp(Object? fieldName) {
+    return _expr('unix_seconds_to_timestamp', [_fieldOrExpression(fieldName)]);
   }
 
   /// TIMESTAMP_ADD function.
   static PipelineExpression timestampAdd(
-    Object? timestamp,
+    Object? fieldName,
     Object? unit,
     Object? amount,
   ) {
-    return _expr('timestamp_add', [timestamp, unit, amount]);
+    return _expr('timestamp_add', [
+      _fieldOrExpression(fieldName),
+      unit,
+      amount,
+    ]);
   }
 
   /// TIMESTAMP_SUBTRACT function.
   static PipelineExpression timestampSubtract(
-    Object? timestamp,
+    Object? fieldName,
     Object? unit,
     Object? amount,
   ) {
-    return _expr('timestamp_subtract', [timestamp, unit, amount]);
+    return _expr('timestamp_subtract', [
+      _fieldOrExpression(fieldName),
+      unit,
+      amount,
+    ]);
   }
 
   /// TIMESTAMP_TO_UNIX_MICROS function.
-  static PipelineExpression timestampToUnixMicros(Object? input) {
-    return _expr('timestamp_to_unix_micros', [input]);
+  static PipelineExpression timestampToUnixMicros(Object? fieldName) {
+    return _expr('timestamp_to_unix_micros', [_fieldOrExpression(fieldName)]);
   }
 
   /// TIMESTAMP_TO_UNIX_MILLIS function.
-  static PipelineExpression timestampToUnixMillis(Object? input) {
-    return _expr('timestamp_to_unix_millis', [input]);
+  static PipelineExpression timestampToUnixMillis(Object? fieldName) {
+    return _expr('timestamp_to_unix_millis', [_fieldOrExpression(fieldName)]);
   }
 
   /// TIMESTAMP_TO_UNIX_SECONDS function.
-  static PipelineExpression timestampToUnixSeconds(Object? input) {
-    return _expr('timestamp_to_unix_seconds', [input]);
+  static PipelineExpression timestampToUnixSeconds(Object? fieldName) {
+    return _expr('timestamp_to_unix_seconds', [_fieldOrExpression(fieldName)]);
   }
 
   /// TIMESTAMP_DIFF function.
@@ -854,49 +1041,75 @@ abstract final class PipelineFunctions {
     Object? start,
     Object? unit,
   ) {
-    return _expr('timestamp_diff', [end, start, unit]);
+    return _expr('timestamp_diff', [
+      _fieldOrExpression(end),
+      _fieldOrExpression(start),
+      unit,
+    ]);
   }
 
   /// TIMESTAMP_EXTRACT function.
   static PipelineExpression timestampExtract(
-    Object? timestamp,
+    Object? fieldName,
     Object? part, [
     Object? timezone,
   ]) {
     return _expr('timestamp_extract', [
-      timestamp,
+      _fieldOrExpression(fieldName),
       part,
       ..._optionalArg(timezone),
     ]);
   }
 
   /// TYPE function.
-  static PipelineExpression type(Object? input) => _expr('type', [input]);
+  static PipelineExpression type(Object? fieldName) {
+    return _expr('type', [_fieldOrExpression(fieldName)]);
+  }
 
   /// IS_TYPE function.
-  static PipelineBooleanExpression isType(Object? input, Object? type) {
-    return _bool('is_type', [input, type]);
+  static PipelineBooleanExpression isType(Object? fieldName, Object? type) {
+    return _bool('is_type', [_fieldOrExpression(fieldName), type]);
   }
 
   /// COSINE_DISTANCE vector function.
   static PipelineExpression cosineDistance(Object? left, Object? right) {
-    return _expr('cosine_distance', [left, right]);
+    return _expr('cosine_distance', [_fieldOrExpression(left), right]);
   }
 
   /// DOT_PRODUCT vector function.
   static PipelineExpression dotProduct(Object? left, Object? right) {
-    return _expr('dot_product', [left, right]);
+    return _expr('dot_product', [_fieldOrExpression(left), right]);
   }
 
   /// EUCLIDEAN_DISTANCE vector function.
   static PipelineExpression euclideanDistance(Object? left, Object? right) {
-    return _expr('euclidean_distance', [left, right]);
+    return _expr('euclidean_distance', [_fieldOrExpression(left), right]);
   }
 
   /// VECTOR_LENGTH vector function.
-  static PipelineExpression vectorLength(Object? vector) {
-    return _expr('vector_length', [vector]);
+  static PipelineExpression vectorLength(Object? fieldName) {
+    return _expr('vector_length', [_fieldOrExpression(fieldName)]);
   }
+
+  /// GEO_DISTANCE function.
+  ///
+  /// Returns the distance in metres between the geo point at [fieldName] and
+  /// [location].
+  static PipelineExpression geoDistance(Object? fieldName, Object? location) {
+    return _expr('geo_distance', [_fieldOrExpression(fieldName), location]);
+  }
+
+  /// DOCUMENT_MATCHES search function.
+  ///
+  /// Matches documents against the query string [rquery].
+  static PipelineBooleanExpression documentMatches(Object? rquery) {
+    return _bool('document_matches', [rquery]);
+  }
+
+  /// SCORE search function.
+  ///
+  /// Returns the relevance score assigned by a preceding search stage.
+  static PipelineExpression score() => _expr('score', const []);
 }
 
 /// Creates an ascending Pipeline ordering.
@@ -949,6 +1162,42 @@ final class PipelineSource {
       throw ArgumentError.value(documents, 'documents', 'Must not be empty.');
     }
     return _start('documents', refs);
+  }
+
+  /// Converts [query] into an equivalent Pipeline.
+  ///
+  /// [query] must be a [Query] or a [VectorQuery]. Its filters, projections,
+  /// orderings, cursors, limit and offset are all translated into the
+  /// corresponding Pipeline stages.
+  ///
+  /// Throws an [ArgumentError] when [query] targets a different database than
+  /// this Pipeline.
+  Pipeline createFrom(Object query) {
+    switch (query) {
+      case VectorQuery<Object?>():
+        _validateSameDatabase(query.query.firestore);
+        return query._toPipeline(_firestore);
+      case Query<Object?>():
+        _validateSameDatabase(query.firestore);
+        return query._toPipeline(_firestore);
+      default:
+        throw ArgumentError.value(
+          query,
+          'query',
+          'Expected a Query or a VectorQuery.',
+        );
+    }
+  }
+
+  void _validateSameDatabase(Firestore queryFirestore) {
+    if (queryFirestore.databaseId == _firestore.databaseId) return;
+
+    throw ArgumentError.value(
+      queryFirestore.databaseId,
+      'query',
+      'The database of this query does not match the target database '
+          '("${_firestore.databaseId}") of this Pipeline.',
+    );
   }
 
   Pipeline _start(String name, List<Object?> args) {
@@ -1231,6 +1480,277 @@ final class Pipeline {
   }
 }
 
+/// Translates the [Query] surface onto Pipeline stages.
+///
+/// Mirrors the Node SDK's `Query._pipeline()` so that a Pipeline built from a
+/// Query returns the same documents the Query itself would.
+extension _QueryToPipeline<T> on Query<T> {
+  Pipeline _toPipeline(Firestore firestore) {
+    final options = _queryOptions;
+    final source = PipelineSource._(firestore);
+
+    var pipeline = options.allDescendants
+        ? source.collectionGroup(options.collectionId)
+        : source.collection(
+            options.parentPath._append(options.collectionId).relativeName,
+          );
+
+    for (final filter in options.filters) {
+      pipeline = pipeline.where(_toPipelineBooleanExpression(filter));
+    }
+
+    final projections = options.projection?.fields ?? const [];
+    if (projections.isNotEmpty) {
+      pipeline = pipeline.select([
+        for (final projection in projections) field(projection.fieldPath),
+      ]);
+    }
+
+    // Inequality fields are skipped here because `_toPipelineBooleanExpression`
+    // has already emitted their existence checks.
+    final existsConditions = [
+      for (final fieldOrder in _implicitOrderBy(ignoreInequalityFields: true))
+        field(fieldOrder.fieldPath._formattedName).exists(),
+    ];
+    pipeline = pipeline.where(
+      existsConditions.length == 1
+          ? existsConditions.single
+          : and(existsConditions),
+    );
+
+    final orderings = [
+      for (final fieldOrder in _implicitOrderBy())
+        PipelineOrdering._(
+          fieldOrder.direction == _Direction.ascending
+              ? 'ascending'
+              : 'descending',
+          field(fieldOrder.fieldPath._formattedName),
+        ),
+    ];
+
+    if (orderings.isNotEmpty) {
+      // A `limitToLast` query sorts in reverse, takes the first N documents and
+      // then restores the requested order.
+      final reversed = options.limitType == LimitType.last;
+      pipeline = pipeline.sort(reversed ? _reversed(orderings) : orderings);
+
+      final startAt = options.startAt;
+      if (startAt != null) {
+        pipeline = pipeline.where(
+          _cursorCondition(startAt, orderings, before: false),
+        );
+      }
+      final endAt = options.endAt;
+      if (endAt != null) {
+        pipeline = pipeline.where(
+          _cursorCondition(endAt, orderings, before: true),
+        );
+      }
+
+      final limit = options.limit;
+      if (limit != null) pipeline = pipeline.limit(limit);
+
+      if (reversed) pipeline = pipeline.sort(orderings);
+    }
+
+    final offset = options.offset;
+    if (offset != null && offset > 0) pipeline = pipeline.offset(offset);
+
+    return pipeline;
+  }
+
+  /// Mirrors the backend's implicit ordering rules for this query.
+  List<_FieldOrder> _implicitOrderBy({bool ignoreInequalityFields = false}) {
+    final fieldOrders = _queryOptions.fieldOrders.toList();
+    final seen = {for (final fieldOrder in fieldOrders) fieldOrder.fieldPath};
+
+    // The implicit ordering always follows the last explicit order by.
+    final lastDirection = fieldOrders.isEmpty
+        ? _Direction.ascending
+        : fieldOrders.last.direction;
+
+    if (!ignoreInequalityFields) {
+      // Inequality fields that are not explicitly ordered are ordered
+      // lexicographically, with the document key sorted last.
+      for (final inequalityField in _inequalityFilterFields()) {
+        // The document key is always appended last, below.
+        if (seen.contains(inequalityField) ||
+            inequalityField == FieldPath.documentId) {
+          continue;
+        }
+        seen.add(inequalityField);
+        fieldOrders.add(
+          _FieldOrder(fieldPath: inequalityField, direction: lastDirection),
+        );
+      }
+    }
+
+    if (!seen.contains(FieldPath.documentId)) {
+      fieldOrders.add(
+        _FieldOrder(fieldPath: FieldPath.documentId, direction: lastDirection),
+      );
+    }
+
+    return fieldOrders;
+  }
+
+  /// The inequality filter fields of this query, sorted lexicographically.
+  List<FieldPath> _inequalityFilterFields() {
+    final fields = <FieldPath>{
+      for (final filter in _queryOptions.filters)
+        for (final subFilter in filter.flattenedFilters)
+          if (subFilter.isInequalityFilter) subFilter.field,
+    };
+
+    return fields.toList()
+      ..sort((a, b) => a._formattedName.compareTo(b._formattedName));
+  }
+
+  PipelineBooleanExpression _toPipelineBooleanExpression(
+    _FilterInternal filter,
+  ) {
+    switch (filter) {
+      case _FieldFilterInternal():
+        return _fieldFilterToPipelineBooleanExpression(filter);
+      case _CompositeFilterInternal():
+        final conditions = [
+          for (final subFilter in filter.filters)
+            _toPipelineBooleanExpression(subFilter),
+        ];
+        if (conditions.length == 1) return conditions.single;
+        return filter.isConjunction ? and(conditions) : or(conditions);
+    }
+  }
+
+  PipelineBooleanExpression _fieldFilterToPipelineBooleanExpression(
+    _FieldFilterInternal filter,
+  ) {
+    final target = field(filter.field._formattedName);
+    final value = _PipelineProtoValue(
+      firestore._serializer.encodeValue(filter.value) ??
+          firestore_v1.Value(nullValue: protobuf_v1.NullValue.nullValue),
+    );
+
+    // `notIn` matches absent fields on Enterprise databases, so unlike every
+    // other operator it must not be paired with an existence check.
+    if (filter.op == WhereFilter.notIn) {
+      return target.notEqualAny(_protoArrayElements(value));
+    }
+
+    final condition = switch (filter.op) {
+      WhereFilter.lessThan => target.lessThan(value),
+      WhereFilter.lessThanOrEqual => target.lessThanOrEqual(value),
+      WhereFilter.greaterThan => target.greaterThan(value),
+      WhereFilter.greaterThanOrEqual => target.greaterThanOrEqual(value),
+      WhereFilter.equal => target.equal(value),
+      WhereFilter.notEqual => target.notEqual(value),
+      WhereFilter.arrayContains => target.arrayContainsElement(value),
+      WhereFilter.isIn => target.equalAny(_protoArrayElements(value)),
+      WhereFilter.arrayContainsAny => PipelineFunctions.arrayContainsAny(
+        target,
+        _protoArrayElements(value),
+      ),
+      WhereFilter.notIn => throw StateError('Handled above.'),
+    };
+
+    return and([target.exists(), condition]);
+  }
+
+  /// Unpacks an encoded array so each element keeps its own encoded value.
+  List<PipelineExpression> _protoArrayElements(_PipelineProtoValue value) {
+    final values = value.value.arrayValue?.values ?? const [];
+    return [for (final element in values) _PipelineProtoValue(element)];
+  }
+}
+
+List<PipelineOrdering> _reversed(List<PipelineOrdering> orderings) {
+  return [
+    for (final ordering in orderings)
+      PipelineOrdering._(
+        ordering._name == 'ascending' ? 'descending' : 'ascending',
+        ordering._expression,
+      ),
+  ];
+}
+
+/// Rewrites a Query cursor as the equivalent Pipeline filter.
+///
+/// Cursors compare the ordering expressions lexicographically, so each bound
+/// contributes either a strict comparison or an equality plus the condition for
+/// the remaining bounds.
+PipelineBooleanExpression _cursorCondition(
+  _QueryCursor cursor,
+  List<PipelineOrdering> orderings, {
+  required bool before,
+}) {
+  final size = cursor.values.length;
+  if (size == 0 || size > orderings.length) {
+    throw ArgumentError.value(
+      cursor,
+      'cursor',
+      'Cursor values must match the orderings of the query.',
+    );
+  }
+
+  PipelineBooleanExpression compare(Object? expression, Object? value) {
+    return before
+        ? _comparison('less_than', expression, value)
+        : _comparison('greater_than', expression, value);
+  }
+
+  PipelineBooleanExpression equals(Object? expression, Object? value) {
+    return _comparison('equal', expression, value);
+  }
+
+  var expression = orderings[size - 1]._expression;
+  var value = _PipelineProtoValue(cursor.values[size - 1]);
+
+  var condition = compare(expression, value);
+  // An inclusive bound also matches the cursor value itself.
+  if (before != cursor.before) {
+    condition = or([condition, equals(expression, value)]);
+  }
+
+  for (var i = size - 2; i >= 0; i--) {
+    expression = orderings[i]._expression;
+    value = _PipelineProtoValue(cursor.values[i]);
+    condition = or([
+      compare(expression, value),
+      and([equals(expression, value), condition]),
+    ]);
+  }
+
+  return condition;
+}
+
+/// Translates the [VectorQuery] surface onto Pipeline stages.
+extension _VectorQueryToPipeline<T> on VectorQuery<T> {
+  Pipeline _toPipeline(Firestore firestore) {
+    final vectorField = _rawVectorField;
+    return _query
+        ._toPipeline(firestore)
+        .where(field(vectorField).exists())
+        .findNearest(
+          vectorField: field(vectorField),
+          queryVector: FieldValue.vector(_rawQueryVector),
+          distanceMeasure: _options.distanceMeasure,
+          limit: _options.limit,
+          distanceResultField: _rawDistanceResultField,
+          distanceThreshold: _options.distanceThreshold,
+        );
+  }
+}
+
+/// A Pipeline expression wrapping an already-encoded Firestore value.
+final class _PipelineProtoValue extends PipelineExpression {
+  const _PipelineProtoValue(this.value);
+
+  final firestore_v1.Value value;
+
+  @override
+  firestore_v1.Value _toValue(Firestore firestore) => value;
+}
+
 /// A Pipeline execution result.
 @immutable
 final class PipelineResult {
@@ -1486,6 +2006,41 @@ sealed class PipelineExpression {
   /// Returns the square root of this expression.
   PipelineExpression sqrt() => PipelineFunctions.sqrt(this);
 
+  /// Raises this expression to the power of [exponent].
+  PipelineExpression pow(Object? exponent) {
+    return PipelineFunctions.pow(this, exponent);
+  }
+
+  /// Returns e raised to the power of this expression.
+  PipelineExpression exp() => PipelineFunctions.exp(this);
+
+  /// Returns the natural logarithm of this expression.
+  PipelineExpression ln() => PipelineFunctions.ln(this);
+
+  /// Returns the base-10 logarithm of this expression.
+  PipelineExpression log10() => PipelineFunctions.log10(this);
+
+  /// Returns the logarithm of this expression in [base].
+  PipelineExpression log([Object? base]) {
+    return PipelineFunctions.log(this, base);
+  }
+
+  /// Returns the largest of this expression and [others].
+  PipelineExpression logicalMaximum(
+    Object? second, [
+    Iterable<Object?> others = const [],
+  ]) {
+    return PipelineFunctions.logicalMaximum(this, second, others);
+  }
+
+  /// Returns the smallest of this expression and [others].
+  PipelineExpression logicalMinimum(
+    Object? second, [
+    Iterable<Object?> others = const [],
+  ]) {
+    return PipelineFunctions.logicalMinimum(this, second, others);
+  }
+
   /// Creates a count aggregate from this expression.
   PipelineExpression count() => PipelineFunctions.count(this);
 
@@ -1599,6 +2154,11 @@ sealed class PipelineExpression {
   /// Returns the length of this array expression.
   PipelineExpression arrayLength() => PipelineFunctions.arrayLength(this);
 
+  /// Returns the element of this array expression at [index].
+  PipelineExpression arrayGet(Object? index) {
+    return PipelineFunctions.arrayGet(this, index);
+  }
+
   /// Returns the maximum element of this array expression.
   PipelineExpression arrayMaximum() => PipelineFunctions.maximum(this);
 
@@ -1661,6 +2221,30 @@ sealed class PipelineExpression {
     return PipelineFunctions.ifAbsent(this, elseExpr);
   }
 
+  /// Replaces null values with [elseExpr].
+  PipelineExpression ifNull(Object? elseExpr) {
+    return PipelineFunctions.ifNull(this, elseExpr);
+  }
+
+  /// Returns the first of this expression and [others] that is present and
+  /// non-null.
+  PipelineExpression coalesce(
+    Object? replacement, [
+    Iterable<Object?> others = const [],
+  ]) {
+    return PipelineFunctions.coalesce(this, replacement, others);
+  }
+
+  /// Checks if this expression equals any value in [searchSpace].
+  PipelineBooleanExpression equalAny(Object? searchSpace) {
+    return PipelineFunctions.equalAny(this, searchSpace);
+  }
+
+  /// Checks if this expression equals no value in [searchSpace].
+  PipelineBooleanExpression notEqualAny(Object? searchSpace) {
+    return PipelineFunctions.notEqualAny(this, searchSpace);
+  }
+
   /// Checks if this expression errors.
   PipelineBooleanExpression isError() => PipelineFunctions.isError(this);
 
@@ -1690,6 +2274,11 @@ sealed class PipelineExpression {
 
   /// Gets a map value by [key].
   PipelineExpression mapGet(Object? key) => PipelineFunctions.mapGet(this, key);
+
+  /// Gets a value by [key] from this map expression.
+  PipelineExpression getField(Object? key) {
+    return PipelineFunctions.getField(this, key);
+  }
 
   /// Gets a map value by literal [key].
   PipelineExpression mapGetLiteral(String key) => mapGet(key);
@@ -1733,10 +2322,28 @@ sealed class PipelineExpression {
   PipelineExpression byteLength() => PipelineFunctions.byteLength(this);
 
   /// Returns the character length of this string expression.
-  PipelineExpression length() => PipelineFunctions.charLength(this);
+  PipelineExpression charLength() => PipelineFunctions.charLength(this);
+
+  /// Returns the length of this expression.
+  ///
+  /// Unlike [charLength], this works on strings, bytes, arrays, maps and
+  /// vectors.
+  PipelineExpression length() => PipelineFunctions.length(this);
+
+  /// Reverses this string or array expression.
+  PipelineExpression reverse() => PipelineFunctions.reverse(this);
+
+  /// Concatenates this string or array expression with [others].
+  PipelineExpression concat(Iterable<Object?> others) {
+    final values = others.toList();
+    if (values.isEmpty) {
+      throw ArgumentError.value(others, 'others', 'Must not be empty.');
+    }
+    return PipelineFunctions.concat(this, values.first, values.skip(1));
+  }
 
   /// Concatenates this string expression with [others].
-  PipelineExpression concat(Iterable<Object?> others) {
+  PipelineExpression stringConcat(Iterable<Object?> others) {
     return PipelineFunctions.stringConcat([this, ...others]);
   }
 
@@ -1877,6 +2484,21 @@ sealed class PipelineExpression {
     return PipelineFunctions.timestampToUnixSeconds(this);
   }
 
+  /// Interprets this expression as Unix micros and converts it to a timestamp.
+  PipelineExpression unixMicrosToTimestamp() {
+    return PipelineFunctions.unixMicrosToTimestamp(this);
+  }
+
+  /// Interprets this expression as Unix millis and converts it to a timestamp.
+  PipelineExpression unixMillisToTimestamp() {
+    return PipelineFunctions.unixMillisToTimestamp(this);
+  }
+
+  /// Interprets this expression as Unix seconds and converts it to a timestamp.
+  PipelineExpression unixSecondsToTimestamp() {
+    return PipelineFunctions.unixSecondsToTimestamp(this);
+  }
+
   /// Returns the timestamp difference between this expression and [start].
   PipelineExpression timestampDiff(Object? start, Object? unit) {
     return PipelineFunctions.timestampDiff(this, start, unit);
@@ -1912,6 +2534,11 @@ sealed class PipelineExpression {
 
   /// Returns this vector expression's length.
   PipelineExpression vectorLength() => PipelineFunctions.vectorLength(this);
+
+  /// Computes the distance in metres between this geo point and [location].
+  PipelineExpression geoDistance(Object? location) {
+    return PipelineFunctions.geoDistance(this, location);
+  }
 
   /// Creates an ascending ordering for this expression.
   PipelineOrdering ascending() => PipelineOrdering._('ascending', this);

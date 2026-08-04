@@ -91,6 +91,7 @@ export 'src/firestore.dart'
         count,
         currentDocument,
         descending,
+        documentMatches,
         equal,
         field,
         greaterThan,
@@ -101,6 +102,7 @@ export 'src/firestore.dart'
         notEqual,
         or,
         pipelineFunction,
+        score,
         sum;
 export 'src/firestore_exception.dart'
     show FirestoreClientErrorCode, FirestoreException;
