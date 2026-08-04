@@ -830,6 +830,26 @@ void main() {
         expect(filter.name, 'not_equal_any');
       });
 
+      test('converts a field mask into a select stage', () async {
+        await run(
+          firestore.collection('books').select([
+            FieldPath(const ['title']),
+            FieldPath(const ['rating']),
+          ]),
+        );
+
+        expect(stages.map((stage) => stage.name), [
+          'collection',
+          'select',
+          'where',
+          'sort',
+        ]);
+
+        final selected = stages[1].args.single.mapValue!.fields;
+        expect(selected.keys, ['title', 'rating']);
+        expect(selected['title']!.fieldReferenceValue, 'title');
+      });
+
       test('converts collection group queries', () async {
         await run(firestore.collectionGroup('books'));
 
