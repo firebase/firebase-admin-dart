@@ -161,6 +161,25 @@ void main() {
       },
     );
 
+    test(
+      'appends fire-admin tag when pre-existing header contains a version prefix collision',
+      () async {
+        final captured = <BaseRequest>[];
+        final client = FirebaseUserAgentClient(_CapturingAuthClient(captured));
+
+        final request = Request('POST', Uri.parse('https://example.com/'));
+        // Pre-existing header contains fire-admin/0.5.50 or fire-admin/0.5.5-other
+        request.headers['X-Goog-Api-Client'] =
+            'gl-dart/3.9.0 fire-admin/0.5.50';
+        await client.send(request);
+
+        expect(
+          captured.first.headers['X-Goog-Api-Client'],
+          'gl-dart/3.9.0 fire-admin/0.5.50 fire-admin/$packageVersion',
+        );
+      },
+    );
+
     test('injects both headers on every individual request', () async {
       final captured = <BaseRequest>[];
       final client = FirebaseUserAgentClient(_CapturingAuthClient(captured));

@@ -37,7 +37,8 @@ class FirebaseUserAgentClient extends BaseClient
       if (existing == null) {
         request.headers[entry.key] = entry.value;
       } else if (entry.key.toLowerCase() == 'x-goog-api-client') {
-        if (!existing.contains(fireAdminApiClientTag)) {
+        final tokens = existing.split(RegExp(r'\s+'));
+        if (!tokens.contains(fireAdminApiClientTag)) {
           request.headers[entry.key] = '$existing $fireAdminApiClientTag';
         }
       } else {
