@@ -138,6 +138,29 @@ void main() {
       },
     );
 
+    test(
+      'appends to pre-existing lowercase x-goog-api-client header without creating duplicate keys',
+      () async {
+        final captured = <BaseRequest>[];
+        final client = FirebaseUserAgentClient(_CapturingAuthClient(captured));
+
+        final request = Request('POST', Uri.parse('https://example.com/'));
+        request.headers['x-goog-api-client'] = 'gl-dart/3.9.0 gdcl/17.0.0';
+        await client.send(request);
+
+        expect(
+          captured.first.headers['x-goog-api-client'],
+          'gl-dart/3.9.0 gdcl/17.0.0 fire-admin/$packageVersion',
+        );
+        expect(
+          captured.first.headers.keys.where(
+            (k) => k.toLowerCase() == 'x-goog-api-client',
+          ),
+          hasLength(1),
+        );
+      },
+    );
+
     test('injects both headers on every individual request', () async {
       final captured = <BaseRequest>[];
       final client = FirebaseUserAgentClient(_CapturingAuthClient(captured));
