@@ -1,3 +1,7 @@
+## 0.5.5-wip
+
+- Ensure usage tracking headers (`X-Firebase-Client`, `X-Goog-Api-Client`) are appended to outgoing requests without overwriting existing client library headers or duplicating runtime tokens.
+
 ## 0.5.4
 
 - Fixed double-close errors when calling `Storage.delete()` prior to `FirebaseApp.close()`.

@@ -32,7 +32,18 @@ class FirebaseUserAgentClient extends BaseClient
 
   @override
   Future<StreamedResponse> send(BaseRequest request) {
-    request.headers.addAll(firebaseUserAgentHeaders);
+    for (final entry in firebaseUserAgentHeaders.entries) {
+      final existing = request.headers[entry.key];
+      if (existing == null) {
+        request.headers[entry.key] = entry.value;
+      } else if (entry.key.toLowerCase() == 'x-goog-api-client') {
+        if (!existing.contains(fireAdminApiClientTag)) {
+          request.headers[entry.key] = '$existing $fireAdminApiClientTag';
+        }
+      } else {
+        request.headers[entry.key] = entry.value;
+      }
+    }
     return _client.send(request);
   }
 

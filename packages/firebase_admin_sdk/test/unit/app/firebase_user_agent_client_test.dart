@@ -106,19 +106,37 @@ void main() {
       );
     });
 
-    test('overwrites any pre-existing X-Goog-Api-Client header', () async {
+    test('appends to any pre-existing X-Goog-Api-Client header', () async {
       final captured = <BaseRequest>[];
       final client = FirebaseUserAgentClient(_CapturingAuthClient(captured));
 
       final request = Request('POST', Uri.parse('https://example.com/'));
-      request.headers['X-Goog-Api-Client'] = 'gl-node/18.0.0 fire-admin/12.0.0';
+      request.headers['X-Goog-Api-Client'] = 'gl-dart/3.9.0 gdcl/17.0.0';
       await client.send(request);
 
       expect(
         captured.first.headers['X-Goog-Api-Client'],
-        'gl-dart/$dartVersion fire-admin/$packageVersion',
+        'gl-dart/3.9.0 gdcl/17.0.0 fire-admin/$packageVersion',
       );
     });
+
+    test(
+      'does not duplicate fire-admin tag if already present in X-Goog-Api-Client',
+      () async {
+        final captured = <BaseRequest>[];
+        final client = FirebaseUserAgentClient(_CapturingAuthClient(captured));
+
+        final request = Request('POST', Uri.parse('https://example.com/'));
+        request.headers['X-Goog-Api-Client'] =
+            'gl-dart/3.9.0 fire-admin/$packageVersion';
+        await client.send(request);
+
+        expect(
+          captured.first.headers['X-Goog-Api-Client'],
+          'gl-dart/3.9.0 fire-admin/$packageVersion',
+        );
+      },
+    );
 
     test('injects both headers on every individual request', () async {
       final captured = <BaseRequest>[];
