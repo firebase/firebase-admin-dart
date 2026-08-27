@@ -172,8 +172,15 @@ class FirestoreHttpClient {
     return discovered != null ? (_cachedProjectId = discovered) : null;
   }
 
-  /// Gets the Firestore API host URL based on emulator configuration.
-  Uri get _firestoreApiHost {
+  /// Gets the Firestore API host URL.
+  ///
+  /// `FIRESTORE_EMULATOR_HOST` takes precedence over [Settings.host], since it
+  /// is the documented way to redirect the SDK at an emulator. Otherwise the
+  /// scheme follows [Settings.ssl], which lets a custom [Settings.host] be
+  /// reached over plain HTTP.
+  @internal
+  @visibleForTesting
+  Uri get firestoreApiHost {
     final emulatorHost = Environment.getFirestoreEmulatorHost(
       _settings.environmentOverride,
     );
@@ -182,7 +189,8 @@ class FirestoreHttpClient {
       return Uri.http(emulatorHost, '/');
     }
 
-    return Uri.https(_settings.host ?? 'firestore.googleapis.com', '/');
+    final host = _settings.host ?? 'firestore.googleapis.com';
+    return _settings.ssl ? Uri.https(host, '/') : Uri.http(host, '/');
   }
 
   /// Checks if the Firestore emulator is enabled via environment variable.
@@ -242,7 +250,7 @@ class FirestoreHttpClient {
     Future<R> Function(firestore_v1.Firestore api, String projectId) fn,
   ) => _run(
     (client, projectId) => fn(
-      firestore_v1.Firestore(client: client, endPoint: _firestoreApiHost),
+      firestore_v1.Firestore(client: client, endPoint: firestoreApiHost),
       projectId,
     ),
   );

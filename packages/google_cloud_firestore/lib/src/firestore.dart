@@ -137,9 +137,12 @@ class Settings {
   /// set this to 'localhost:8080' (or your emulator's host:port).
   final String? host;
 
-  /// Whether to use SSL when connecting.
+  /// Whether to connect over HTTPS.
   ///
-  /// Defaults to true. Set to false when using the emulator.
+  /// Defaults to `true`. Set it to `false` alongside [host] to reach a plain
+  /// HTTP endpoint, such as a locally running emulator.
+  ///
+  /// Ignored when `FIRESTORE_EMULATOR_HOST` is set, which always uses HTTP.
   final bool ssl;
 
   /// The credential to use for authentication.
