@@ -30,8 +30,18 @@ void main() {
       Platform.environment[_projectIdEnv] ??
       Platform.environment['GOOGLE_CLOUD_PROJECT'] ??
       Platform.environment['GCLOUD_PROJECT'];
-  final databaseId = Platform.environment[_databaseIdEnv] ?? '(default)';
-  final shouldRun = projectId != null && projectId.isNotEmpty;
+  // No '(default)' fallback on purpose. CI credential helpers such as
+  // google-github-actions/auth export GOOGLE_CLOUD_PROJECT, so a project-only
+  // guard would silently arm this suite against whatever project happened to
+  // be authenticated, using its default database — which may be Standard
+  // edition (no Pipelines at all) or simply lack the vector index this suite
+  // needs. Both variables must be set deliberately.
+  final databaseId = Platform.environment[_databaseIdEnv];
+  final shouldRun =
+      projectId != null &&
+      projectId.isNotEmpty &&
+      databaseId != null &&
+      databaseId.isNotEmpty;
 
   group('Firestore Pipeline E2E', skip: shouldRun ? null : _skipReason, () {
     late Firestore firestore;
@@ -264,10 +274,11 @@ void main() {
 }
 
 const _skipReason =
-    'Set FIRESTORE_PIPELINE_E2E_PROJECT_ID and optionally '
-    'FIRESTORE_PIPELINE_E2E_DATABASE_ID to run against a real Firebase project. '
-    'CI should authenticate with Application Default Credentials, for example '
-    'by setting GOOGLE_APPLICATION_CREDENTIALS to a service account JSON file.';
+    'Set both FIRESTORE_PIPELINE_E2E_PROJECT_ID and '
+    'FIRESTORE_PIPELINE_E2E_DATABASE_ID to run against a real Firebase '
+    'project. The database must be Enterprise edition; Pipelines are not '
+    'available on Standard. CI authenticates with Application Default '
+    'Credentials, for example via Workload Identity Federation.';
 
 PipelineBooleanExpression _runFilter(
   String runId, [
@@ -610,14 +621,24 @@ final _functionScenarios = <_FunctionScenario>[
       PipelineFunctions.ifNull(Expression.field('nullable'), 'fallback'),
       'fallback',
     ),
+    // The first argument is a field position: a bare String means a field
+    // reference, not a string literal. Passing 'dart' here asked about a
+    // non-existent field named `dart`, which made equalAny false and made
+    // notEqualAny true for the wrong reason.
     _FunctionExpectation(
       'equalAny',
-      PipelineFunctions.equalAny('dart', Expression.field('tags')),
+      PipelineFunctions.equalAny(
+        'title',
+        Expression.array(['Dart Pipelines', 'Unrelated Title']),
+      ),
       true,
     ),
     _FunctionExpectation(
       'notEqualAny',
-      PipelineFunctions.notEqualAny('dart', Expression.array(['firebase'])),
+      PipelineFunctions.notEqualAny(
+        'title',
+        Expression.array(['Unrelated Title', 'Another Title']),
+      ),
       true,
     ),
   ]),
