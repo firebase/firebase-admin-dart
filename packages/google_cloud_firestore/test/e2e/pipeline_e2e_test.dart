@@ -194,6 +194,26 @@ void main() {
       expect(aggregateSnapshot.results.single.get('bookCount'), 2);
     });
 
+    test('requests explain stats via typed options', () async {
+      final snapshot = await firestore
+          .pipeline()
+          .collection(_collectionPath)
+          .where(_runFilter(runId, Expression.field('active').equal(true)))
+          .withOptions(
+            explain: const PipelineExplainOptions(
+              mode: PipelineExplainMode.analyze,
+              outputFormat: PipelineExplainOutputFormat.text,
+            ),
+          )
+          .execute();
+
+      // `analyze` runs the pipeline and returns planning stats alongside the
+      // results, which is what proves the option names reached the backend.
+      expect(snapshot.results, isNotEmpty);
+      expect(snapshot.explainStats, isNotNull);
+      expect(snapshot.explainStats!.text, isNotEmpty);
+    });
+
     test('executes a pipeline inside a transaction', () async {
       final titles = await firestore.runTransaction((transaction) async {
         final snapshot = await transaction.executePipeline(

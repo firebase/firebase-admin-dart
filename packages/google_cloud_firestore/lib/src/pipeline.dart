@@ -118,6 +118,68 @@ enum PipelineValueType {
   final String value;
 }
 
+/// How the backend should choose indexes when executing a Pipeline.
+enum PipelineIndexMode {
+  /// Let the backend pick the indexes it recommends.
+  recommended('recommended');
+
+  const PipelineIndexMode(this.value);
+
+  /// The value sent to the backend.
+  final String value;
+}
+
+/// Whether the backend should execute a Pipeline, plan it, or both.
+enum PipelineExplainMode {
+  /// Execute the Pipeline and return results, without planning stats.
+  execute('execute'),
+
+  /// Plan the Pipeline without executing it.
+  explain('explain'),
+
+  /// Execute the Pipeline and return planning and execution stats.
+  analyze('analyze');
+
+  const PipelineExplainMode(this.value);
+
+  /// The value sent to the backend.
+  final String value;
+}
+
+/// The format the backend encodes explain stats in.
+enum PipelineExplainOutputFormat {
+  /// A human-readable string, surfaced by [ExplainStats.text].
+  text('text');
+
+  const PipelineExplainOutputFormat(this.value);
+
+  /// The value sent to the backend.
+  final String value;
+}
+
+/// Asks the backend for statistics about how it plans and runs a Pipeline.
+///
+/// Pass to [Pipeline.withOptions]; read the result from
+/// [PipelineSnapshot.explainStats].
+@immutable
+final class PipelineExplainOptions {
+  /// Creates explain options.
+  const PipelineExplainOptions({this.mode, this.outputFormat});
+
+  /// Whether to execute the Pipeline, plan it, or both.
+  final PipelineExplainMode? mode;
+
+  /// The format the stats are encoded in.
+  final PipelineExplainOutputFormat? outputFormat;
+
+  Map<String, Object?> get _encoded {
+    return _compactOptions({
+      'mode': mode?.value,
+      'output_format': outputFormat?.value,
+    });
+  }
+}
+
 /// Creates a raw Pipeline function expression.
 PipelineExpression pipelineFunction(
   String name,
@@ -1423,8 +1485,42 @@ final class Pipeline {
     return rawStage('search', const [], options: options);
   }
 
-  /// Returns a copy of this Pipeline with query-level [options].
-  Pipeline withOptions(Map<String, Object?> options) {
+  /// Returns a copy of this Pipeline with query-level options applied.
+  ///
+  /// Options given here are merged with any already set. Pass [explain] to ask
+  /// the backend for planning stats, then read [PipelineSnapshot.explainStats].
+  ///
+  /// ```dart
+  /// final snapshot = await firestore
+  ///     .pipeline()
+  ///     .collection('books')
+  ///     .withOptions(
+  ///       explain: const PipelineExplainOptions(
+  ///         mode: PipelineExplainMode.analyze,
+  ///         outputFormat: PipelineExplainOutputFormat.text,
+  ///       ),
+  ///     )
+  ///     .execute();
+  ///
+  /// print(snapshot.explainStats?.text);
+  /// ```
+  Pipeline withOptions({
+    PipelineIndexMode? indexMode,
+    PipelineExplainOptions? explain,
+  }) {
+    return withRawOptions(
+      _compactOptions({
+        'index_mode': indexMode?.value,
+        'explain_options': explain?._encoded,
+      }),
+    );
+  }
+
+  /// Returns a copy of this Pipeline with raw query-level [options].
+  ///
+  /// Use this for options not yet wrapped by this SDK; [withOptions] covers
+  /// the known ones. Keys are the names the backend expects.
+  Pipeline withRawOptions(Map<String, Object?> options) {
     return Pipeline._(
       firestore: firestore,
       stages: _stages,
