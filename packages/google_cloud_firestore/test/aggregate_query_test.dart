@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'package:google_cloud_firestore/google_cloud_firestore.dart';
+// `greaterThan` and `lessThan` are Pipeline expression helpers here, but this
+// suite wants the `matcher` versions.
+import 'package:google_cloud_firestore/google_cloud_firestore.dart'
+    hide greaterThan, lessThan;
 import 'package:google_cloud_firestore/src/firestore_http_client.dart';
 import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
 import 'package:http/http.dart' as http;

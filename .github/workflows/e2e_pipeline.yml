@@ -1,0 +1,129 @@
+name: E2E Pipeline
+
+concurrency:
+  # Pipeline E2E writes to a shared live database. Serialise per ref, and let a
+  # newer push cancel an in-flight run so two runs never overlap on the same ref.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    # These tests only exercise google_cloud_firestore and cost live Firestore
+    # quota, so they are not worth running for changes that cannot affect them.
+    # The nightly schedule still runs them unconditionally.
+    paths:
+      - "packages/google_cloud_firestore/**"
+      - ".github/workflows/e2e_pipeline.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/google_cloud_firestore/**"
+      - ".github/workflows/e2e_pipeline.yml"
+
+  schedule:
+    # runs nightly at 10AM, alongside build.yml
+    - cron: "0 10 * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline-e2e:
+    name: Firestore Pipeline E2E
+    # Requires live-project secrets, which fork and dependabot PRs don't receive.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       github.actor != 'dependabot[bot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: packages/google_cloud_firestore
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          # Nothing here pushes; dropping the token keeps it out of the
+          # checkout the test process can read.
+          persist-credentials: false
+
+      - uses: dart-lang/setup-dart@65eb853c7ba17dde3be364c3d2858773e7144260
+        with:
+          sdk: stable
+
+      - name: Cache pub dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.pub-cache
+          key: pub-stable-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            pub-stable-
+            pub-
+
+      - name: Resolve workspace dependencies
+        working-directory: .
+        run: dart pub get
+
+      - name: Write service account credentials
+        env:
+          # Key for dart-admin-pipeline-e2e@<project>.iam.gserviceaccount.com,
+          # which holds roles/datastore.user on the Pipelines project.
+          # Referenced via env, never interpolated into the script body, so the
+          # value cannot be parsed as shell.
+          PIPELINE_E2E_SERVICE_ACCOUNT: ${{ secrets.PIPELINE_E2E_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$PIPELINE_E2E_SERVICE_ACCOUNT" ]; then
+            echo "::error::PIPELINE_E2E_SERVICE_ACCOUNT is empty — the secret is unset or unavailable. Failing early instead of reporting a green run for tests that never executed."
+            exit 1
+          fi
+          # $RUNNER_TEMP, not the workspace: keeps the key out of the checkout
+          # so it can never be committed or picked up by a repo-wide tool.
+          key_file="$RUNNER_TEMP/pipeline-e2e-service-account.json"
+          install -m 600 /dev/null "$key_file"
+          printf '%s' "$PIPELINE_E2E_SERVICE_ACCOUNT" > "$key_file"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$key_file" >> "$GITHUB_ENV"
+          echo "PIPELINE_E2E_KEY_FILE=$key_file" >> "$GITHUB_ENV"
+
+      - name: Run Firestore Pipeline E2E tests
+        env:
+          # The shared Pipelines project, kept in a secret to match how
+          # FlutterFire's e2e_tests_pipeline.yaml treats it.
+          FIRESTORE_PIPELINE_E2E_PROJECT_ID: ${{ secrets.PIPELINE_E2E_PROJECT_ID }}
+          # Same Enterprise-edition database FlutterFire's pipeline suite
+          # targets; not a secret, it is hardcoded in FlutterFire's own tests.
+          FIRESTORE_PIPELINE_E2E_DATABASE_ID: firestore-pipeline-test
+        # --concurrency=1: every test seeds and deletes its own documents in a
+        # shared live database, matching how scripts/firestore-coverage.sh runs
+        # the other prod-tagged suites.
+        #
+        # Prerequisite: the target database needs the `pipeline_e2e_books`
+        # vector index described in test/e2e/README.md, otherwise the
+        # findNearest test fails. It is created once, out of band.
+        run: |
+          set -o pipefail
+          if [ -z "${FIRESTORE_PIPELINE_E2E_PROJECT_ID:-}" ]; then
+            echo "::error::PIPELINE_E2E_PROJECT_ID is empty — the secret is unset or unavailable. Failing early instead of reporting a green run for tests that never executed."
+            exit 1
+          fi
+          log="$RUNNER_TEMP/pipeline-e2e.log"
+          dart test -P prod test/e2e/pipeline_e2e_test.dart \
+            --concurrency=1 --reporter expanded 2>&1 | tee "$log"
+          # `dart test` exits 0 when every test is skipped, which is exactly
+          # what a missing project or database ID produces. Treat that as a
+          # failure rather than reporting green for tests that never ran.
+          if grep -q "All tests skipped" "$log"; then
+            echo "::error::The Pipeline E2E suite was skipped rather than executed — check FIRESTORE_PIPELINE_E2E_PROJECT_ID and FIRESTORE_PIPELINE_E2E_DATABASE_ID."
+            exit 1
+          fi
+
+      - name: Remove service account credentials
+        if: always()
+        run: |
+          if [ -n "${PIPELINE_E2E_KEY_FILE:-}" ]; then
+            rm -f "$PIPELINE_E2E_KEY_FILE"
+          fi

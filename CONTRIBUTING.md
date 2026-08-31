@@ -290,7 +290,7 @@ The project uses strict analysis settings (`strict-casts`, `strict-inference`, `
 
 ## CI/CD
 
-The project uses a single **build.yml** GitHub Actions workflow:
+**build.yml** carries the main pipeline:
 
 | Job | Trigger | What it does |
 |-----|---------|--------------|
@@ -299,6 +299,20 @@ The project uses a single **build.yml** GitHub Actions workflow:
 | `test` | PRs & schedule | Runs tests against emulators with coverage reporting |
 | `test-integration` | PRs (non-fork) & schedule | Runs production integration tests with Workload Identity Federation |
 | `build` | After all above pass | Validates `dart pub publish --dry-run` |
+
+**e2e_pipeline.yml** runs the Firestore Pipeline E2E suite against the shared
+Enterprise-edition `firestore-pipeline-test` database — the same project and
+database FlutterFire's pipeline E2E targets — using a dedicated service account
+in that project:
+
+| Job | Trigger | What it does |
+|-----|---------|--------------|
+| `pipeline-e2e` | PRs (non-fork) touching `packages/google_cloud_firestore/**`, pushes to `main`, schedule & manual | Runs `test/e2e/pipeline_e2e_test.dart` against live Firestore |
+
+It is a separate workflow so the live-quota cost is only paid for changes that
+can affect it. See
+[`packages/google_cloud_firestore/test/e2e/README.md`](packages/google_cloud_firestore/test/e2e/README.md)
+for the required secrets and the one-time vector index setup.
 
 Tests run against both `stable` and `beta` Dart SDK channels. Coverage is reported as a PR comment and uploaded to Codecov. The minimum threshold is **40%**.
 
