@@ -24,7 +24,7 @@ String get dartVersion =>
 const String _fireAdminFirebaseClientId = 'fire-admin-dart/$packageVersion';
 
 /// The Firebase Admin SDK's tag within `X-Goog-Api-Client`.
-const String _fireAdminApiClientTag = 'fire-admin/$packageVersion';
+const String fireAdminApiClientTag = 'fire-admin/$packageVersion';
 
 /// Headers that identify a request as originating from this SDK, for
 /// Firebase backend usage tracking.
@@ -34,7 +34,7 @@ const String _fireAdminApiClientTag = 'fire-admin/$packageVersion';
 /// don't already set a client-identification header of their own.
 final Map<String, String> firebaseUserAgentHeaders = Map.unmodifiable({
   'X-Firebase-Client': _fireAdminFirebaseClientId,
-  'X-Goog-Api-Client': 'gl-dart/$dartVersion $_fireAdminApiClientTag',
+  'X-Goog-Api-Client': 'gl-dart/$dartVersion $fireAdminApiClientTag',
 });
 
 /// Headers to attach to Firestore requests to identify them as originating
@@ -47,7 +47,7 @@ final Map<String, String> firebaseUserAgentHeaders = Map.unmodifiable({
 /// so repeating it here would duplicate it.
 const Map<String, String> firestoreUsageTrackingHeaders = {
   'X-Firebase-Client': _fireAdminFirebaseClientId,
-  'X-Goog-Api-Client': _fireAdminApiClientTag,
+  'X-Goog-Api-Client': fireAdminApiClientTag,
 };
 
 /// Generates the update mask for the provided object.
