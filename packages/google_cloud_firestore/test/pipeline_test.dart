@@ -1063,10 +1063,13 @@ void main() {
       await firestore.pipeline().collection('books').select([
         // Renamed to match the Node SDK.
         field('price').mod(4).as('remainder'),
-        field('title').toLower().as('lower'),
-        field('title').toUpper().as('upper'),
         field('createdAt').timestampTruncate('day').as('day'),
         field('tags').arrayContains('dart').as('hasDart'),
+        // Deliberately NOT `toLower`/`toUpper` as in Node: these mirror Dart's
+        // own `String.toLowerCase()`/`toUpperCase()`. The backend op is still
+        // `to_lower`/`to_upper`, asserted below.
+        field('title').toLowerCase().as('lower'),
+        field('title').toUpperCase().as('upper'),
         // Fluent forms Node has that were missing here.
         field('title').stringReverse().as('backwards'),
         active.not().as('inactive'),

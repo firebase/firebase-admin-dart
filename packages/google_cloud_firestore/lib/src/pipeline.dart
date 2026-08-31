@@ -2454,10 +2454,16 @@ sealed class PipelineExpression {
   }
 
   /// Converts this string expression to lowercase.
-  PipelineExpression toLower() => PipelineFunctions.toLower(this);
+  ///
+  /// Named for Dart's `String.toLowerCase()` rather than the Node SDK's
+  /// `toLower`; the backend function is still `to_lower`.
+  PipelineExpression toLowerCase() => PipelineFunctions.toLower(this);
 
   /// Converts this string expression to uppercase.
-  PipelineExpression toUpper() => PipelineFunctions.toUpper(this);
+  ///
+  /// Named for Dart's `String.toUpperCase()` rather than the Node SDK's
+  /// `toUpper`; the backend function is still `to_upper`.
+  PipelineExpression toUpperCase() => PipelineFunctions.toUpper(this);
 
   /// Trims this string expression.
   PipelineExpression trim([Object? valueToTrim]) {
