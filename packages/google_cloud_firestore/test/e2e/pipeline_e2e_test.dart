@@ -139,7 +139,7 @@ void main() {
           .select([
             Expression.field('title'),
             Expression.field('price'),
-            Expression.field('title').toUpper().as('upperTitle'),
+            Expression.field('title').toUpperCase().as('upperTitle'),
             Expression.field('tags').arrayLength().as('tagCount'),
             Expression.field(
               'metadata',
@@ -776,12 +776,12 @@ final _functionScenarios = <_FunctionScenario>[
     ),
     _FunctionExpectation(
       'toUpper',
-      Expression.field('title').toUpper(),
+      Expression.field('title').toUpperCase(),
       'DART PIPELINES',
     ),
     _FunctionExpectation(
       'toLower',
-      Expression.field('title').toLower(),
+      Expression.field('title').toLowerCase(),
       'dart pipelines',
     ),
     _FunctionExpectation(

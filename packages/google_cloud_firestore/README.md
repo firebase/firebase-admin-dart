@@ -227,7 +227,7 @@ must be aliased.
 .select([
   'title',
   field('rating'),
-  field('title').toUpper().as('shoutedTitle'),
+  field('title').toUpperCase().as('shoutedTitle'),
 ])
 ```
 
@@ -339,7 +339,7 @@ Expressions come from two interchangeable entry points:
 
 ```dart
 // Equivalent:
-field('title').toUpper();
+field('title').toUpperCase();
 PipelineFunctions.toUpper('title');
 ```
 
