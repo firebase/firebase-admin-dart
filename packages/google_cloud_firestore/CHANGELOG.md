@@ -1,9 +1,8 @@
-## Unreleased
+## Unreleased minor
 
-- Added support for Firestore Pipelines: `Firestore.pipeline()`, the `Pipeline` stage builders, and the `PipelineFunctions` expression catalog.
+- Added support for Firestore Pipelines: `Firestore.pipeline()`, the `Pipeline` stage builders, the `PipelineFunctions` expression catalog, and the top-level `equal`, `notEqual`, `lessThan`, `lessThanOrEqual`, `greaterThan`, `greaterThanOrEqual`, `and`, `or`, `not`, `field`, `constant`, `ascending` and `descending` helpers.
 - Added `PipelineSource.createFrom()` to convert a `Query` or `VectorQuery` into an equivalent Pipeline.
-- `Pipeline.unnest()` now takes the selectable whose alias names each emitted element, and encodes `indexField` as a field reference.
-- `Pipeline.replaceWith()` now sends the required replace mode, `Pipeline.sample()` sends the sampling rate and mode as arguments, and `Pipeline.distinct()` sends its groups as a single map, all matching the backend contract.
+- Added `Transaction.executePipeline()` to run a Pipeline at a transaction's snapshot.
 - `PipelineFunctions.minimum()`/`maximum()` are aggregate-only; use `logicalMinimum()`/`logicalMaximum()` for the element-wise form.
 
 ## 0.5.3

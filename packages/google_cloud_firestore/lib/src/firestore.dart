@@ -494,7 +494,7 @@ class Firestore {
   /// final snapshot = await firestore
   ///     .pipeline()
   ///     .collection('books')
-  ///     .where(field('rating').greaterThanValue(4.0))
+  ///     .where(field('rating').greaterThan(4.0))
   ///     .select(['title', field('rating')])
   ///     .limit(10)
   ///     .execute();

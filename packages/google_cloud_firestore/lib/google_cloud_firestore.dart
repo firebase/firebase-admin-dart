@@ -53,6 +53,7 @@ export 'src/firestore.dart'
         PipelineAggregateFunction,
         PipelineAliasedExpression,
         PipelineBooleanExpression,
+        PipelineExplainStats,
         PipelineExpression,
         PipelineField,
         PipelineFunctions,

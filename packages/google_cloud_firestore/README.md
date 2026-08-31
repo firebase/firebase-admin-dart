@@ -173,7 +173,7 @@ the previous stage's output and produces the next, ending in `execute()`.
 final snapshot = await firestore
     .pipeline()
     .collection('books')
-    .where(field('rating').greaterThanValue(4.0))
+    .where(field('rating').greaterThan(4.0))
     .sort([field('rating').descending()])
     .select(['title', field('rating')])
     .limit(10)
@@ -214,8 +214,8 @@ firestore.pipeline().documents([firestore.doc('books/book-1')]);
 
 ```dart
 .where(and([
-  field('genre').equalValue('fiction'),
-  field('rating').greaterThanValue(4.0),
+  field('genre').equal('fiction'),
+  field('rating').greaterThan(4.0),
 ]))
 ```
 
@@ -387,8 +387,7 @@ PipelineFunctions.raw('some_new_function', [field('x'), 42]);
 
 #### Executing and reading results
 
-`execute()` optionally runs inside a transaction, or at a past read time. The
-two are mutually exclusive.
+`execute()` optionally reads the database as it was at a past timestamp.
 
 ```dart
 final snapshot = await firestore
@@ -399,15 +398,26 @@ final snapshot = await firestore
     )));
 ```
 
+To run a Pipeline at a transaction's snapshot, use
+`Transaction.executePipeline()` instead:
+
+```dart
+final titles = await firestore.runTransaction((transaction) async {
+  final snapshot = await transaction.executePipeline(
+    firestore.pipeline().collection('books').where(field('active').equal(true)),
+  );
+  return [for (final result in snapshot.results) result.get('title')];
+});
+```
+
 `PipelineSnapshot` carries the results plus execution metadata:
 
 | Member | Description |
 | --- | --- |
-| `results` (alias `result`) | The returned `PipelineResult`s. |
+| `results` | The returned `PipelineResult`s. |
 | `size`, `empty` | Result count, and whether there are none. |
 | `executionTime` | When the results were valid. |
-| `transaction` | A newly created transaction ID, when the backend returns one. |
-| `explainStats` | Raw explain stats, when the backend returns them. |
+| `explainStats` | A `PipelineExplainStats`, when the backend returns them. |
 
 Each `PipelineResult` exposes its fields and, when the backend includes document
 metadata, its identity:
