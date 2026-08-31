@@ -1298,6 +1298,37 @@ void main() {
         );
       });
 
+      test('rejects a query from the same database in another project', () {
+        final other = Firestore.internal(
+          settings: const Settings(
+            projectId: 'other-project',
+            databaseId: 'enterprise',
+          ),
+          client: MockFirestoreHttpClient(),
+        );
+
+        // Same databaseId, different project: `(default)` in two projects is
+        // the common shape of this mistake.
+        expect(
+          () => firestore.pipeline().createFrom(other.collection('books')),
+          throwsA(_crossDatabaseError),
+        );
+      });
+
+      test('allows a source whose project is not yet discovered', () {
+        // Project IDs resolve on the first request when discovery is async
+        // (metadata server). Builder methods must not force that resolution.
+        final undiscovered = Firestore(
+          settings: const Settings(databaseId: 'enterprise'),
+        );
+
+        expect(
+          () =>
+              firestore.pipeline().createFrom(undiscovered.collection('books')),
+          returnsNormally,
+        );
+      });
+
       test('rejects values that are not queries', () {
         expect(
           () => firestore.pipeline().createFrom('books'),

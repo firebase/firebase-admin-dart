@@ -352,24 +352,26 @@ class Firestore {
   ///
   /// Throws if the project ID has not been discovered yet.
   String get projectId {
-    final cached = _firestoreClient.cachedProjectId;
-    if (cached != null) return cached;
-
-    // Fall back to explicitly set project ID
-    final explicit = _settings.projectId;
-    if (explicit != null) return explicit;
-
-    // Check environment variables and credentials file synchronously.
-    // Async strategies (gcloud CLI, metadata server) are handled by _run()
-    // and cached in cachedProjectId after the first API call.
-    final discovered = _firestoreClient.getProjectId();
-    if (discovered != null) return discovered;
+    final known = _knownProjectId;
+    if (known != null) return known;
 
     throw StateError(
       'Project ID has not been discovered yet. '
       'Initialize the SDK with credentials that include a project ID, '
       'set project ID in Settings, or set the GOOGLE_CLOUD_PROJECT environment variable.',
     );
+  }
+
+  /// The project ID if it is already known, without throwing when it is not.
+  ///
+  /// Checks the cache, then an explicitly configured ID, then the synchronous
+  /// discovery strategies. The async strategies (gcloud CLI, metadata server)
+  /// are handled by `_run()` and cached after the first API call, so this is
+  /// null on a fresh instance that relies on them.
+  String? get _knownProjectId {
+    return _firestoreClient.cachedProjectId ??
+        _settings.projectId ??
+        _firestoreClient.getProjectId();
   }
 
   /// Returns the Database ID for this Firestore instance.
