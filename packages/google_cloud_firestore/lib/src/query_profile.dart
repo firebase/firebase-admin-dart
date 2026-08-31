@@ -98,31 +98,47 @@ class ExplainMetrics {
   final ExecutionStats? executionStats;
 }
 
-/// Statistics about the planning and execution of a Firestore Pipeline.
+/// Statistics about how the backend planned and executed a Pipeline.
 ///
-/// Supplied by [Pipeline.execute] when the backend returns them. The payload
-/// format is chosen by the `output_format` Pipeline option, which currently
-/// accepts `TEXT` and `JSON`.
-class PipelineExplainStats {
-  const PipelineExplainStats._({required this.data});
+/// The `output_format` Pipeline option chooses the payload format.
+class ExplainStats {
+  const ExplainStats._({
+    required this.typeName,
+    required this.text,
+    required this.raw,
+  });
 
-  factory PipelineExplainStats._fromProto(firestore_v1.ExplainStats proto) {
-    final any = proto.data;
-    final isString =
-        any != null && any.isType(protobuf_v1.StringValue.fullyQualifiedName);
+  factory ExplainStats._fromProto(firestore_v1.ExplainStats proto) {
+    final data = proto.data;
+    if (data == null) {
+      return const ExplainStats._(typeName: null, text: null, raw: null);
+    }
 
-    return PipelineExplainStats._(
-      data: isString
-          ? any.unpackFrom(protobuf_v1.StringValue.fromJson).value
+    final isText = data.isType(protobuf_v1.StringValue.fullyQualifiedName);
+    return ExplainStats._(
+      typeName: data.typeName,
+      text: isText
+          ? data.unpackFrom(protobuf_v1.StringValue.fromJson).value
           : null,
+      raw: Map.unmodifiable(data.json),
     );
   }
 
-  /// The raw stats payload, in the requested output format.
+  /// The fully qualified name of the payload type.
   ///
-  /// Null when the backend returns a payload shape this SDK does not
-  /// recognise, which keeps a future format change from being a breaking one.
-  final String? data;
+  /// For example `google.protobuf.StringValue`.
+  final String? typeName;
+
+  /// The payload as a string, for the `TEXT` and `JSON` output formats.
+  ///
+  /// Null for any other format, in which case [raw] still carries it.
+  final String? text;
+
+  /// The payload exactly as the backend encoded it, keyed by field name.
+  ///
+  /// Populated whenever stats were returned, so a format this SDK cannot
+  /// decode into [text] is never lost.
+  final Map<String, Object?>? raw;
 }
 
 /// ExplainResults contains information about planning, execution, and results

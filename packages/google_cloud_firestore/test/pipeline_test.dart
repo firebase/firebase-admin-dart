@@ -210,7 +210,7 @@ void main() {
       expect(snapshot.results.single.document, isNull);
     });
 
-    test('decodes explain stats into a wrapper type', () async {
+    test('decodes explain stats without losing the payload', () async {
       when(
         () =>
             mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(any()),
@@ -237,8 +237,15 @@ void main() {
 
       final snapshot = await firestore.pipeline().collection('books').execute();
 
-      expect(snapshot.explainStats, isA<PipelineExplainStats>());
-      expect(snapshot.explainStats!.data, 'plan: scan books');
+      final stats = snapshot.explainStats!;
+      expect(stats.text, 'plan: scan books');
+      expect(stats.typeName, 'google.protobuf.StringValue');
+      // `raw` keeps the encoded payload, so a format without a `text`
+      // decoding is still reachable.
+      expect(stats.raw, {
+        '@type': 'type.googleapis.com/google.protobuf.StringValue',
+        'value': 'plan: scan books',
+      });
     });
 
     test('executePipeline starts and reuses a transaction', () async {
