@@ -139,7 +139,7 @@ void main() {
           .select([
             Expression.field('title'),
             Expression.field('price'),
-            Expression.field('title').toUpperCase().as('upperTitle'),
+            Expression.field('title').toUpper().as('upperTitle'),
             Expression.field('tags').arrayLength().as('tagCount'),
             Expression.field(
               'metadata',
@@ -395,7 +395,7 @@ final _functionScenarios = <_FunctionScenario>[
     _FunctionExpectation('subtract', Expression.field('price').subtract(3), 7),
     _FunctionExpectation('multiply', Expression.field('price').multiply(2), 20),
     _FunctionExpectation('divide', Expression.field('price').divide(2), 5),
-    _FunctionExpectation('mod', Expression.field('price').modulo(4), 2),
+    _FunctionExpectation('mod', Expression.field('price').mod(4), 2),
     _FunctionExpectation('ceil', Expression.constant(12.2).ceil(), 13),
     _FunctionExpectation('floor', Expression.constant(12.8).floor(), 12),
     _FunctionExpectation('round', Expression.constant(12.6).round(), 13),
@@ -437,14 +437,12 @@ final _functionScenarios = <_FunctionScenario>[
     ),
     _FunctionExpectation(
       'arrayContainsValue',
-      Expression.field('tags').arrayContainsElement('dart'),
+      Expression.field('tags').arrayContains('dart'),
       true,
     ),
     _FunctionExpectation(
       'arrayContainsElement',
-      Expression.field(
-        'tags',
-      ).arrayContainsElement(Expression.constant('firebase')),
+      Expression.field('tags').arrayContains(Expression.constant('firebase')),
       true,
     ),
     _FunctionExpectation(
@@ -778,12 +776,12 @@ final _functionScenarios = <_FunctionScenario>[
     ),
     _FunctionExpectation(
       'toUpper',
-      Expression.field('title').toUpperCase(),
+      Expression.field('title').toUpper(),
       'DART PIPELINES',
     ),
     _FunctionExpectation(
       'toLower',
-      Expression.field('title').toLowerCase(),
+      Expression.field('title').toLower(),
       'dart pipelines',
     ),
     _FunctionExpectation(
@@ -828,7 +826,7 @@ final _functionScenarios = <_FunctionScenario>[
     ),
     _FunctionExpectation(
       'timestampTrunc',
-      Expression.field('createdAt').timestampTrunc('day', 'UTC'),
+      Expression.field('createdAt').timestampTruncate('day', 'UTC'),
       isA<Timestamp>(),
     ),
     _FunctionExpectation(

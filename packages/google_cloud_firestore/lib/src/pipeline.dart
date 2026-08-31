@@ -534,6 +534,34 @@ abstract final class PipelineFunctions {
     return _expr('array_first_n', [_fieldOrExpression(array), n]);
   }
 
+  /// ARRAY_MAXIMUM function.
+  static PipelineExpression arrayMaximum(Object? array) {
+    return _expr('array_maximum', [_fieldOrExpression(array)]);
+  }
+
+  /// ARRAY_MAXIMUM_N function.
+  static PipelineExpression arrayMaximumN(Object? array, Object? n) {
+    return _expr('array_maximum_n', [_fieldOrExpression(array), n]);
+  }
+
+  /// ARRAY_MINIMUM function.
+  static PipelineExpression arrayMinimum(Object? array) {
+    return _expr('array_minimum', [_fieldOrExpression(array)]);
+  }
+
+  /// ARRAY_MINIMUM_N function.
+  static PipelineExpression arrayMinimumN(Object? array, Object? n) {
+    return _expr('array_minimum_n', [_fieldOrExpression(array), n]);
+  }
+
+  /// ARRAY_SUM function.
+  static PipelineExpression arraySum(Object? array) {
+    return _expr('array_sum', [_fieldOrExpression(array)]);
+  }
+
+  /// COUNT function over every input, without inspecting a field.
+  static PipelineAggregateFunction countAll() => _expr('count', const []);
+
   /// ARRAY_INDEX_OF function.
   static PipelineExpression arrayIndexOf(Object? array, Object? value) {
     return _expr('array_index_of', [_fieldOrExpression(array), value, 'first']);
@@ -1027,7 +1055,7 @@ abstract final class PipelineFunctions {
   }
 
   /// TIMESTAMP_TRUNC function.
-  static PipelineExpression timestampTrunc(
+  static PipelineExpression timestampTruncate(
     Object? fieldName,
     Object? granularity, [
     Object? timezone,
@@ -1778,7 +1806,7 @@ extension _QueryToPipeline<T> on Query<T> {
       WhereFilter.greaterThanOrEqual => target.greaterThanOrEqual(value),
       WhereFilter.equal => target.equal(value),
       WhereFilter.notEqual => target.notEqual(value),
-      WhereFilter.arrayContains => target.arrayContainsElement(value),
+      WhereFilter.arrayContains => target.arrayContains(value),
       WhereFilter.isIn => target.equalAny(_protoArrayElements(value)),
       WhereFilter.arrayContainsAny => PipelineFunctions.arrayContainsAny(
         target,
@@ -2075,8 +2103,7 @@ sealed class PipelineExpression {
   PipelineExpression abs() => PipelineFunctions.abs(this);
 
   /// Returns the modulo of this expression and [other].
-  PipelineExpression modulo(Object? other) =>
-      PipelineFunctions.mod(this, other);
+  PipelineExpression mod(Object? other) => PipelineFunctions.mod(this, other);
 
   /// Returns the ceiling of this expression.
   PipelineExpression ceil() => PipelineFunctions.ceil(this);
@@ -2175,7 +2202,7 @@ sealed class PipelineExpression {
   }
 
   /// Checks if this array contains [element].
-  PipelineBooleanExpression arrayContainsElement(Object? element) {
+  PipelineBooleanExpression arrayContains(Object? element) {
     return PipelineFunctions.arrayContains(this, element);
   }
 
@@ -2409,6 +2436,9 @@ sealed class PipelineExpression {
   /// Reverses this string or array expression.
   PipelineExpression reverse() => PipelineFunctions.reverse(this);
 
+  /// Reverses the characters of this string expression.
+  PipelineExpression stringReverse() => PipelineFunctions.stringReverse(this);
+
   /// Concatenates this string or array expression with [others].
   PipelineExpression concat(Iterable<Object?> others) {
     final values = others.toList();
@@ -2424,10 +2454,10 @@ sealed class PipelineExpression {
   }
 
   /// Converts this string expression to lowercase.
-  PipelineExpression toLowerCase() => PipelineFunctions.toLower(this);
+  PipelineExpression toLower() => PipelineFunctions.toLower(this);
 
   /// Converts this string expression to uppercase.
-  PipelineExpression toUpperCase() => PipelineFunctions.toUpper(this);
+  PipelineExpression toUpper() => PipelineFunctions.toUpper(this);
 
   /// Trims this string expression.
   PipelineExpression trim([Object? valueToTrim]) {
@@ -2531,8 +2561,11 @@ sealed class PipelineExpression {
   }
 
   /// Truncates this timestamp expression.
-  PipelineExpression timestampTrunc(Object? granularity, [Object? timezone]) {
-    return PipelineFunctions.timestampTrunc(this, granularity, timezone);
+  PipelineExpression timestampTruncate(
+    Object? granularity, [
+    Object? timezone,
+  ]) {
+    return PipelineFunctions.timestampTruncate(this, granularity, timezone);
   }
 
   /// Adds a timestamp duration to this expression.
@@ -2627,6 +2660,20 @@ sealed class PipelineExpression {
 @immutable
 sealed class PipelineBooleanExpression extends PipelineExpression {
   const PipelineBooleanExpression();
+
+  /// Negates this boolean expression.
+  PipelineBooleanExpression not() => PipelineFunctions.not(this);
+
+  /// Counts the inputs for which this boolean expression is true.
+  PipelineAggregateFunction countIf() => PipelineFunctions.countIf(this);
+
+  /// Evaluates to [thenExpression] when true, and [elseExpression] otherwise.
+  PipelineExpression conditional(
+    Object? thenExpression,
+    Object? elseExpression,
+  ) {
+    return PipelineFunctions.conditional(this, thenExpression, elseExpression);
+  }
 }
 
 /// A Pipeline field reference.
