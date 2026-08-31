@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:typed_data';
+
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
 import 'package:google_cloud_firestore/src/firestore_http_client.dart';
 import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
@@ -174,7 +176,145 @@ void main() {
       );
       expect(snapshot.results.single.data(), {'title': 'Dart', 'price': 12.5});
       expect(snapshot.results.single.get('title'), 'Dart');
-      expect(snapshot.result, snapshot.results);
+    });
+
+    test('data() is unmodifiable and empty rather than null', () async {
+      when(
+        () =>
+            mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                Function(firestore_v1.Firestore api, String projectId);
+
+        final api = FakeFirestore(
+          executePipeline: (_) => Stream.fromIterable([
+            firestore_v1.ExecutePipelineResponse(
+              results: [firestore_v1.Document(name: '', fields: const {})],
+            ),
+          ]),
+        );
+
+        return callback(api, _projectId);
+      });
+
+      final snapshot = await firestore.pipeline().collection('books').execute();
+      final data = snapshot.results.single.data();
+
+      // A projection stage can drop every field; that is an empty map, not a
+      // missing one, so callers never need a null check.
+      expect(data, isEmpty);
+      expect(() => data['title'] = 'nope', throwsUnsupportedError);
+      expect(snapshot.results.single.name, isNull);
+      expect(snapshot.results.single.document, isNull);
+    });
+
+    test('decodes explain stats into a wrapper type', () async {
+      when(
+        () =>
+            mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                Function(firestore_v1.Firestore api, String projectId);
+
+        final api = FakeFirestore(
+          executePipeline: (_) => Stream.fromIterable([
+            firestore_v1.ExecutePipelineResponse(
+              explainStats: firestore_v1.ExplainStats(
+                data: protobuf_v1.Any.from(
+                  protobuf_v1.StringValue(value: 'plan: scan books'),
+                ),
+              ),
+            ),
+          ]),
+        );
+
+        return callback(api, _projectId);
+      });
+
+      final snapshot = await firestore.pipeline().collection('books').execute();
+
+      expect(snapshot.explainStats, isA<PipelineExplainStats>());
+      expect(snapshot.explainStats!.data, 'plan: scan books');
+    });
+
+    test('executePipeline starts and reuses a transaction', () async {
+      final requests = <firestore_v1.ExecutePipelineRequest>[];
+      final transactionId = Uint8List.fromList([1, 2, 3]);
+
+      when(
+        () =>
+            mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                Function(firestore_v1.Firestore api, String projectId);
+
+        final api = FakeFirestore(
+          executePipeline: (request) {
+            requests.add(request);
+            return Stream.fromIterable([
+              firestore_v1.ExecutePipelineResponse(
+                // Only the response to the transaction-starting request
+                // carries the new ID.
+                transaction: requests.length == 1 ? transactionId : null,
+                results: [
+                  firestore_v1.Document(
+                    name:
+                        'projects/$_projectId/databases/enterprise/documents/books/book-1',
+                    fields: {
+                      'title': firestore.serializer.encodeValue('Dart')!,
+                    },
+                  ),
+                ],
+              ),
+            ]);
+          },
+        );
+
+        return callback(api, _projectId);
+      });
+
+      final titles = await firestore.runTransaction((transaction) async {
+        final first = await transaction.executePipeline(
+          firestore.pipeline().collection('books'),
+        );
+        final second = await transaction.executePipeline(
+          firestore.pipeline().collection('authors'),
+        );
+        return [
+          first.results.single.get('title'),
+          second.results.single.get('title'),
+        ];
+      }, transactionOptions: ReadOnlyTransactionOptions());
+
+      expect(titles, ['Dart', 'Dart']);
+      expect(requests, hasLength(2));
+
+      // The first read lazily starts the transaction...
+      expect(requests[0].newTransaction?.readOnly, isNotNull);
+      expect(requests[0].transaction, isNull);
+
+      // ...and the second reuses the ID the backend handed back.
+      expect(requests[1].newTransaction, isNull);
+      expect(requests[1].transaction, transactionId);
+    });
+
+    test('executePipeline rejects a Pipeline from a different database', () {
+      final other = _otherDatabase();
+
+      expect(
+        () => firestore.runTransaction(
+          (transaction) =>
+              transaction.executePipeline(other.pipeline().collection('books')),
+          transactionOptions: ReadOnlyTransactionOptions(),
+        ),
+        throwsA(_crossDatabaseError),
+      );
     });
 
     test('supports documents source and raw stages', () async {
@@ -241,17 +381,14 @@ void main() {
           .pipeline()
           .collection('books')
           .select([
-            PipelineFunctions.regexMatch(
-              field('title'),
-              r'^Dart',
-            ).alias('isDart'),
+            PipelineFunctions.regexMatch(field('title'), r'^Dart').as('isDart'),
             PipelineFunctions.timestampToUnixMillis(
               field('publishedAt'),
-            ).alias('publishedMillis'),
+            ).as('publishedMillis'),
             PipelineFunctions.cosineDistance(
               field('embedding'),
               FieldValue.vector([1, 2, 3]),
-            ).alias('distance'),
+            ).as('distance'),
           ])
           .where(
             PipelineFunctions.and([
@@ -308,7 +445,7 @@ void main() {
       await firestore
           .pipeline()
           .collectionReference(firestore.collection('books'))
-          .where(Expression.field('rating').greaterThanOrEqualValue(4))
+          .where(Expression.field('rating').greaterThanOrEqual(4))
           .aggregate(
             [Expression.field('price').average().as('avgPrice')],
             groups: ['genre'],
@@ -689,16 +826,16 @@ void main() {
       test('apply across the function catalog', () async {
         await run(
           firestore.pipeline().collection('books').select([
-            PipelineFunctions.equal('title', 'Harry').alias('isHarry'),
-            PipelineFunctions.lessThan('price', 10).alias('isCheap'),
-            PipelineFunctions.arrayContains('tags', 'dart').alias('isDart'),
-            PipelineFunctions.mapGet('metadata', 'lang').alias('lang'),
-            PipelineFunctions.toUpper('title').alias('upper'),
-            PipelineFunctions.sum('price').alias('total'),
-            PipelineFunctions.arrayLength('tags').alias('tagCount'),
-            PipelineFunctions.timestampToUnixMillis('createdAt').alias('ms'),
-            PipelineFunctions.vectorLength('embedding').alias('dims'),
-            PipelineFunctions.exists('title').alias('hasTitle'),
+            PipelineFunctions.equal('title', 'Harry').as('isHarry'),
+            PipelineFunctions.lessThan('price', 10).as('isCheap'),
+            PipelineFunctions.arrayContains('tags', 'dart').as('isDart'),
+            PipelineFunctions.mapGet('metadata', 'lang').as('lang'),
+            PipelineFunctions.toUpper('title').as('upper'),
+            PipelineFunctions.sum('price').as('total'),
+            PipelineFunctions.arrayLength('tags').as('tagCount'),
+            PipelineFunctions.timestampToUnixMillis('createdAt').as('ms'),
+            PipelineFunctions.vectorLength('embedding').as('dims'),
+            PipelineFunctions.exists('title').as('hasTitle'),
           ]),
         );
 
@@ -727,10 +864,10 @@ void main() {
               'title',
               ' by ',
               'Anon',
-            ]).alias('byline'),
-            PipelineFunctions.array(['a', 'b']).alias('letters'),
+            ]).as('byline'),
+            PipelineFunctions.array(['a', 'b']).as('letters'),
             // A document path is a value, matching the Node SDK.
-            PipelineFunctions.documentId('books/book-1').alias('id'),
+            PipelineFunctions.documentId('books/book-1').as('id'),
           ]),
         );
 
@@ -778,21 +915,18 @@ void main() {
           .collection('books')
           .where(documentMatches('dart'))
           .select([
-            PipelineFunctions.coalesce(
-              'nickname',
-              field('title'),
-            ).alias('name'),
-            PipelineFunctions.length('tags').alias('size'),
-            PipelineFunctions.reverse('tags').alias('reversed'),
-            PipelineFunctions.concat('tags', ['extra']).alias('joined'),
-            PipelineFunctions.getField('metadata', 'lang').alias('lang'),
+            PipelineFunctions.coalesce('nickname', field('title')).as('name'),
+            PipelineFunctions.length('tags').as('size'),
+            PipelineFunctions.reverse('tags').as('reversed'),
+            PipelineFunctions.concat('tags', ['extra']).as('joined'),
+            PipelineFunctions.getField('metadata', 'lang').as('lang'),
             PipelineFunctions.geoDistance(
               'location',
               GeoPoint(latitude: 1, longitude: 2),
-            ).alias('distance'),
-            score().alias('relevance'),
-            field('title').charLength().alias('titleChars'),
-            field('rating').logicalMaximum(0).alias('clampedRating'),
+            ).as('distance'),
+            score().as('relevance'),
+            field('title').charLength().as('titleChars'),
+            field('rating').logicalMaximum(0).as('clampedRating'),
           ])
           .execute();
 
@@ -1132,6 +1266,38 @@ void main() {
         );
       });
 
+      test('rejects a collection reference from a different database', () {
+        final other = _otherDatabase();
+
+        expect(
+          () => firestore.pipeline().collectionReference(
+            other.collection('books'),
+          ),
+          throwsA(_crossDatabaseError),
+        );
+      });
+
+      test('rejects documents from a different database', () {
+        final other = _otherDatabase();
+
+        expect(
+          () => firestore.pipeline().documents([other.doc('books/book-1')]),
+          throwsA(_crossDatabaseError),
+        );
+      });
+
+      test('rejects a union with a different database', () {
+        final other = _otherDatabase();
+
+        expect(
+          () => firestore
+              .pipeline()
+              .collection('books')
+              .union(other.pipeline().collection('books')),
+          throwsA(_crossDatabaseError),
+        );
+      });
+
       test('rejects values that are not queries', () {
         expect(
           () => firestore.pipeline().createFrom('books'),
@@ -1141,3 +1307,16 @@ void main() {
     });
   });
 }
+
+Firestore _otherDatabase() {
+  return Firestore.internal(
+    settings: const Settings(projectId: _projectId, databaseId: 'other-db'),
+    client: MockFirestoreHttpClient(),
+  );
+}
+
+final _crossDatabaseError = isA<ArgumentError>().having(
+  (e) => e.message,
+  'message',
+  contains('does not match the target database'),
+);

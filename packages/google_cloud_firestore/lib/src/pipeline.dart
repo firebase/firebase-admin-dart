@@ -1147,17 +1147,31 @@ final class PipelineSource {
   Pipeline database() => _start('database', const []);
 
   /// Starts a Pipeline over the provided collection reference.
+  ///
+  /// Throws an [ArgumentError] when [collectionReference] targets a different
+  /// database than this Pipeline.
   Pipeline collectionReference(
     CollectionReference<DocumentData> collectionReference,
   ) {
+    _validateSameDatabase(
+      _firestore,
+      collectionReference.firestore,
+      'collectionReference',
+    );
     return _start('collection', [collectionReference]);
   }
 
   /// Starts a Pipeline over the provided document references.
+  ///
+  /// Throws an [ArgumentError] when any of [documents] targets a different
+  /// database than this Pipeline.
   Pipeline documents(Iterable<DocumentReference<dynamic>> documents) {
     final refs = documents.toList();
     if (refs.isEmpty) {
       throw ArgumentError.value(documents, 'documents', 'Must not be empty.');
+    }
+    for (final ref in refs) {
+      _validateSameDatabase(_firestore, ref.firestore, 'documents');
     }
     // Source stages name documents by their path relative to the database,
     // like the `collection` stage does, rather than by their full resource
@@ -1178,10 +1192,10 @@ final class PipelineSource {
   Pipeline createFrom(Object query) {
     switch (query) {
       case VectorQuery<Object?>():
-        _validateSameDatabase(query.query.firestore);
+        _validateSameDatabase(_firestore, query.query.firestore, 'query');
         return query._toPipeline(_firestore);
       case Query<Object?>():
-        _validateSameDatabase(query.firestore);
+        _validateSameDatabase(_firestore, query.firestore, 'query');
         return query._toPipeline(_firestore);
       default:
         throw ArgumentError.value(
@@ -1190,17 +1204,6 @@ final class PipelineSource {
           'Expected a Query or a VectorQuery.',
         );
     }
-  }
-
-  void _validateSameDatabase(Firestore queryFirestore) {
-    if (queryFirestore.databaseId == _firestore.databaseId) return;
-
-    throw ArgumentError.value(
-      queryFirestore.databaseId,
-      'query',
-      'The database of this query does not match the target database '
-          '("${_firestore.databaseId}") of this Pipeline.',
-    );
   }
 
   Pipeline _start(String name, List<Object?> args) {
@@ -1348,7 +1351,11 @@ final class Pipeline {
   }
 
   /// Performs a union with [pipeline], including duplicates.
+  ///
+  /// Throws an [ArgumentError] when [pipeline] targets a different database
+  /// than this Pipeline.
   Pipeline union(Pipeline pipeline) {
+    _validateSameDatabase(firestore, pipeline.firestore, 'pipeline');
     return rawStage('union', [pipeline]);
   }
 
@@ -1431,19 +1438,23 @@ final class Pipeline {
   /// against a Standard edition database throws a [FirestoreException] with
   /// [FirestoreClientErrorCode.unimplemented].
   ///
-  /// Pass [transaction] to read inside an existing transaction, or [readTime] to
-  /// read the database as it was at a past timestamp. Providing both throws an
-  /// [ArgumentError].
-  Future<PipelineSnapshot> execute({
-    String? transaction,
-    Timestamp? readTime,
-  }) async {
-    if (transaction != null && readTime != null) {
-      throw ArgumentError(
-        'Only one of transaction or readTime can be provided.',
-      );
-    }
+  /// Pass [readTime] to read the database as it was at a past timestamp. To
+  /// read inside a transaction, use [Transaction.executePipeline] instead.
+  Future<PipelineSnapshot> execute({Timestamp? readTime}) async {
+    final result = await _execute(readTime: readTime);
+    return result.result;
+  }
 
+  /// Executes this Pipeline, optionally as part of a transaction.
+  ///
+  /// Returns the newly started transaction ID alongside the snapshot when
+  /// [transactionOptions] asked the backend to start one, mirroring the
+  /// readers behind [Transaction.getQuery].
+  Future<_TransactionResult<PipelineSnapshot>> _execute({
+    String? transactionId,
+    Timestamp? readTime,
+    firestore_v1.TransactionOptions? transactionOptions,
+  }) async {
     final response = await firestore._firestoreClient.v1((
       api,
       projectId,
@@ -1454,7 +1465,8 @@ final class Pipeline {
           pipeline: _toProto(),
           options: _encodeOptions(_options, firestore),
         ),
-        transaction: transaction.let(base64Decode),
+        transaction: transactionId.let(base64Decode),
+        newTransaction: transactionOptions,
         readTime: readTime?._toProto().timestampValue,
       );
       return api.executePipeline(request);
@@ -1463,7 +1475,7 @@ final class Pipeline {
     final results = <PipelineResult>[];
     Timestamp? executionTime;
     String? newTransaction;
-    firestore_v1.ExplainStats? explainStats;
+    PipelineExplainStats? explainStats;
 
     await for (final chunk in response) {
       if (chunk.transaction.isNotEmpty) {
@@ -1472,8 +1484,8 @@ final class Pipeline {
       if (chunk.executionTime != null) {
         executionTime = Timestamp._fromProto(chunk.executionTime!);
       }
-      if (chunk.explainStats != null) {
-        explainStats = chunk.explainStats;
+      if (chunk.explainStats case final stats?) {
+        explainStats = PipelineExplainStats._fromProto(stats);
       }
 
       for (final document in chunk.results) {
@@ -1481,11 +1493,13 @@ final class Pipeline {
       }
     }
 
-    return PipelineSnapshot._(
-      results: results,
-      executionTime: executionTime,
+    return _TransactionResult(
       transaction: newTransaction,
-      explainStats: explainStats,
+      result: PipelineSnapshot._(
+        results: results,
+        executionTime: executionTime,
+        explainStats: explainStats,
+      ),
     );
   }
 
@@ -1778,13 +1792,13 @@ final class _PipelineProtoValue extends PipelineExpression {
 /// A Pipeline execution result.
 @immutable
 final class PipelineResult {
-  const PipelineResult._({
+  PipelineResult._({
     required DocumentData data,
     required this.name,
     required this.document,
     required this.createTime,
     required this.updateTime,
-  }) : _data = data;
+  }) : _data = Map.unmodifiable(data);
 
   factory PipelineResult._fromDocument(
     firestore_v1.Document document,
@@ -1828,7 +1842,10 @@ final class PipelineResult {
   final Timestamp? updateTime;
 
   /// Returns the decoded result fields.
-  DocumentData? data() => Map.unmodifiable(_data);
+  ///
+  /// The returned map is unmodifiable. Projection stages may drop every field,
+  /// in which case this is empty rather than `null`.
+  DocumentData data() => _data;
 
   /// Returns the decoded value at [fieldName], or `null` when absent.
   Object? get(String fieldName) => _data[fieldName];
@@ -1872,24 +1889,19 @@ final class PipelineSnapshot {
   const PipelineSnapshot._({
     required this.results,
     required this.executionTime,
-    required this.transaction,
     required this.explainStats,
   });
 
   /// The Pipeline results returned by the backend.
   final List<PipelineResult> results;
 
-  /// FlutterFire-style alias for [results].
-  List<PipelineResult> get result => results;
-
   /// The time at which the results are valid.
   final Timestamp? executionTime;
 
-  /// A newly-created transaction ID, when requested by the backend.
-  final String? transaction;
-
-  /// Raw explain stats returned by the generated Firestore API model.
-  final firestore_v1.ExplainStats? explainStats;
+  /// Statistics about how the backend planned and executed this Pipeline.
+  ///
+  /// Null unless the Pipeline requested them via [Pipeline.withOptions].
+  final PipelineExplainStats? explainStats;
 
   /// The number of results in this snapshot.
   int get size => results.length;
@@ -1906,12 +1918,9 @@ sealed class PipelineExpression {
   firestore_v1.Value _toValue(Firestore firestore);
 
   /// Assigns [alias] to this expression for projection-style stages.
-  PipelineAliasedExpression alias(String alias) {
+  PipelineAliasedExpression as(String alias) {
     return PipelineAliasedExpression._(this, alias);
   }
-
-  /// Assigns [alias] to this expression for projection-style stages.
-  PipelineAliasedExpression as(String alias) => this.alias(alias);
 
   /// Treats this expression as a boolean expression.
   PipelineBooleanExpression asBoolean() => _PipelineBooleanCastExpression(this);
@@ -1921,33 +1930,19 @@ sealed class PipelineExpression {
     return _PipelineBooleanExpression('equal', [this, other]);
   }
 
-  /// Creates an equality expression against a literal value.
-  PipelineBooleanExpression equalValue(Object? value) => equal(value);
-
   /// Creates a not-equal expression.
   PipelineBooleanExpression notEqual(Object? other) {
     return _PipelineBooleanExpression('not_equal', [this, other]);
   }
-
-  /// Creates a not-equal expression against a literal value.
-  PipelineBooleanExpression notEqualValue(Object? value) => notEqual(value);
 
   /// Creates a less-than expression.
   PipelineBooleanExpression lessThan(Object? other) {
     return _PipelineBooleanExpression('less_than', [this, other]);
   }
 
-  /// Creates a less-than expression against a literal value.
-  PipelineBooleanExpression lessThanValue(Object? value) => lessThan(value);
-
   /// Creates a less-than-or-equal expression.
   PipelineBooleanExpression lessThanOrEqual(Object? other) {
     return _PipelineBooleanExpression('less_than_or_equal', [this, other]);
-  }
-
-  /// Creates a less-than-or-equal expression against a literal value.
-  PipelineBooleanExpression lessThanOrEqualValue(Object? value) {
-    return lessThanOrEqual(value);
   }
 
   /// Creates a greater-than expression.
@@ -1955,18 +1950,9 @@ sealed class PipelineExpression {
     return _PipelineBooleanExpression('greater_than', [this, other]);
   }
 
-  /// Creates a greater-than expression against a literal value.
-  PipelineBooleanExpression greaterThanValue(Object? value) =>
-      greaterThan(value);
-
   /// Creates a greater-than-or-equal expression.
   PipelineBooleanExpression greaterThanOrEqual(Object? other) {
     return _PipelineBooleanExpression('greater_than_or_equal', [this, other]);
-  }
-
-  /// Creates a greater-than-or-equal expression against a literal value.
-  PipelineBooleanExpression greaterThanOrEqualValue(Object? value) {
-    return greaterThanOrEqual(value);
   }
 
   /// Creates an addition expression.
@@ -1974,32 +1960,20 @@ sealed class PipelineExpression {
     return _PipelineFunctionExpression('add', [this, other], const {});
   }
 
-  /// Adds a numeric literal to this expression.
-  PipelineExpression addNumber(num other) => add(other);
-
   /// Creates a subtraction expression.
   PipelineExpression subtract(Object? other) {
     return _PipelineFunctionExpression('subtract', [this, other], const {});
   }
-
-  /// Subtracts a numeric literal from this expression.
-  PipelineExpression subtractNumber(num other) => subtract(other);
 
   /// Creates a multiplication expression.
   PipelineExpression multiply(Object? other) {
     return _PipelineFunctionExpression('multiply', [this, other], const {});
   }
 
-  /// Multiplies this expression by a numeric literal.
-  PipelineExpression multiplyNumber(num other) => multiply(other);
-
   /// Creates a division expression.
   PipelineExpression divide(Object? other) {
     return _PipelineFunctionExpression('divide', [this, other], const {});
   }
-
-  /// Divides this expression by a numeric literal.
-  PipelineExpression divideNumber(num other) => divide(other);
 
   /// Returns the absolute value of this expression.
   PipelineExpression abs() => PipelineFunctions.abs(this);
@@ -2007,9 +1981,6 @@ sealed class PipelineExpression {
   /// Returns the modulo of this expression and [other].
   PipelineExpression modulo(Object? other) =>
       PipelineFunctions.mod(this, other);
-
-  /// Returns the modulo of this expression and a numeric literal.
-  PipelineExpression moduloNumber(num other) => modulo(other);
 
   /// Returns the ceiling of this expression.
   PipelineExpression ceil() => PipelineFunctions.ceil(this);
@@ -2108,11 +2079,6 @@ sealed class PipelineExpression {
   }
 
   /// Checks if this array contains [element].
-  PipelineBooleanExpression arrayContainsValue(Object? element) {
-    return PipelineFunctions.arrayContains(this, element);
-  }
-
-  /// Checks if this array contains [element].
   PipelineBooleanExpression arrayContainsElement(Object? element) {
     return PipelineFunctions.arrayContains(this, element);
   }
@@ -2153,7 +2119,7 @@ sealed class PipelineExpression {
   PipelineExpression arrayFirstN(Object? n) =>
       PipelineFunctions.arrayFirstN(this, n);
 
-  /// Returns the index of [element].
+  /// Returns the index of the first occurrence of [element].
   PipelineExpression arrayIndexOf(Object? element) {
     return PipelineFunctions.arrayIndexOf(this, element);
   }
@@ -2235,11 +2201,6 @@ sealed class PipelineExpression {
   /// Checks if this expression is absent.
   PipelineBooleanExpression isAbsent() => PipelineFunctions.isAbsent(this);
 
-  /// Replaces absent values with [elseValue].
-  PipelineExpression ifAbsentValue(Object? elseValue) {
-    return PipelineFunctions.ifAbsent(this, elseValue);
-  }
-
   /// Replaces absent values with [elseExpr].
   PipelineExpression ifAbsent(Object? elseExpr) {
     return PipelineFunctions.ifAbsent(this, elseExpr);
@@ -2271,11 +2232,6 @@ sealed class PipelineExpression {
 
   /// Checks if this expression errors.
   PipelineBooleanExpression isError() => PipelineFunctions.isError(this);
-
-  /// Replaces errors with [catchValue].
-  PipelineExpression ifErrorValue(Object? catchValue) {
-    return PipelineFunctions.ifError(this, catchValue);
-  }
 
   /// Replaces errors with [catchExpr].
   PipelineExpression ifError(Object? catchExpr) {
@@ -2797,6 +2753,21 @@ firestore_v1.Value _encodeLiteralValue(Object? value, Firestore firestore) {
 firestore_v1.Value _relativeReference(String path) {
   return firestore_v1.Value(
     referenceValue: path.startsWith('/') ? path : '/$path',
+  );
+}
+
+/// Throws when [other] targets a different database than [target].
+///
+/// Pipeline stages that take a reference, query, or nested Pipeline can only
+/// combine sources from a single database.
+void _validateSameDatabase(Firestore target, Firestore other, String name) {
+  if (other.databaseId == target.databaseId) return;
+
+  throw ArgumentError.value(
+    other.databaseId,
+    name,
+    'The database of this $name does not match the target database '
+    '("${target.databaseId}") of this Pipeline.',
   );
 }
 

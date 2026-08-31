@@ -98,6 +98,33 @@ class ExplainMetrics {
   final ExecutionStats? executionStats;
 }
 
+/// Statistics about the planning and execution of a Firestore Pipeline.
+///
+/// Supplied by [Pipeline.execute] when the backend returns them. The payload
+/// format is chosen by the `output_format` Pipeline option, which currently
+/// accepts `TEXT` and `JSON`.
+class PipelineExplainStats {
+  const PipelineExplainStats._({required this.data});
+
+  factory PipelineExplainStats._fromProto(firestore_v1.ExplainStats proto) {
+    final any = proto.data;
+    final isString =
+        any != null && any.isType(protobuf_v1.StringValue.fullyQualifiedName);
+
+    return PipelineExplainStats._(
+      data: isString
+          ? any.unpackFrom(protobuf_v1.StringValue.fromJson).value
+          : null,
+    );
+  }
+
+  /// The raw stats payload, in the requested output format.
+  ///
+  /// Null when the backend returns a payload shape this SDK does not
+  /// recognise, which keeps a future format change from being a breaking one.
+  final String? data;
+}
+
 /// ExplainResults contains information about planning, execution, and results
 /// of a query.
 class ExplainResults<T> {
