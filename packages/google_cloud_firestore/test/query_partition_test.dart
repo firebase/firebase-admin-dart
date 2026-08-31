@@ -14,7 +14,8 @@
 
 import 'dart:async';
 
-import 'package:google_cloud_firestore/google_cloud_firestore.dart';
+import 'package:google_cloud_firestore/google_cloud_firestore.dart'
+    hide greaterThan, lessThan;
 import 'package:google_cloud_firestore/src/firestore_http_client.dart';
 import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
 import 'package:google_cloud_firestore_v1/testing.dart';

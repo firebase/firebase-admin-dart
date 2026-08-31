@@ -16,7 +16,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:google_cloud_firestore/google_cloud_firestore.dart';
+import 'package:google_cloud_firestore/google_cloud_firestore.dart'
+    hide greaterThan, lessThan;
 import 'package:test/test.dart' hide throwsArgumentError;
 
 import 'fixtures/helpers.dart';

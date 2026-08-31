@@ -15,7 +15,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:google_cloud_firestore/google_cloud_firestore.dart';
+import 'package:google_cloud_firestore/google_cloud_firestore.dart'
+    hide greaterThan, lessThan;
 import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
 import 'package:google_cloud_protobuf/protobuf.dart' as protobuf_v1;
 import 'package:test/test.dart';
