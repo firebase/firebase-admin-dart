@@ -55,7 +55,7 @@ Future<void> basicPipeline(Firestore firestore) async {
         .select([
           'title',
           'rating',
-          field('title').toUpperCase().as('shoutedTitle'),
+          field('title').toUpper().as('shoutedTitle'),
           field('tags').arrayLength().as('tagCount'),
         ])
         .limit(10)
@@ -143,7 +143,7 @@ Future<void> replaceWithPipeline(Firestore firestore) async {
         .where(field('metadata').exists())
         // Each key of the `metadata` map becomes a top-level field.
         .replaceWith('metadata')
-        .addFields([field('language').toUpperCase().as('languageCode')])
+        .addFields([field('language').toUpper().as('languageCode')])
         .removeFields(['language'])
         .execute();
 

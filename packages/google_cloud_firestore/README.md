@@ -227,7 +227,7 @@ must be aliased.
 .select([
   'title',
   field('rating'),
-  field('title').toUpperCase().as('shoutedTitle'),
+  field('title').toUpper().as('shoutedTitle'),
 ])
 ```
 
@@ -339,7 +339,7 @@ Expressions come from two interchangeable entry points:
 
 ```dart
 // Equivalent:
-field('title').toUpperCase();
+field('title').toUpper();
 PipelineFunctions.toUpper('title');
 ```
 
@@ -373,13 +373,13 @@ available on `PipelineFunctions`; most also exist as a fluent method.
 | --- | --- | --- |
 | Comparison | `equal`, `notEqual`, `lessThan`, `lessThanOrEqual`, `greaterThan`, `greaterThanOrEqual`, `cmp` | `equal`, `not_equal`, `less_than`, `less_than_or_equal`, `greater_than`, `greater_than_or_equal`, `cmp` |
 | Logical | `and`, `or`, `xor`, `nor`, `not`, `conditional`, `ifNull`, `coalesce`, `switchOn`, `equalAny`, `notEqualAny` | `and`, `or`, `xor`, `nor`, `not`, `conditional`, `if_null`, `coalesce`, `switch_on`, `equal_any`, `not_equal_any` |
-| Aggregate | `count`, `countIf`, `countDistinct`, `sum`, `average`, `minimum`, `maximum`, `first`, `last`, `arrayAgg`, `arrayAggDistinct` | `count`, `count_if`, `count_distinct`, `sum`, `average`, `minimum`, `maximum`, `first`, `last`, `array_agg`, `array_agg_distinct` |
+| Aggregate | `count`, `countAll`, `countIf`, `countDistinct`, `sum`, `average`, `minimum`, `maximum`, `first`, `last`, `arrayAgg`, `arrayAggDistinct` | `count`, `count_if`, `count_distinct`, `sum`, `average`, `minimum`, `maximum`, `first`, `last`, `array_agg`, `array_agg_distinct` |
 | Arithmetic | `add`, `subtract`, `multiply`, `divide`, `mod`, `abs`, `ceil`, `floor`, `round`, `trunc`, `sqrt`, `pow`, `exp`, `ln`, `log`, `log10`, `rand`, `logicalMinimum`, `logicalMaximum` | `add`, `subtract`, `multiply`, `divide`, `mod`, `abs`, `ceil`, `floor`, `round`, `trunc`, `sqrt`, `pow`, `exp`, `ln`, `log`, `log10`, `rand`, `minimum`, `maximum` |
-| Array | `array`, `arrayConcat`, `arrayContains`, `arrayContainsAll`, `arrayContainsAny`, `arrayFilter`, `arrayGet`, `arrayLength`, `arrayReverse`, `arrayFirst`, `arrayFirstN`, `arrayLast`, `arrayLastN`, `arrayIndexOf`, `arrayIndexOfAll`, `arrayLastIndexOf`, `arraySlice`, `arrayTransform`, `maximumN`, `minimumN`, `join` | `array`, `array_concat`, `array_contains`, `array_contains_all`, `array_contains_any`, `array_filter`, `array_get`, `array_length`, `array_reverse`, `array_first`, `array_first_n`, `array_last`, `array_last_n`, `array_index_of`, `array_index_of_all`, `array_index_of`, `array_slice`, `array_transform`, `maximum_n`, `minimum_n`, `join` |
+| Array | `array`, `arrayConcat`, `arrayContains`, `arrayContainsAll`, `arrayContainsAny`, `arrayFilter`, `arrayGet`, `arrayLength`, `arrayReverse`, `arrayFirst`, `arrayFirstN`, `arrayLast`, `arrayLastN`, `arrayIndexOf`, `arrayIndexOfAll`, `arrayLastIndexOf`, `arraySlice`, `arrayTransform`, `arrayMaximum`, `arrayMaximumN`, `arrayMinimum`, `arrayMinimumN`, `arraySum`, `maximumN`, `minimumN`, `join` | `array`, `array_concat`, `array_contains`, `array_contains_all`, `array_contains_any`, `array_filter`, `array_get`, `array_length`, `array_reverse`, `array_first`, `array_first_n`, `array_last`, `array_last_n`, `array_index_of`, `array_index_of_all`, `array_index_of`, `array_slice`, `array_transform`, `array_maximum`, `array_maximum_n`, `array_minimum`, `array_minimum_n`, `array_sum`, `maximum_n`, `minimum_n`, `join` |
 | String | `byteLength`, `charLength`, `startsWith`, `endsWith`, `like`, `regexContains`, `regexMatch`, `regexFind`, `regexFindAll`, `stringConcat`, `stringContains`, `stringIndexOf`, `toUpper`, `toLower`, `substring`, `stringReverse`, `stringRepeat`, `stringReplaceAll`, `stringReplaceOne`, `trim`, `ltrim`, `rtrim`, `split` | `byte_length`, `char_length`, `starts_with`, `ends_with`, `like`, `regex_contains`, `regex_match`, `regex_find`, `regex_find_all`, `string_concat`, `string_contains`, `string_index_of`, `to_upper`, `to_lower`, `substring`, `string_reverse`, `string_repeat`, `string_replace_all`, `string_replace_one`, `trim`, `ltrim`, `rtrim`, `split` |
 | Generic | `length`, `reverse`, `concat` | `length`, `reverse`, `concat` |
 | Map | `map`, `mapGet`, `getField`, `mapSet`, `mapRemove`, `mapMerge`, `mapKeys`, `mapValues`, `mapEntries` | `map`, `map_get`, `get_field`, `map_set`, `map_remove`, `map_merge`, `map_keys`, `map_values`, `map_entries` |
-| Timestamp | `currentTimestamp`, `timestampTrunc`, `timestampAdd`, `timestampSubtract`, `timestampDiff`, `timestampExtract`, `timestampToUnixMicros`/`Millis`/`Seconds`, `unixMicrosToTimestamp`/`Millis`/`Seconds` | `current_timestamp`, `timestamp_trunc`, `timestamp_add`, `timestamp_subtract`, `timestamp_diff`, `timestamp_extract`, `timestamp_to_unix_*`, `unix_*_to_timestamp` |
+| Timestamp | `currentTimestamp`, `timestampTruncate`, `timestampAdd`, `timestampSubtract`, `timestampDiff`, `timestampExtract`, `timestampToUnixMicros`/`Millis`/`Seconds`, `unixMicrosToTimestamp`/`Millis`/`Seconds` | `current_timestamp`, `timestamp_trunc`, `timestamp_add`, `timestamp_subtract`, `timestamp_diff`, `timestamp_extract`, `timestamp_to_unix_*`, `unix_*_to_timestamp` |
 | Vector | `cosineDistance`, `dotProduct`, `euclideanDistance`, `vectorLength`, `geoDistance` | `cosine_distance`, `dot_product`, `euclidean_distance`, `vector_length`, `geo_distance` |
 | Reference | `collectionId`, `documentId`, `parent`, `referenceSlice`, `currentDocument` | `collection_id`, `document_id`, `parent`, `reference_slice`, `current_document` |
 | Type | `type`, `isType` | `type`, `is_type` |

@@ -655,7 +655,7 @@ void main() {
               Expression.field('title').stringContains('art').as('contains'),
               Expression.field(
                 'createdAt',
-              ).timestampTrunc('day', 'UTC').as('createdDay'),
+              ).timestampTruncate('day', 'UTC').as('createdDay'),
               Expression.field(
                 'createdAt',
               ).timestampAdd('day', 1).as('createdPlusOne'),
@@ -1034,6 +1034,78 @@ void main() {
       // string-specific.
       expect(fields['titleChars']!.functionValue!.name, 'char_length');
       expect(fields['clampedRating']!.functionValue!.name, 'maximum');
+    });
+
+    test('exposes the Node method names for every expression', () async {
+      firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+      when(
+        () =>
+            mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                Function(firestore_v1.Firestore api, String projectId);
+
+        final api = FakeFirestore(
+          executePipeline: (request) {
+            capturedRequest = request;
+            return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+          },
+        );
+
+        return callback(api, _projectId);
+      });
+
+      final active = field('active').asBoolean();
+
+      await firestore.pipeline().collection('books').select([
+        // Renamed to match the Node SDK.
+        field('price').mod(4).as('remainder'),
+        field('title').toLower().as('lower'),
+        field('title').toUpper().as('upper'),
+        field('createdAt').timestampTruncate('day').as('day'),
+        field('tags').arrayContains('dart').as('hasDart'),
+        // Fluent forms Node has that were missing here.
+        field('title').stringReverse().as('backwards'),
+        active.not().as('inactive'),
+        active.countIf().as('activeCount'),
+        active.conditional('yes', 'no').as('label'),
+        // Static catalog additions.
+        PipelineFunctions.arrayMaximum('numbers').as('maxNumber'),
+        PipelineFunctions.arrayMinimum('numbers').as('minNumber'),
+        PipelineFunctions.arrayMaximumN('numbers', 2).as('top2'),
+        PipelineFunctions.arrayMinimumN('numbers', 2).as('bottom2'),
+        PipelineFunctions.arraySum('numbers').as('total'),
+        PipelineFunctions.countAll().as('rows'),
+      ]).execute();
+
+      final fields = capturedRequest!
+          .structuredPipeline!
+          .pipeline!
+          .stages[1]
+          .args
+          .single
+          .mapValue!
+          .fields;
+
+      expect(fields['remainder']!.functionValue!.name, 'mod');
+      expect(fields['lower']!.functionValue!.name, 'to_lower');
+      expect(fields['upper']!.functionValue!.name, 'to_upper');
+      expect(fields['day']!.functionValue!.name, 'timestamp_trunc');
+      expect(fields['hasDart']!.functionValue!.name, 'array_contains');
+      expect(fields['backwards']!.functionValue!.name, 'string_reverse');
+      expect(fields['inactive']!.functionValue!.name, 'not');
+      expect(fields['activeCount']!.functionValue!.name, 'count_if');
+      expect(fields['label']!.functionValue!.name, 'conditional');
+      expect(fields['maxNumber']!.functionValue!.name, 'array_maximum');
+      expect(fields['minNumber']!.functionValue!.name, 'array_minimum');
+      expect(fields['top2']!.functionValue!.name, 'array_maximum_n');
+      expect(fields['bottom2']!.functionValue!.name, 'array_minimum_n');
+      expect(fields['total']!.functionValue!.name, 'array_sum');
+      expect(fields['rows']!.functionValue!.name, 'count');
+      expect(fields['rows']!.functionValue!.args, isEmpty);
     });
 
     group('createFrom', () {
