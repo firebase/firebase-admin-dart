@@ -2759,16 +2759,37 @@ firestore_v1.Value _relativeReference(String path) {
 /// Throws when [other] targets a different database than [target].
 ///
 /// Pipeline stages that take a reference, query, or nested Pipeline can only
-/// combine sources from a single database.
+/// combine sources from a single database. Two instances can share a
+/// [Firestore.databaseId] (`(default)` especially) while belonging to
+/// different projects, so the project is compared too.
+///
+/// Projects are only compared when both are already known:
+/// [Firestore.projectId] throws until the ID is discovered, and these are pure
+/// builder methods that must keep working on an instance whose ID only
+/// resolves on its first request.
 void _validateSameDatabase(Firestore target, Firestore other, String name) {
-  if (other.databaseId == target.databaseId) return;
+  final targetProject = target._knownProjectId;
+  final otherProject = other._knownProjectId;
+  final sameProject =
+      targetProject == null ||
+      otherProject == null ||
+      targetProject == otherProject;
+
+  if (sameProject && other.databaseId == target.databaseId) return;
 
   throw ArgumentError.value(
-    other.databaseId,
+    _databaseLabel(otherProject, other.databaseId),
     name,
     'The database of this $name does not match the target database '
-    '("${target.databaseId}") of this Pipeline.',
+    '(${_databaseLabel(targetProject, target.databaseId)}) of this Pipeline.',
   );
+}
+
+/// Names a database for an error message, omitting the project when unknown.
+String _databaseLabel(String? projectId, String databaseId) {
+  return projectId == null
+      ? '"$databaseId"'
+      : '"projects/$projectId/databases/$databaseId"';
 }
 
 List<Object?> _optionalArg(Object? value) {
