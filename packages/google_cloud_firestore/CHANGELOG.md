@@ -4,6 +4,7 @@
 - Added `PipelineSource.createFrom()` to convert a `Query` or `VectorQuery` into an equivalent Pipeline.
 - Added `Transaction.executePipeline()` to run a Pipeline at a transaction's snapshot.
 - `PipelineSnapshot.explainStats` now returns an `ExplainStats` wrapper instead of the generated proto type.
+- `Pipeline.withOptions()` now takes typed options (`PipelineIndexMode`, `PipelineExplainOptions`) instead of a raw map; `Pipeline.withRawOptions()` keeps the untyped escape hatch.
 - `PipelineFunctions.minimum()`/`maximum()` are aggregate-only; use `logicalMinimum()`/`logicalMaximum()` for the element-wise form.
 
 ## 0.5.3

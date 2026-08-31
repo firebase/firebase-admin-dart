@@ -308,10 +308,24 @@ proportion between 0 and 1. Exactly one of the two must be given.
 ```
 
 **`rawStage`** — escape hatch for preview stages this SDK does not yet wrap.
-`search` and `withOptions` are thin wrappers over the same mechanism.
+`search` is a thin wrapper over the same mechanism.
 
 ```dart
 .rawStage('sample', [10, 'documents'], options: {'stable': true})
+```
+
+**`withOptions`** — query-level options applied to the whole Pipeline. Repeated
+calls merge rather than replace. Use `withRawOptions` for options this SDK does
+not wrap yet.
+
+```dart
+.withOptions(
+  indexMode: PipelineIndexMode.recommended,
+  explain: const PipelineExplainOptions(
+    mode: PipelineExplainMode.analyze,
+    outputFormat: PipelineExplainOutputFormat.text,
+  ),
+)
 ```
 
 #### Expressions
@@ -417,7 +431,26 @@ final titles = await firestore.runTransaction((transaction) async {
 | `results` | The returned `PipelineResult`s. |
 | `size`, `empty` | Result count, and whether there are none. |
 | `executionTime` | When the results were valid. |
-| `explainStats` | An `ExplainStats`, when the backend returns them. |
+| `explainStats` | An `ExplainStats`, when requested via `withOptions`. |
+
+`ExplainStats` exposes `text` for the `TEXT` and `JSON` output formats,
+`typeName` for the payload's proto type, and `raw` with the payload exactly as
+the backend encoded it, so a format this SDK does not decode is never lost.
+
+```dart
+final snapshot = await firestore
+    .pipeline()
+    .collection('books')
+    .withOptions(
+      explain: const PipelineExplainOptions(
+        mode: PipelineExplainMode.analyze,
+        outputFormat: PipelineExplainOutputFormat.text,
+      ),
+    )
+    .execute();
+
+print(snapshot.explainStats?.text);
+```
 
 Each `PipelineResult` exposes its fields and, when the backend includes document
 metadata, its identity:

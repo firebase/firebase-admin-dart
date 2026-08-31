@@ -210,6 +210,87 @@ void main() {
       expect(snapshot.results.single.document, isNull);
     });
 
+    test('withOptions encodes options under their backend names', () async {
+      firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+      when(
+        () =>
+            mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                Function(firestore_v1.Firestore api, String projectId);
+
+        final api = FakeFirestore(
+          executePipeline: (request) {
+            capturedRequest = request;
+            return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+          },
+        );
+
+        return callback(api, _projectId);
+      });
+
+      await firestore
+          .pipeline()
+          .collection('books')
+          .withOptions(indexMode: PipelineIndexMode.recommended)
+          // A second call merges rather than replacing.
+          .withOptions(
+            explain: const PipelineExplainOptions(
+              mode: PipelineExplainMode.analyze,
+              outputFormat: PipelineExplainOutputFormat.text,
+            ),
+          )
+          .execute();
+
+      final options = capturedRequest!.structuredPipeline!.options;
+      expect(options.keys, unorderedEquals(['index_mode', 'explain_options']));
+      expect(options['index_mode']!.stringValue, 'recommended');
+
+      final explain = options['explain_options']!.mapValue!.fields;
+      expect(explain['mode']!.stringValue, 'analyze');
+      expect(explain['output_format']!.stringValue, 'text');
+    });
+
+    test('withOptions omits options that were not set', () async {
+      firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+      when(
+        () =>
+            mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                Function(firestore_v1.Firestore api, String projectId);
+
+        final api = FakeFirestore(
+          executePipeline: (request) {
+            capturedRequest = request;
+            return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+          },
+        );
+
+        return callback(api, _projectId);
+      });
+
+      await firestore
+          .pipeline()
+          .collection('books')
+          .withOptions(
+            explain: const PipelineExplainOptions(
+              mode: PipelineExplainMode.explain,
+            ),
+          )
+          .execute();
+
+      final options = capturedRequest!.structuredPipeline!.options;
+      expect(options.keys, ['explain_options']);
+      expect(options['explain_options']!.mapValue!.fields.keys, ['mode']);
+    });
+
     test('decodes explain stats without losing the payload', () async {
       when(
         () =>
@@ -1325,9 +1406,15 @@ void main() {
       test('allows a source whose project is not yet discovered', () {
         // Project IDs resolve on the first request when discovery is async
         // (metadata server). Builder methods must not force that resolution.
+        // An empty environmentOverride blocks the synchronous strategies, so
+        // this holds regardless of the ambient GOOGLE_CLOUD_PROJECT.
         final undiscovered = Firestore(
-          settings: const Settings(databaseId: 'enterprise'),
+          settings: const Settings(
+            databaseId: 'enterprise',
+            environmentOverride: {},
+          ),
         );
+        expect(() => undiscovered.projectId, throwsStateError);
 
         expect(
           () =>
