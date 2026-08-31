@@ -1159,7 +1159,12 @@ final class PipelineSource {
     if (refs.isEmpty) {
       throw ArgumentError.value(documents, 'documents', 'Must not be empty.');
     }
-    return _start('documents', refs);
+    // Source stages name documents by their path relative to the database,
+    // like the `collection` stage does, rather than by their full resource
+    // name. The full name is only correct for references in a value position.
+    return _start('documents', [
+      for (final ref in refs) _PipelineProtoValue(_relativeReference(ref.path)),
+    ]);
   }
 
   /// Converts [query] into an equivalent Pipeline.
@@ -2771,7 +2776,7 @@ firestore_v1.Value _encodePipelineValue(Object? value, Firestore firestore) {
     case DocumentReference():
       return firestore_v1.Value(referenceValue: value._formattedName);
     case CollectionReference():
-      return firestore_v1.Value(referenceValue: '/${value.path}');
+      return _relativeReference(value.path);
     default:
       return _encodeLiteralValue(value, firestore);
   }
@@ -2783,6 +2788,16 @@ firestore_v1.Value _encodeLiteralValue(Object? value, Firestore firestore) {
     throw ArgumentError.value(value, 'value', 'Unsupported Pipeline value.');
   }
   return encoded;
+}
+
+/// Names a resource by its path relative to the database, as source stages do.
+///
+/// Mirrors the Node SDK, where `CollectionSource` and `DocumentsSource` both
+/// encode a leading-slash path rather than a full resource name.
+firestore_v1.Value _relativeReference(String path) {
+  return firestore_v1.Value(
+    referenceValue: path.startsWith('/') ? path : '/$path',
+  );
 }
 
 List<Object?> _optionalArg(Object? value) {

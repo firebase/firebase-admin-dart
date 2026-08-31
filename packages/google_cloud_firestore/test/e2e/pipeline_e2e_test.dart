@@ -194,6 +194,20 @@ void main() {
       expect(aggregateSnapshot.results.single.get('bookCount'), 2);
     });
 
+    test('executes a documents source stage', () async {
+      final snapshot = await firestore
+          .pipeline()
+          .documents([docs[0], docs[2]])
+          .sort([Expression.field('price').ascending()])
+          .select([Expression.field('title')])
+          .execute();
+
+      expect(snapshot.results.map((result) => result.get('title')), [
+        'Dart Pipelines',
+        'Inactive Draft',
+      ]);
+    });
+
     group('function catalog', () {
       for (final scenario in _functionScenarios) {
         test(scenario.name, () async {

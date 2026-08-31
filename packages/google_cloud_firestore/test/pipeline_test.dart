@@ -207,10 +207,9 @@ void main() {
 
       final stages = capturedRequest!.structuredPipeline!.pipeline!.stages;
       expect(stages.first.name, 'documents');
-      expect(
-        stages.first.args.single.referenceValue,
-        'projects/$_projectId/databases/enterprise/documents/books/book-1',
-      );
+      // Source stages name documents relative to the database, matching the
+      // `collection` stage and the Node SDK's `DocumentsSource`.
+      expect(stages.first.args.single.referenceValue, '/books/book-1');
       expect(stages.last.name, 'sample');
       expect(stages.last.args.single.integerValue, 1);
       expect(stages.last.options['stable']!.booleanValue, isTrue);
