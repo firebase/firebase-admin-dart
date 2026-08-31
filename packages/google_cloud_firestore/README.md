@@ -417,7 +417,7 @@ final titles = await firestore.runTransaction((transaction) async {
 | `results` | The returned `PipelineResult`s. |
 | `size`, `empty` | Result count, and whether there are none. |
 | `executionTime` | When the results were valid. |
-| `explainStats` | A `PipelineExplainStats`, when the backend returns them. |
+| `explainStats` | An `ExplainStats`, when the backend returns them. |
 
 Each `PipelineResult` exposes its fields and, when the backend includes document
 metadata, its identity:

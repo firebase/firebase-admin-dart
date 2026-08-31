@@ -1475,7 +1475,7 @@ final class Pipeline {
     final results = <PipelineResult>[];
     Timestamp? executionTime;
     String? newTransaction;
-    PipelineExplainStats? explainStats;
+    ExplainStats? explainStats;
 
     await for (final chunk in response) {
       if (chunk.transaction.isNotEmpty) {
@@ -1485,7 +1485,7 @@ final class Pipeline {
         executionTime = Timestamp._fromProto(chunk.executionTime!);
       }
       if (chunk.explainStats case final stats?) {
-        explainStats = PipelineExplainStats._fromProto(stats);
+        explainStats = ExplainStats._fromProto(stats);
       }
 
       for (final document in chunk.results) {
@@ -1901,7 +1901,7 @@ final class PipelineSnapshot {
   /// Statistics about how the backend planned and executed this Pipeline.
   ///
   /// Null unless the Pipeline requested them via [Pipeline.withOptions].
-  final PipelineExplainStats? explainStats;
+  final ExplainStats? explainStats;
 
   /// The number of results in this snapshot.
   int get size => results.length;
