@@ -432,6 +432,7 @@ final titles = await firestore.runTransaction((transaction) async {
 | `size`, `empty` | Result count, and whether there are none. |
 | `executionTime` | When the results were valid. |
 | `explainStats` | An `ExplainStats`, when requested via `execute(explain: ...)`. |
+| `pipeline` | The Pipeline that produced this snapshot. |
 
 `ExplainStats` exposes `text` for the `TEXT` and `JSON` output formats,
 `typeName` for the payload's proto type, and `raw` with the payload exactly as
@@ -456,16 +457,17 @@ metadata, its identity:
 
 ```dart
 for (final result in snapshot.results) {
-  print(result.data());          // all decoded fields
-  print(result.get('title'));    // a single field
-  print(result.document?.path);  // null when a projection dropped metadata
+  print(result.data());       // all decoded fields
+  print(result.get('title')); // a single field
+  print(result.ref?.path);    // null when a projection dropped metadata
+  print(result.id);           // the document ID, or null
   print(result.createTime);
   print(result.updateTime);
 }
 ```
 
 Projection stages such as `select` and `aggregate` may drop document metadata,
-in which case `name`, `document`, `createTime` and `updateTime` are `null`.
+in which case `name`, `ref`, `id`, `createTime` and `updateTime` are `null`.
 
 #### Migrating a Query to a Pipeline
 

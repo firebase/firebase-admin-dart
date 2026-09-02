@@ -165,7 +165,7 @@ void main() {
       expect(snapshot.empty, isFalse);
       expect(snapshot.executionTime, Timestamp(seconds: 42, nanoseconds: 0));
       expect(snapshot.results.single.name, contains('/books/book-1'));
-      expect(snapshot.results.single.document, firestore.doc('books/book-1'));
+      expect(snapshot.results.single.ref, firestore.doc('books/book-1'));
       expect(
         snapshot.results.single.createTime,
         Timestamp(seconds: 42, nanoseconds: 0),
@@ -176,6 +176,12 @@ void main() {
       );
       expect(snapshot.results.single.data(), {'title': 'Dart', 'price': 12.5});
       expect(snapshot.results.single.get('title'), 'Dart');
+      expect(snapshot.results.single.id, 'book-1');
+      // The snapshot carries the Pipeline that produced it, as in Node.
+      expect(snapshot.pipeline, isA<Pipeline>());
+
+      // Two results decoded from the same document compare equal.
+      expect(snapshot.results.single, equals(snapshot.results.single));
     });
 
     test('data() is unmodifiable and empty rather than null', () async {
@@ -207,7 +213,7 @@ void main() {
       expect(data, isEmpty);
       expect(() => data['title'] = 'nope', throwsUnsupportedError);
       expect(snapshot.results.single.name, isNull);
-      expect(snapshot.results.single.document, isNull);
+      expect(snapshot.results.single.ref, isNull);
     });
 
     test('execute encodes options under their backend names', () async {

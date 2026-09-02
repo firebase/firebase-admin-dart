@@ -1619,6 +1619,7 @@ final class Pipeline {
     return _TransactionResult(
       transaction: newTransaction,
       result: PipelineSnapshot._(
+        pipeline: this,
         results: results,
         executionTime: executionTime,
         explainStats: explainStats,
@@ -1914,7 +1915,7 @@ final class PipelineResult {
   PipelineResult._({
     required DocumentData data,
     required this.name,
-    required this.document,
+    required this.ref,
     required this.createTime,
     required this.updateTime,
   }) : _data = Map.unmodifiable(data);
@@ -1938,7 +1939,7 @@ final class PipelineResult {
           entry.key: _decodePipelineResultValue(entry.value, firestore),
       },
       name: name,
-      document: ref,
+      ref: ref,
       createTime: document.createTime.let(Timestamp._fromProto),
       updateTime: document.updateTime.let(Timestamp._fromProto),
     );
@@ -1952,7 +1953,12 @@ final class PipelineResult {
   final String? name;
 
   /// The document reference when returned by the backend.
-  final DocumentReference<DocumentData>? document;
+  ///
+  /// Null when a projection stage dropped the document metadata.
+  final DocumentReference<DocumentData>? ref;
+
+  /// The document ID, when this result refers to a document.
+  String? get id => ref?.id;
 
   /// The time the document was created.
   final Timestamp? createTime;
@@ -1968,6 +1974,25 @@ final class PipelineResult {
 
   /// Returns the decoded value at [fieldName], or `null` when absent.
   Object? get(String fieldName) => _data[fieldName];
+
+  @override
+  bool operator ==(Object other) {
+    return other is PipelineResult &&
+        other.name == name &&
+        other.createTime == createTime &&
+        other.updateTime == updateTime &&
+        const DeepCollectionEquality().equals(other._data, _data);
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(
+      name,
+      createTime,
+      updateTime,
+      const DeepCollectionEquality().hash(_data),
+    );
+  }
 }
 
 Object? _decodePipelineResultValue(
@@ -2006,10 +2031,14 @@ bool _isDocumentReferenceValue(String referenceValue) {
 @immutable
 final class PipelineSnapshot {
   const PipelineSnapshot._({
+    required this.pipeline,
     required this.results,
     required this.executionTime,
     required this.explainStats,
   });
+
+  /// The Pipeline that produced this snapshot.
+  final Pipeline pipeline;
 
   /// The Pipeline results returned by the backend.
   final List<PipelineResult> results;
