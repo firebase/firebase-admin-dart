@@ -314,12 +314,12 @@ proportion between 0 and 1. Exactly one of the two must be given.
 .rawStage('sample', [10, 'documents'], options: {'stable': true})
 ```
 
-**`withOptions`** — query-level options applied to the whole Pipeline. Repeated
-calls merge rather than replace. Use `withRawOptions` for options this SDK does
-not wrap yet.
+Query-level options are passed to `execute()` rather than built onto the
+Pipeline, so a Pipeline value stays a pure description of what to fetch. Use
+`rawOptions` for options this SDK does not wrap yet; they take precedence.
 
 ```dart
-.withOptions(
+.execute(
   indexMode: PipelineIndexMode.recommended,
   explain: const PipelineExplainOptions(
     mode: PipelineExplainMode.analyze,
@@ -431,7 +431,7 @@ final titles = await firestore.runTransaction((transaction) async {
 | `results` | The returned `PipelineResult`s. |
 | `size`, `empty` | Result count, and whether there are none. |
 | `executionTime` | When the results were valid. |
-| `explainStats` | An `ExplainStats`, when requested via `withOptions`. |
+| `explainStats` | An `ExplainStats`, when requested via `execute(explain: ...)`. |
 
 `ExplainStats` exposes `text` for the `TEXT` and `JSON` output formats,
 `typeName` for the payload's proto type, and `raw` with the payload exactly as
@@ -441,13 +441,12 @@ the backend encoded it, so a format this SDK does not decode is never lost.
 final snapshot = await firestore
     .pipeline()
     .collection('books')
-    .withOptions(
+    .execute(
       explain: const PipelineExplainOptions(
         mode: PipelineExplainMode.analyze,
         outputFormat: PipelineExplainOutputFormat.text,
       ),
-    )
-    .execute();
+    );
 
 print(snapshot.explainStats?.text);
 ```

@@ -4,7 +4,7 @@
 - Added `PipelineSource.createFrom()` to convert a `Query` or `VectorQuery` into an equivalent Pipeline.
 - Added `Transaction.executePipeline()` to run a Pipeline at a transaction's snapshot.
 - `PipelineSnapshot.explainStats` now returns an `ExplainStats` wrapper instead of the generated proto type.
-- `Pipeline.withOptions()` now takes typed options (`PipelineIndexMode`, `PipelineExplainOptions`) instead of a raw map; `Pipeline.withRawOptions()` keeps the untyped escape hatch.
+- Query-level Pipeline options moved from `Pipeline.withOptions()` to typed parameters on `Pipeline.execute()` (`indexMode`, `explain`, and a `rawOptions` escape hatch), matching the Node Admin SDK.
 - Renamed Pipeline expression methods to match the Node Admin SDK: `modulo` is now `mod`, `arrayContainsElement` is `arrayContains`, and `timestampTrunc` is `timestampTruncate`.
 - Added the Pipeline expressions the Node Admin SDK has that were missing: fluent `stringReverse()`, `not()`, `countIf()` and `conditional()`, plus `PipelineFunctions.arrayMaximum()`, `arrayMaximumN()`, `arrayMinimum()`, `arrayMinimumN()`, `arraySum()` and `countAll()`.
 - `PipelineFunctions.minimum()`/`maximum()` are aggregate-only; use `logicalMinimum()`/`logicalMaximum()` for the element-wise form.

@@ -134,10 +134,8 @@ enum PipelineExplainMode {
   /// Execute the Pipeline and return results, without planning stats.
   execute('execute'),
 
-  /// Plan the Pipeline without executing it.
-  explain('explain'),
-
-  /// Execute the Pipeline and return planning and execution stats.
+  /// Execute the Pipeline and return planning and execution stats alongside
+  /// the results.
   analyze('analyze');
 
   const PipelineExplainMode(this.value);
@@ -159,7 +157,7 @@ enum PipelineExplainOutputFormat {
 
 /// Asks the backend for statistics about how it plans and runs a Pipeline.
 ///
-/// Pass to [Pipeline.withOptions]; read the result from
+/// Pass to [Pipeline.execute]; read the result from
 /// [PipelineSnapshot.explainStats].
 @immutable
 final class PipelineExplainOptions {
@@ -1310,14 +1308,11 @@ final class Pipeline {
   const Pipeline._({
     required this.firestore,
     required List<_PipelineStage> stages,
-    Map<String, Object?> options = const {},
-  }) : _stages = stages,
-       _options = options;
+  }) : _stages = stages;
 
   /// The Firestore instance used to execute this Pipeline.
   final Firestore firestore;
   final List<_PipelineStage> _stages;
-  final Map<String, Object?> _options;
 
   /// Adds a raw backend Pipeline stage.
   ///
@@ -1513,49 +1508,6 @@ final class Pipeline {
     return rawStage('search', const [], options: options);
   }
 
-  /// Returns a copy of this Pipeline with query-level options applied.
-  ///
-  /// Options given here are merged with any already set. Pass [explain] to ask
-  /// the backend for planning stats, then read [PipelineSnapshot.explainStats].
-  ///
-  /// ```dart
-  /// final snapshot = await firestore
-  ///     .pipeline()
-  ///     .collection('books')
-  ///     .withOptions(
-  ///       explain: const PipelineExplainOptions(
-  ///         mode: PipelineExplainMode.analyze,
-  ///         outputFormat: PipelineExplainOutputFormat.text,
-  ///       ),
-  ///     )
-  ///     .execute();
-  ///
-  /// print(snapshot.explainStats?.text);
-  /// ```
-  Pipeline withOptions({
-    PipelineIndexMode? indexMode,
-    PipelineExplainOptions? explain,
-  }) {
-    return withRawOptions(
-      _compactOptions({
-        'index_mode': indexMode?.value,
-        'explain_options': explain?._encoded,
-      }),
-    );
-  }
-
-  /// Returns a copy of this Pipeline with raw query-level [options].
-  ///
-  /// Use this for options not yet wrapped by this SDK; [withOptions] covers
-  /// the known ones. Keys are the names the backend expects.
-  Pipeline withRawOptions(Map<String, Object?> options) {
-    return Pipeline._(
-      firestore: firestore,
-      stages: _stages,
-      options: {..._options, ...options},
-    );
-  }
-
   /// Executes this Pipeline and returns the results.
   ///
   /// Pipelines require a Firestore **Enterprise edition** database. Executing
@@ -1564,9 +1516,55 @@ final class Pipeline {
   ///
   /// Pass [readTime] to read the database as it was at a past timestamp. To
   /// read inside a transaction, use [Transaction.executePipeline] instead.
-  Future<PipelineSnapshot> execute({Timestamp? readTime}) async {
-    final result = await _execute(readTime: readTime);
+  ///
+  /// Pass [explain] to ask the backend for planning stats, then read
+  /// [PipelineSnapshot.explainStats]. [rawOptions] sets options this SDK does
+  /// not wrap yet, keyed by the names the backend expects, and takes
+  /// precedence over the typed options above.
+  ///
+  /// ```dart
+  /// final snapshot = await firestore
+  ///     .pipeline()
+  ///     .collection('books')
+  ///     .execute(
+  ///       explain: const PipelineExplainOptions(
+  ///         mode: PipelineExplainMode.analyze,
+  ///         outputFormat: PipelineExplainOutputFormat.text,
+  ///       ),
+  ///     );
+  ///
+  /// print(snapshot.explainStats?.text);
+  /// ```
+  Future<PipelineSnapshot> execute({
+    Timestamp? readTime,
+    PipelineIndexMode? indexMode,
+    PipelineExplainOptions? explain,
+    Map<String, Object?> rawOptions = const {},
+  }) async {
+    final result = await _execute(
+      readTime: readTime,
+      options: _executeOptions(
+        indexMode: indexMode,
+        explain: explain,
+        rawOptions: rawOptions,
+      ),
+    );
     return result.result;
+  }
+
+  /// Builds the StructuredPipeline options, with [rawOptions] winning.
+  static Map<String, Object?> _executeOptions({
+    required PipelineIndexMode? indexMode,
+    required PipelineExplainOptions? explain,
+    required Map<String, Object?> rawOptions,
+  }) {
+    return {
+      ..._compactOptions({
+        'index_mode': indexMode?.value,
+        'explain_options': explain?._encoded,
+      }),
+      ...rawOptions,
+    };
   }
 
   /// Executes this Pipeline, optionally as part of a transaction.
@@ -1578,6 +1576,7 @@ final class Pipeline {
     String? transactionId,
     Timestamp? readTime,
     firestore_v1.TransactionOptions? transactionOptions,
+    Map<String, Object?> options = const {},
   }) async {
     final response = await firestore._firestoreClient.v1((
       api,
@@ -1587,7 +1586,7 @@ final class Pipeline {
         database: 'projects/$projectId/databases/${firestore.databaseId}',
         structuredPipeline: firestore_v1.StructuredPipeline(
           pipeline: _toProto(),
-          options: _encodeOptions(_options, firestore),
+          options: _encodeOptions(options, firestore),
         ),
         transaction: transactionId.let(base64Decode),
         newTransaction: transactionOptions,
@@ -1628,11 +1627,7 @@ final class Pipeline {
   }
 
   Pipeline _append(_PipelineStage stage) {
-    return Pipeline._(
-      firestore: firestore,
-      stages: [..._stages, stage],
-      options: _options,
-    );
+    return Pipeline._(firestore: firestore, stages: [..._stages, stage]);
   }
 
   firestore_v1.Pipeline _toProto() {
@@ -2024,7 +2019,7 @@ final class PipelineSnapshot {
 
   /// Statistics about how the backend planned and executed this Pipeline.
   ///
-  /// Null unless the Pipeline requested them via [Pipeline.withOptions].
+  /// Null unless requested via [Pipeline.execute]'s `explain` option.
   final ExplainStats? explainStats;
 
   /// The number of results in this snapshot.
