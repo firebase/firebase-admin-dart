@@ -143,6 +143,39 @@ class Transaction {
     );
   }
 
+  /// Executes a Pipeline and returns the results as part of this transaction.
+  ///
+  /// The Pipeline is executed at the transaction's snapshot.
+  ///
+  /// ```dart
+  /// firestore.runTransaction((transaction) async {
+  ///   final pipeline = firestore
+  ///       .pipeline()
+  ///       .collection('books')
+  ///       .where(field('active').equal(true));
+  ///
+  ///   final snapshot = await transaction.executePipeline(pipeline);
+  ///
+  ///   for (final result in snapshot.results) {
+  ///     print(result.data());
+  ///   }
+  /// });
+  /// ```
+  Future<PipelineSnapshot> executePipeline(Pipeline pipeline) async {
+    if (_writeBatch != null && _writeBatch._operations.isNotEmpty) {
+      throw FirestoreException(
+        FirestoreClientErrorCode.failedPrecondition,
+        readAfterWriteErrorMsg,
+      );
+    }
+    _validateSameDatabase(_firestore, pipeline.firestore, 'pipeline');
+
+    return _withLazyStartedTransaction<Pipeline, PipelineSnapshot>(
+      pipeline,
+      resultFn: _executePipelineFn,
+    );
+  }
+
   /// Executes an aggregation query and returns the results as part of this
   /// transaction. The aggregation is executed at the transaction's snapshot.
   ///
@@ -490,6 +523,20 @@ class Transaction {
     return _TransactionResult(
       transaction: result.transaction,
       result: result.result,
+    );
+  }
+
+  Future<_TransactionResult<PipelineSnapshot>> _executePipelineFn(
+    Pipeline pipeline, {
+    String? transactionId,
+    Timestamp? readTime,
+    firestore_v1.TransactionOptions? transactionOptions,
+    List<FieldPath>? fieldMask, // Unused for Pipelines, required by signature
+  }) {
+    return pipeline._execute(
+      transactionId: transactionId,
+      readTime: readTime,
+      transactionOptions: transactionOptions,
     );
   }
 
