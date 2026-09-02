@@ -173,7 +173,7 @@ void main() {
 
       expect(metadataSnapshot.results.single.createTime, isNotNull);
       expect(metadataSnapshot.results.single.updateTime, isNotNull);
-      expect(metadataSnapshot.results.single.document, isNotNull);
+      expect(metadataSnapshot.results.single.ref, isNotNull);
     });
 
     test('executes aggregate pipeline stages', () async {

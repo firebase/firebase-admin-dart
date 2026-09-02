@@ -5,6 +5,7 @@
 - Added `Transaction.executePipeline()` to run a Pipeline at a transaction's snapshot.
 - `PipelineSnapshot.explainStats` now returns an `ExplainStats` wrapper instead of the generated proto type.
 - Query-level Pipeline options moved from `Pipeline.withOptions()` to typed parameters on `Pipeline.execute()` (`indexMode`, `explain`, and a `rawOptions` escape hatch), matching the Node Admin SDK.
+- Aligned the Pipeline result types with the Node Admin SDK: `PipelineResult.document` is now `ref` (matching `DocumentSnapshot.ref` elsewhere in this package), `PipelineResult.id` and value equality were added, and `PipelineSnapshot.pipeline` returns the Pipeline that produced the snapshot.
 - Renamed Pipeline expression methods to match the Node Admin SDK: `modulo` is now `mod`, `arrayContainsElement` is `arrayContains`, and `timestampTrunc` is `timestampTruncate`.
 - Added the Pipeline expressions the Node Admin SDK has that were missing: fluent `stringReverse()`, `not()`, `countIf()` and `conditional()`, plus `PipelineFunctions.arrayMaximum()`, `arrayMaximumN()`, `arrayMinimum()`, `arrayMinimumN()`, `arraySum()` and `countAll()`.
 - `PipelineFunctions.minimum()`/`maximum()` are aggregate-only; use `logicalMinimum()`/`logicalMaximum()` for the element-wise form.
