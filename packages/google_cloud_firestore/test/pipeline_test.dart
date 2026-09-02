@@ -210,7 +210,7 @@ void main() {
       expect(snapshot.results.single.document, isNull);
     });
 
-    test('withOptions encodes options under their backend names', () async {
+    test('execute encodes options under their backend names', () async {
       firestore_v1.ExecutePipelineRequest? capturedRequest;
 
       when(
@@ -235,15 +235,13 @@ void main() {
       await firestore
           .pipeline()
           .collection('books')
-          .withOptions(indexMode: PipelineIndexMode.recommended)
-          // A second call merges rather than replacing.
-          .withOptions(
+          .execute(
+            indexMode: PipelineIndexMode.recommended,
             explain: const PipelineExplainOptions(
               mode: PipelineExplainMode.analyze,
               outputFormat: PipelineExplainOutputFormat.text,
             ),
-          )
-          .execute();
+          );
 
       final options = capturedRequest!.structuredPipeline!.options;
       expect(options.keys, unorderedEquals(['index_mode', 'explain_options']));
@@ -254,7 +252,7 @@ void main() {
       expect(explain['output_format']!.stringValue, 'text');
     });
 
-    test('withOptions omits options that were not set', () async {
+    test('execute omits unset options and honours rawOptions', () async {
       firestore_v1.ExecutePipelineRequest? capturedRequest;
 
       when(
@@ -279,16 +277,19 @@ void main() {
       await firestore
           .pipeline()
           .collection('books')
-          .withOptions(
+          .execute(
             explain: const PipelineExplainOptions(
-              mode: PipelineExplainMode.explain,
+              mode: PipelineExplainMode.analyze,
             ),
-          )
-          .execute();
+            rawOptions: const {'index_mode': 'something_new'},
+          );
 
       final options = capturedRequest!.structuredPipeline!.options;
-      expect(options.keys, ['explain_options']);
+      expect(options.keys, unorderedEquals(['explain_options', 'index_mode']));
+      // outputFormat was not set, so it is not sent.
       expect(options['explain_options']!.mapValue!.fields.keys, ['mode']);
+      // rawOptions reaches the backend verbatim.
+      expect(options['index_mode']!.stringValue, 'something_new');
     });
 
     test('decodes explain stats without losing the payload', () async {

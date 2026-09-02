@@ -199,13 +199,12 @@ void main() {
           .pipeline()
           .collection(_collectionPath)
           .where(_runFilter(runId, Expression.field('active').equal(true)))
-          .withOptions(
+          .execute(
             explain: const PipelineExplainOptions(
               mode: PipelineExplainMode.analyze,
               outputFormat: PipelineExplainOutputFormat.text,
             ),
-          )
-          .execute();
+          );
 
       // `analyze` runs the pipeline and returns planning stats alongside the
       // results, which is what proves the option names reached the backend.
