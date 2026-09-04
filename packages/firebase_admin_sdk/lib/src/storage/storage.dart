@@ -15,6 +15,7 @@
 import 'dart:convert';
 
 import 'package:google_cloud_storage/google_cloud_storage.dart' as gcs;
+import 'package:googleapis_auth/googleapis_auth.dart' as googleapis_auth;
 import 'package:meta/meta.dart';
 import '../app.dart';
 import '../utils/native_environment.dart';
@@ -40,7 +41,7 @@ class Storage implements FirebaseService {
       // previous emulator-mode Storage instance in the same process.
       unsetNativeEnvironmentVariable('STORAGE_EMULATOR_HOST');
     }
-    _delegate = gcs.Storage();
+    _isEmulator = isEmulator;
   }
 
   @internal
@@ -51,7 +52,37 @@ class Storage implements FirebaseService {
   @override
   final FirebaseApp app;
 
-  late final gcs.Storage _delegate;
+  late final bool _isEmulator;
+
+  gcs.Storage? _delegateOrNull;
+
+  /// The underlying `google_cloud_storage` client.
+  ///
+  /// Created on first use rather than in the constructor: `gcs.Storage` starts
+  /// resolving credentials as soon as it is constructed, so building it eagerly
+  /// would make `app.storage()` alone perform an auth handshake.
+  gcs.Storage get _delegate => _delegateOrNull ??= gcs.Storage(
+    // Resolved here rather than left to `google_cloud_storage`: its own
+    // discovery parks an un-awaited future that can fail as an unhandled async
+    // error, and `projectId` takes a `String?`, so it cannot be guarded the
+    // way [_appClient] is.
+    projectId: app.resolveProjectIdSync(),
+    // `google_cloud_storage` only falls back to an unauthenticated client
+    // when `client` is null, which is what the emulator needs.
+    client: _isEmulator ? null : _appClient(),
+  );
+
+  /// The app's authenticated client, with its errors marked as observed.
+  ///
+  /// `gcs.Storage` stores this future in a field without awaiting it, so an
+  /// auth failure would otherwise be reported as an unhandled async error even
+  /// when no storage operation is ever performed. Listeners added later — by
+  /// the delegate, when it actually makes a request — still receive the error.
+  Future<googleapis_auth.AuthClient> _appClient() {
+    final client = app.client;
+    client.ignore();
+    return client;
+  }
 
   gcs.Bucket bucket([String? name]) {
     final bucketName = name ?? app.options.storageBucket;
@@ -118,6 +149,6 @@ class Storage implements FirebaseService {
   Future<void> delete() async {
     if (_isDeleted) return;
     _isDeleted = true;
-    _delegate.close();
+    _delegateOrNull?.close();
   }
 }

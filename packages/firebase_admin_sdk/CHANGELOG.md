@@ -1,6 +1,19 @@
 ## 0.5.5-wip
 
 - Ensure usage tracking headers (`X-Firebase-Client`, `X-Goog-Api-Client`) are appended to outgoing requests without overwriting existing client library headers or duplicating runtime tokens.
+- Fixed `app.storage()` ignoring `AppOptions.credential` and authenticating with
+  Application Default Credentials instead. Storage now uses the app's
+  authenticated client and project ID, like `Firestore` and `FirebaseApp.client`.
+- Fixed `app.storage()` starting a credential lookup on construction, which could
+  fail as an unhandled exception even when no storage operation was performed.
+  The underlying client is now created on first use, and the project ID is
+  resolved from the app options, environment and credential rather than through
+  Google Cloud project discovery.
+- Project ID resolution now consults the `AppOptions.credential` service account
+  before falling back to the gcloud CLI or the GCE metadata server, and ignores
+  empty project ID environment variables. Apps configured with a service account
+  for one project while running on Google Cloud infrastructure in another now
+  resolve the service account's project instead of the host project.
 
 ## 0.5.4
 
