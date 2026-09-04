@@ -4,7 +4,23 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    # Wait a week before adopting a new release, so a compromised version has
+    # time to be pulled before it reaches CI.
+    cooldown:
+      default-days: 7
     groups:
-      all:
+      # Minor and patch bumps batch into a single PR. Majors are deliberately
+      # left ungrouped so each gets its own PR and one blocked bump can't hold
+      # back the rest.
+      minor-and-patch:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # The org Actions allow-list only permits codecov/codecov-action@v4
+      # (see #306), so major bumps can never be merged here. Minor and patch
+      # updates within v4 still apply.
+      - dependency-name: "codecov/codecov-action"
+        update-types: ["version-update:semver-major"]
