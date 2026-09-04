@@ -4,6 +4,10 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    # Wait a week before adopting a new release, so a compromised version has
+    # time to be pulled before it reaches CI.
+    cooldown:
+      default-days: 7
     groups:
       # Minor and patch bumps batch into a single PR. Majors are deliberately
       # left ungrouped so each gets its own PR and one blocked bump can't hold
