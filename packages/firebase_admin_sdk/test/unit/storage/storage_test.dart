@@ -31,6 +31,9 @@ class MockFirebaseApp extends Mock implements FirebaseApp {}
 
 Storage _fallbackInit(FirebaseApp app) => throw UnimplementedError();
 
+Future<T> _withoutEmulator<T>(Future<T> Function() body) =>
+    runZoned(body, zoneValues: {envSymbol: <String, String>{}});
+
 Storage _storageOf(MockFirebaseApp app) {
   when(() => app.getOrInitService<Storage>(any(), any())).thenAnswer(
     (invocation) =>
@@ -473,12 +476,14 @@ void main() {
         });
       });
 
-      test('is not resolved when the service is created', () {
-        final app = _mockApp();
+      test('is not resolved when the service is created', () async {
+        await _withoutEmulator(() async {
+          final app = _mockApp();
 
-        _storageOf(app);
+          _storageOf(app);
 
-        verifyNever(() => app.client);
+          verifyNever(() => app.client);
+        });
       });
 
       test('failure is not reported as an unhandled error', () async {
@@ -489,8 +494,10 @@ void main() {
         );
 
         await runZonedGuarded(() async {
-          _storageOf(app).bucket();
-          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await _withoutEmulator(() async {
+            _storageOf(app).bucket();
+            await Future<void>.delayed(const Duration(milliseconds: 50));
+          });
         }, (error, _) => errors.add(error));
 
         expect(errors, isEmpty);
@@ -502,30 +509,34 @@ void main() {
               Future<auth.AuthClient>.error(StateError('no credentials')),
         );
 
-        await expectLater(
-          _storageOf(app).bucket().metadata(),
-          throwsA(isA<StateError>()),
+        await _withoutEmulator(
+          () => expectLater(
+            _storageOf(app).bucket().metadata(),
+            throwsA(isA<StateError>()),
+          ),
         );
       });
     });
 
     group('project id', () {
       test('is taken from the app rather than discovered', () async {
-        final app = _mockApp(syncProjectId: 'resolved-project');
-        when(() => mockClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(jsonEncode({'name': 'created'}))),
-            200,
-          ),
-        );
-        when(() => app.client).thenAnswer((_) async => mockClient);
+        await _withoutEmulator(() async {
+          final app = _mockApp(syncProjectId: 'resolved-project');
+          when(() => mockClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode(jsonEncode({'name': 'created'}))),
+              200,
+            ),
+          );
+          when(() => app.client).thenAnswer((_) async => mockClient);
 
-        await _storageOf(app).bucket('some-bucket').create();
+          await _storageOf(app).bucket('some-bucket').create();
 
-        final request =
-            verify(() => mockClient.send(captureAny())).captured.single
-                as http.BaseRequest;
-        expect(request.url.queryParameters['project'], 'resolved-project');
+          final request =
+              verify(() => mockClient.send(captureAny())).captured.single
+                  as http.BaseRequest;
+          expect(request.url.queryParameters['project'], 'resolved-project');
+        });
       });
     });
 

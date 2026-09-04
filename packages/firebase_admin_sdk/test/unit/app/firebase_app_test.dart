@@ -21,7 +21,6 @@ import 'package:firebase_admin_sdk/src/app.dart';
 import 'package:firebase_admin_sdk/src/app_check/app_check.dart';
 import 'package:firebase_admin_sdk/src/auth.dart';
 import 'package:firebase_admin_sdk/storage.dart';
-import 'package:google_cloud/google_cloud.dart' as google_cloud;
 import 'package:google_cloud_firestore/google_cloud_firestore.dart'
     as google_cloud_firestore;
 import 'package:mocktail/mocktail.dart';
@@ -507,12 +506,9 @@ void main() {
           if (!bareApp.isDeleted) await bareApp.close();
         });
 
-        final resolved = bareApp.resolveProjectIdSync(
-          environment: <String, String>{},
-        );
         expect(
-          resolved,
-          anyOf(isNull, equals(google_cloud.projectIdFromCredentialsFile())),
+          bareApp.resolveProjectIdSync(environment: <String, String>{}),
+          isNull,
         );
       });
     });
