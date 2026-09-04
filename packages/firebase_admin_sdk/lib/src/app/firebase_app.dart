@@ -172,6 +172,10 @@ class FirebaseApp {
   /// 5. the [AppOptions.credential] service account
   /// 6. the `GOOGLE_APPLICATION_CREDENTIALS` service account file
   ///
+  /// An [environment] — or a zone-injected one — replaces the process
+  /// environment rather than layering on top of it, so steps 4 and 6, which
+  /// read the process environment, are skipped when one is supplied.
+  ///
   /// Returns null when the project ID can only be discovered asynchronously,
   /// through the gcloud CLI or the GCE metadata server. Callers that can await
   /// should use [getProjectId], which falls back to that discovery; callers on
@@ -181,23 +185,24 @@ class FirebaseApp {
     String? projectIdOverride,
     Map<String, String>? environment,
   }) {
-    final env = environment ?? Zone.current[envSymbol] as Map<String, String>?;
-    if (env != null) {
-      final injected = _projectIdFromEnvironment(env);
+    final injectedEnv =
+        environment ?? Zone.current[envSymbol] as Map<String, String>?;
+    if (injectedEnv != null) {
+      final injected = _projectIdFromEnvironment(injectedEnv);
       if (injected != null) return injected;
     }
 
     final explicitProjectId = projectIdOverride ?? options.projectId;
     if (explicitProjectId != null) return explicitProjectId;
 
+    final credentialProjectId =
+        options.credential?.serviceAccountCredentials?.projectId;
+    if (injectedEnv != null) return credentialProjectId;
+
     final processProjectId = _projectIdFromEnvironment(Platform.environment);
     if (processProjectId != null) return processProjectId;
 
-    final credentialProjectId =
-        options.credential?.serviceAccountCredentials?.projectId;
-    if (credentialProjectId != null) return credentialProjectId;
-
-    return google_cloud.projectIdFromCredentialsFile();
+    return credentialProjectId ?? google_cloud.projectIdFromCredentialsFile();
   }
 
   static String? _projectIdFromEnvironment(Map<String, String> environment) {
