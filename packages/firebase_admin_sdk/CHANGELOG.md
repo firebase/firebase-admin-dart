@@ -1,6 +1,7 @@
-## 0.5.5-wip
+## 0.5.5
 
 - Ensure usage tracking headers (`X-Firebase-Client`, `X-Goog-Api-Client`) are appended to outgoing requests without overwriting existing client library headers or duplicating runtime tokens.
+- Require `google_cloud_firestore: ^0.5.4`.
 
 ## 0.5.4
 
