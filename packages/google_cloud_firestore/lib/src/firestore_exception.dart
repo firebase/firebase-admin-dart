@@ -48,13 +48,27 @@ String? _getErrorMessage(Object? response) {
   return null;
 }
 
-FirestoreClientErrorCode _httpStatusCodeToErrorCode(int? statusCode) {
+FirestoreClientErrorCode _httpStatusCodeToErrorCode(
+  int? statusCode, [
+  String message = '',
+]) {
   return switch (statusCode) {
-    400 => FirestoreClientErrorCode.invalidArgument,
+    400 =>
+      message.contains('does not match the required base version') ||
+              message.contains('Precondition check failed') ||
+              message.contains('FAILED_PRECONDITION')
+          ? FirestoreClientErrorCode.failedPrecondition
+          : message.contains('OUT_OF_RANGE')
+          ? FirestoreClientErrorCode.outOfRange
+          : FirestoreClientErrorCode.invalidArgument,
     401 => FirestoreClientErrorCode.unauthenticated,
     403 => FirestoreClientErrorCode.permissionDenied,
     404 => FirestoreClientErrorCode.notFound,
-    409 => FirestoreClientErrorCode.aborted,
+    409 =>
+      message.contains('Document already exists') ||
+              message.contains('ALREADY_EXISTS')
+          ? FirestoreClientErrorCode.alreadyExists
+          : FirestoreClientErrorCode.aborted,
     412 => FirestoreClientErrorCode.failedPrecondition,
     429 => FirestoreClientErrorCode.resourceExhausted,
     499 => FirestoreClientErrorCode.cancelled,
@@ -87,7 +101,7 @@ FirestoreException _createFirestoreError({
   }
 
   // Non-JSON response
-  final error = _httpStatusCodeToErrorCode(statusCode);
+  final error = _httpStatusCodeToErrorCode(statusCode, body);
 
   return FirestoreException(
     error,
@@ -122,6 +136,7 @@ Never handleFirestoreException(Object exception, StackTrace stackTrace) {
       if (errorCode == FirestoreClientErrorCode.unknown) {
         errorCode = _httpStatusCodeToErrorCode(
           status.code != 0 ? status.code : exception.statusCode,
+          status.message,
         );
       }
       Error.throwWithStackTrace(
