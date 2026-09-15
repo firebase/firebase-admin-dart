@@ -1,3 +1,7 @@
+## 0.5.6
+
+- Widen dependency upper bounds for `googleapis` (`>=16.0.0 <18.0.0`), `google_cloud_firestore` (`>=0.5.4 <0.7.0`), and `google_cloud_storage` (`>=0.6.0 <0.8.0`).
+
 ## 0.5.5
 
 - Ensure usage tracking headers (`X-Firebase-Client`, `X-Goog-Api-Client`) are appended to outgoing requests without overwriting existing client library headers or duplicating runtime tokens.
