@@ -25,6 +25,36 @@ const projectId = 'dart-firebase-admin';
 /// at the real project used by emulator/production integration tests).
 const mockProjectId = 'test-project';
 
+const mockPrivateKey = '''
+-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEA6xkrY7pxvazMDAesPtRqsnQN+7Nv1boCQeFP+crgJLZN9gnD
+vqiDCIqPOv0p/n687npEp1eGDJcL/ZxK/wXQqvonwUeTwZnglKSRL6W76zXyYiFa
+ibVLdHgg/KIUrlokS8/pWbFkI7kideTgQp+1vh3jUcdpq46tatPvINzZEj5xrV/2
+NSzyBSMNPrXsMEk9cEh8e3GkgGuitHVfLp5M4K/d31ezoBt1dZjtxKS7JI+OHya5
+C9Z208BllZNklUERK8lSw0EG1y1VahMl4mBpKpfswq1Dysv9JPv3hMEWt/S4864l
+dxN4VE5M6MB8hWFPq+f4UY7MhNkeYcNfyqgMxQIDAQABAoIBADmp1kEjSWOe/vtS
+ZHaSrkrv+UALznnrIkObanzXvGt0xaF72qWoel89cQ0kbEjuOBP8LFupNYlgAQJm
+8+QiPoC5U8ft8PlS70k2JiA8M9/ovvc/vA+7xnKeRmUAsjbjiDSKHe+weWHjtmaZ
+SUI+HxsvBIMZ+LqqB7IEoon6cUmuS+TBGeBtPUZkwtjhzAXeyy9xNKjEJ94NcPRo
+fIBIPGXMroc2fafbVsr+Wq931oficPEpjRd+JLkojHqcq/aY1sIWpYwNxu6jF9sm
+KsUUtrwsQL6s3vxwkuKd3X0XhEgJSQBxkY40BLFMLFR0gmoVzw3+OtfEagMiXzyb
+SAYbFk8CgYEA94lcWzOGGUijpQQKBwcNBo/kvcQ6h9NGlJ7ZUeuAyIIq4aRxGFBV
+yWnpKOFC7ywsNeoatLXXTiTe6Xq0JBkup3WZktsNe1BI2R1kX6PHHYBVMKXA02tX
+uGANaqg/A+ZYA2VMPdcRTNhgXgsJnj7mcDCKHdPYQHvLGqU5WRA185cCgYEA8yLw
+bb6oZ3YtMbBYYay0u3iqlN74GWqLwLH2ZovQIWnVYbYUNmJNTVhkHlShXWK3qKOY
+p26K67LBIRYRaseIH4e9hPROy1vsl4dkmd8FJfhsx8WXpa3/3pHw9hmbhmhhjVLo
+ABtQKxjLDa430mi3jFgcN7yn6B4qklpO6lmpngMCgYB8BAOTZbLvg+cIy4dCkhPC
+j+Dn+iHg3sbjutniIvz4d86IEdzfc5AnQrqf0ou4TAcyU8FhfCEMc4iCrQkHdN5c
+45w3aSvN9iEpNYKOL/2YGC2WG9UJlyPxqZ3PK8+2YncB7IRQDyoJt/Y/54PAFn9Z
+AdiQrQwQ8nSFOvYKWwbMrQKBgAhem4grmAB3wPaE64XxPAd4D+cwBbpaQJVRivnc
+tj1wNzg13FxC5gZTlJ62qxdb3pafixG4bG/Qp3VMHS1f0P/E3HFHN68oauyMbJof
+Yz37X0NBOgcqBjTTMUhHeWMXFMSYpgPa7NeO8u51oNZNZIQgRFhm1iDXaP/AvBa1
+H3GhAoGBAKGcU+cw5dx9jf4Dj3Xechknrl5aDdK5FNrIC4IJ20A4N3S+WQ1cQuRO
+QjJNH9ASKTmmuslFJZZcBX5ybnr9Eg3MUeCyaru1CSWubrKraMo71mgzTexZOtV5
+nlc5+GKKhkC/Vp5ZNE04kdT+35eMZUTbv1/d3Y5TzUIGd6QwtPtM
+-----END RSA PRIVATE KEY-----
+''';
+
 /// Whether the Firestore emulator is enabled.
 bool isFirestoreEmulatorEnabled() {
   return Platform.environment['FIRESTORE_EMULATOR_HOST'] != null;

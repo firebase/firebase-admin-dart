@@ -498,7 +498,14 @@ void main() {
           if (!appWithCredential.isDeleted) await appWithCredential.close();
         });
 
-        expect(appWithCredential.resolveProjectIdSync(), 'sa-project');
+        expect(
+          appWithCredential.resolveProjectIdSync(
+            processEnvironment: const {
+              'GOOGLE_CLOUD_PROJECT': 'ambient-host-project',
+            },
+          ),
+          'sa-project',
+        );
       });
 
       test('resolves without any asynchronous work', () {

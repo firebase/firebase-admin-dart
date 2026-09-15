@@ -189,6 +189,7 @@ class FirebaseApp {
   String? resolveProjectIdSync({
     String? projectIdOverride,
     Map<String, String>? environment,
+    @visibleForTesting Map<String, String>? processEnvironment,
   }) {
     final injectedEnv =
         environment ?? Zone.current[envSymbol] as Map<String, String>?;
@@ -206,7 +207,9 @@ class FirebaseApp {
 
     if (injectedEnv != null) return null;
 
-    final processProjectId = _projectIdFromEnvironment(Platform.environment);
+    final processProjectId = _projectIdFromEnvironment(
+      processEnvironment ?? Platform.environment,
+    );
     if (processProjectId != null) return processProjectId;
 
     return google_cloud.projectIdFromCredentialsFile();

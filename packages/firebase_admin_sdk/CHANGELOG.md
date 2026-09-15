@@ -1,5 +1,6 @@
-## 0.5.6-wip
+## 0.5.5
 
+- Ensure usage tracking headers (`X-Firebase-Client`, `X-Goog-Api-Client`) are appended to outgoing requests without overwriting existing client library headers or duplicating runtime tokens.
 - Fixed `app.storage()` ignoring `AppOptions.credential` and authenticating with
   Application Default Credentials instead. Storage now uses the app's
   authenticated client and project ID, like `Firestore` and `FirebaseApp.client`.
@@ -13,10 +14,6 @@
   now resolve the service account's project instead of the host project. This
   also applies to `Firestore`, which previously used `AppOptions.projectId` alone
   and threw `StateError` when only a credential was configured.
-
-## 0.5.5
-
-- Ensure usage tracking headers (`X-Firebase-Client`, `X-Goog-Api-Client`) are appended to outgoing requests without overwriting existing client library headers or duplicating runtime tokens.
 - Require `google_cloud_firestore: ^0.5.4`.
 
 ## 0.5.4
