@@ -145,7 +145,8 @@ class Transaction {
 
   /// Executes a Pipeline and returns the results as part of this transaction.
   ///
-  /// The Pipeline is executed at the transaction's snapshot.
+  /// The Pipeline is executed at the transaction's snapshot. [indexMode],
+  /// [explain] and [rawOptions] behave as they do on [Pipeline.execute].
   ///
   /// ```dart
   /// firestore.runTransaction((transaction) async {
@@ -161,7 +162,12 @@ class Transaction {
   ///   }
   /// });
   /// ```
-  Future<PipelineSnapshot> executePipeline(Pipeline pipeline) async {
+  Future<PipelineSnapshot> executePipeline(
+    Pipeline pipeline, {
+    PipelineIndexMode? indexMode,
+    PipelineExplainOptions? explain,
+    Map<String, Object?> rawOptions = const {},
+  }) async {
     if (_writeBatch != null && _writeBatch._operations.isNotEmpty) {
       throw FirestoreException(
         FirestoreClientErrorCode.failedPrecondition,
@@ -175,9 +181,29 @@ class Transaction {
       targetDescription: 'Transaction',
     );
 
+    final options = Pipeline._executeOptions(
+      indexMode: indexMode,
+      explain: explain,
+      rawOptions: rawOptions,
+    );
+
     return _withLazyStartedTransaction<Pipeline, PipelineSnapshot>(
       pipeline,
-      resultFn: _executePipelineFn,
+      // `resultFn`'s signature is fixed by the lazy-start machinery, so the
+      // options ride along in the closure rather than as a parameter.
+      resultFn:
+          (
+            pipeline, {
+            String? transactionId,
+            Timestamp? readTime,
+            firestore_v1.TransactionOptions? transactionOptions,
+            List<FieldPath>? fieldMask,
+          }) => pipeline._execute(
+            transactionId: transactionId,
+            readTime: readTime,
+            transactionOptions: transactionOptions,
+            options: options,
+          ),
     );
   }
 
@@ -528,20 +554,6 @@ class Transaction {
     return _TransactionResult(
       transaction: result.transaction,
       result: result.result,
-    );
-  }
-
-  Future<_TransactionResult<PipelineSnapshot>> _executePipelineFn(
-    Pipeline pipeline, {
-    String? transactionId,
-    Timestamp? readTime,
-    firestore_v1.TransactionOptions? transactionOptions,
-    List<FieldPath>? fieldMask, // Unused for Pipelines, required by signature
-  }) {
-    return pipeline._execute(
-      transactionId: transactionId,
-      readTime: readTime,
-      transactionOptions: transactionOptions,
     );
   }
 

@@ -481,6 +481,65 @@ void main() {
       expect(requests[1].transaction, transactionId);
     });
 
+    test('executePipeline sends options alongside the transaction', () async {
+      final requests = <firestore_v1.ExecutePipelineRequest>[];
+
+      when(
+        () =>
+            mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                Function(firestore_v1.Firestore api, String projectId);
+
+        final api = FakeFirestore(
+          executePipeline: (request) {
+            requests.add(request);
+            return Stream.fromIterable([
+              firestore_v1.ExecutePipelineResponse(
+                transaction: Uint8List.fromList([9, 9]),
+                explainStats: firestore_v1.ExplainStats(
+                  data: protobuf_v1.Any.from(
+                    protobuf_v1.StringValue(value: 'plan: scan books'),
+                  ),
+                ),
+              ),
+            ]);
+          },
+        );
+
+        return callback(api, _projectId);
+      });
+
+      final stats = await firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.executePipeline(
+          firestore.pipeline().collection('books'),
+          indexMode: PipelineIndexMode.recommended,
+          explain: const PipelineExplainOptions(
+            mode: PipelineExplainMode.analyze,
+            outputFormat: PipelineExplainOutputFormat.text,
+          ),
+        );
+        return snapshot.explainStats;
+      }, transactionOptions: ReadOnlyTransactionOptions());
+
+      final request = requests.single;
+
+      // Pipeline options and the transaction live on different parts of the
+      // request, so neither clobbers the other.
+      final options = request.structuredPipeline!.options;
+      expect(options['index_mode']!.stringValue, 'recommended');
+      expect(
+        options['explain_options']!.mapValue!.fields['mode']!.stringValue,
+        'analyze',
+      );
+      expect(request.newTransaction?.readOnly, isNotNull);
+
+      // Explain stats survive the transaction path, which Node drops.
+      expect(stats?.text, 'plan: scan books');
+    });
+
     test('executePipeline rejects a Pipeline from a different database', () {
       final other = _otherDatabase();
 
