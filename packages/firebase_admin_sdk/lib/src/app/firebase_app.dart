@@ -168,12 +168,17 @@ class FirebaseApp {
   /// 1. [environment], or the zone-injected environment
   /// 2. [projectIdOverride]
   /// 3. [AppOptions.projectId]
-  /// 4. the process environment
-  /// 5. the [AppOptions.credential] service account
+  /// 4. the [AppOptions.credential] service account
+  /// 5. the process environment
   /// 6. the `GOOGLE_APPLICATION_CREDENTIALS` service account file
   ///
+  /// The credential outranks the ambient environment, matching
+  /// `getExplicitProjectId` in the Node Admin SDK, so a service account for one
+  /// project still resolves to that project while running on Google Cloud
+  /// infrastructure belonging to another.
+  ///
   /// An [environment] — or a zone-injected one — replaces the process
-  /// environment rather than layering on top of it, so steps 4 and 6, which
+  /// environment rather than layering on top of it, so steps 5 and 6, which
   /// read the process environment, are skipped when one is supplied.
   ///
   /// Returns null when the project ID can only be discovered asynchronously,
@@ -197,12 +202,14 @@ class FirebaseApp {
 
     final credentialProjectId =
         options.credential?.serviceAccountCredentials?.projectId;
-    if (injectedEnv != null) return credentialProjectId;
+    if (credentialProjectId != null) return credentialProjectId;
+
+    if (injectedEnv != null) return null;
 
     final processProjectId = _projectIdFromEnvironment(Platform.environment);
     if (processProjectId != null) return processProjectId;
 
-    return credentialProjectId ?? google_cloud.projectIdFromCredentialsFile();
+    return google_cloud.projectIdFromCredentialsFile();
   }
 
   static String? _projectIdFromEnvironment(Map<String, String> environment) {

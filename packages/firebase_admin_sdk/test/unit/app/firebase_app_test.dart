@@ -482,6 +482,25 @@ void main() {
     });
 
     group('resolveProjectIdSync', () {
+      test('prefers the credential over ambient project variables', () {
+        final appWithCredential = FirebaseApp.initializeApp(
+          name: 'credential-over-env-${DateTime.now().microsecondsSinceEpoch}',
+          options: AppOptions(
+            credential: Credential.fromServiceAccountParams(
+              clientId: 'client-id',
+              privateKey: mockPrivateKey,
+              email: mockClientEmail,
+              projectId: 'sa-project',
+            ),
+          ),
+        );
+        addTearDown(() async {
+          if (!appWithCredential.isDeleted) await appWithCredential.close();
+        });
+
+        expect(appWithCredential.resolveProjectIdSync(), 'sa-project');
+      });
+
       test('resolves without any asynchronous work', () {
         final appWithProject = FirebaseApp.initializeApp(
           name: 'sync-options-${DateTime.now().microsecondsSinceEpoch}',
