@@ -1,3 +1,7 @@
+## 0.5.5
+
+- Widen dependency upper bounds for `google_cloud_firestore_v1` (`>=0.5.2 <0.7.0`) and `google_cloud_rpc` (`>=0.5.2 <0.7.0`).
+
 ## 0.5.4
 
 - Added support for Firestore Pipelines: `Firestore.pipeline()`, the `Pipeline` stage builders, the `PipelineFunctions` expression catalog, and the top-level `equal`, `notEqual`, `lessThan`, `lessThanOrEqual`, `greaterThan`, `greaterThanOrEqual`, `and`, `or`, `not`, `field`, `constant`, `ascending` and `descending` helpers. The expression surface mirrors the Node Admin SDK.
