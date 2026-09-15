@@ -1,13 +1,9 @@
 ## 0.5.4
 
-- Added support for Firestore Pipelines: `Firestore.pipeline()`, the `Pipeline` stage builders, the `PipelineFunctions` expression catalog, and the top-level `equal`, `notEqual`, `lessThan`, `lessThanOrEqual`, `greaterThan`, `greaterThanOrEqual`, `and`, `or`, `not`, `field`, `constant`, `ascending` and `descending` helpers.
+- Added support for Firestore Pipelines: `Firestore.pipeline()`, the `Pipeline` stage builders, the `PipelineFunctions` expression catalog, and the top-level `equal`, `notEqual`, `lessThan`, `lessThanOrEqual`, `greaterThan`, `greaterThanOrEqual`, `and`, `or`, `not`, `field`, `constant`, `ascending` and `descending` helpers. The expression surface mirrors the Node Admin SDK.
 - Added `PipelineSource.createFrom()` to convert a `Query` or `VectorQuery` into an equivalent Pipeline.
 - Added `Transaction.executePipeline()` to run a Pipeline at a transaction's snapshot.
-- `PipelineSnapshot.explainStats` now returns an `ExplainStats` wrapper instead of the generated proto type.
-- Query-level Pipeline options moved from `Pipeline.withOptions()` to typed parameters on `Pipeline.execute()` (`indexMode`, `explain`, and a `rawOptions` escape hatch), matching the Node Admin SDK.
-- Aligned the Pipeline result types with the Node Admin SDK: `PipelineResult.document` is now `ref` (matching `DocumentSnapshot.ref` elsewhere in this package), `PipelineResult.id` and value equality were added, and `PipelineSnapshot.pipeline` returns the Pipeline that produced the snapshot.
-- Renamed Pipeline expression methods to match the Node Admin SDK: `modulo` is now `mod`, `arrayContainsElement` is `arrayContains`, and `timestampTrunc` is `timestampTruncate`.
-- Added the Pipeline expressions the Node Admin SDK has that were missing: fluent `stringReverse()`, `not()`, `countIf()` and `conditional()`, plus `PipelineFunctions.arrayMaximum()`, `arrayMaximumN()`, `arrayMinimum()`, `arrayMinimumN()`, `arraySum()` and `countAll()`.
+- Added Pipeline execution options on `Pipeline.execute()`: `indexMode`, `explain` for planner statistics (read back from `PipelineSnapshot.explainStats`), and a `rawOptions` escape hatch for options this SDK does not wrap yet.
 - `PipelineFunctions.minimum()`/`maximum()` are aggregate-only; use `logicalMinimum()`/`logicalMaximum()` for the element-wise form.
 - Fixed `Settings.ssl` being ignored when connecting to a custom `Settings.host` endpoint without `FIRESTORE_EMULATOR_HOST`.
 

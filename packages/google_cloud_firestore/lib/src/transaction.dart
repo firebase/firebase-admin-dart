@@ -168,7 +168,12 @@ class Transaction {
         readAfterWriteErrorMsg,
       );
     }
-    _validateSameDatabase(_firestore, pipeline.firestore, 'pipeline');
+    _validateSameDatabase(
+      _firestore,
+      pipeline.firestore,
+      'pipeline',
+      targetDescription: 'Transaction',
+    );
 
     return _withLazyStartedTransaction<Pipeline, PipelineSnapshot>(
       pipeline,

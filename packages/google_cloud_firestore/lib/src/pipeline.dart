@@ -129,7 +129,7 @@ enum PipelineIndexMode {
   final String value;
 }
 
-/// Whether the backend should execute a Pipeline, plan it, or both.
+/// Whether the backend should return planning stats alongside the results.
 enum PipelineExplainMode {
   /// Execute the Pipeline and return results, without planning stats.
   execute('execute'),
@@ -164,7 +164,7 @@ final class PipelineExplainOptions {
   /// Creates explain options.
   const PipelineExplainOptions({this.mode, this.outputFormat});
 
-  /// Whether to execute the Pipeline, plan it, or both.
+  /// Whether the backend should return planning stats.
   final PipelineExplainMode? mode;
 
   /// The format the stats are encoded in.
@@ -1577,53 +1577,74 @@ final class Pipeline {
     Timestamp? readTime,
     firestore_v1.TransactionOptions? transactionOptions,
     Map<String, Object?> options = const {},
-  }) async {
-    final response = await firestore._firestoreClient.v1((
-      api,
-      projectId,
-    ) async {
-      final request = firestore_v1.ExecutePipelineRequest(
-        database: 'projects/$projectId/databases/${firestore.databaseId}',
-        structuredPipeline: firestore_v1.StructuredPipeline(
-          pipeline: _toProto(),
-          options: _encodeOptions(options, firestore),
-        ),
-        transaction: transactionId.let(base64Decode),
-        newTransaction: transactionOptions,
-        readTime: readTime?._toProto().timestampValue,
-      );
-      return api.executePipeline(request);
-    });
-
+  }) {
     final results = <PipelineResult>[];
     Timestamp? executionTime;
     String? newTransaction;
     ExplainStats? explainStats;
 
-    await for (final chunk in response) {
-      if (chunk.transaction.isNotEmpty) {
-        newTransaction = base64Encode(chunk.transaction);
-      }
-      if (chunk.executionTime != null) {
-        executionTime = Timestamp._fromProto(chunk.executionTime!);
-      }
-      if (chunk.explainStats case final stats?) {
-        explainStats = ExplainStats._fromProto(stats);
-      }
+    // A chunk can carry `executionTime`, `explainStats` or a transaction ID
+    // with no results at all, so "did the stream produce anything" cannot be
+    // inferred from `results` alone.
+    var hasProgress = false;
 
-      for (final document in chunk.results) {
-        results.add(PipelineResult._fromDocument(document, firestore));
-      }
-    }
+    return retryOnConnectionError(
+      () async {
+        results.clear();
+        executionTime = null;
+        newTransaction = null;
+        explainStats = null;
+        hasProgress = false;
 
-    return _TransactionResult(
-      transaction: newTransaction,
-      result: PipelineSnapshot._(
-        pipeline: this,
-        results: results,
-        executionTime: executionTime,
-        explainStats: explainStats,
-      ),
+        final response = await firestore._firestoreClient.v1((
+          api,
+          projectId,
+        ) async {
+          final request = firestore_v1.ExecutePipelineRequest(
+            database: 'projects/$projectId/databases/${firestore.databaseId}',
+            structuredPipeline: firestore_v1.StructuredPipeline(
+              pipeline: _toProto(),
+              options: _encodeOptions(options, firestore),
+            ),
+            transaction: transactionId.let(base64Decode),
+            newTransaction: transactionOptions,
+            readTime: readTime?._toProto().timestampValue,
+          );
+          return api.executePipeline(request);
+        });
+
+        await for (final chunk in response) {
+          hasProgress = true;
+
+          if (chunk.transaction.isNotEmpty) {
+            newTransaction = base64Encode(chunk.transaction);
+          }
+          if (chunk.executionTime != null) {
+            executionTime = Timestamp._fromProto(chunk.executionTime!);
+          }
+          if (chunk.explainStats case final stats?) {
+            explainStats = ExplainStats._fromProto(stats);
+          }
+
+          for (final document in chunk.results) {
+            results.add(PipelineResult._fromDocument(document, firestore));
+          }
+        }
+
+        return _TransactionResult(
+          transaction: newTransaction,
+          result: PipelineSnapshot._(
+            pipeline: this,
+            results: List.unmodifiable(results),
+            executionTime: executionTime,
+            explainStats: explainStats,
+          ),
+        );
+      },
+      hasPartialProgress: () => hasProgress,
+      // Inside a transaction the retry belongs to `Transaction._runTransaction`,
+      // which restarts the whole transaction rather than one read.
+      allowRetry: transactionId == null && transactionOptions == null,
     );
   }
 
@@ -1975,23 +1996,23 @@ final class PipelineResult {
   /// Returns the decoded value at [fieldName], or `null` when absent.
   Object? get(String fieldName) => _data[fieldName];
 
+  /// Whether [other] refers to the same document with the same fields.
+  ///
+  /// Mirrors the Node SDK's `isEqual`, which compares the reference and the
+  /// fields only. Read times are deliberately excluded: the same document read
+  /// twice is the same result.
   @override
   bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
     return other is PipelineResult &&
-        other.name == name &&
-        other.createTime == createTime &&
-        other.updateTime == updateTime &&
+        other.ref == ref &&
         const DeepCollectionEquality().equals(other._data, _data);
   }
 
   @override
   int get hashCode {
-    return Object.hash(
-      name,
-      createTime,
-      updateTime,
-      const DeepCollectionEquality().hash(_data),
-    );
+    return Object.hash(ref, const DeepCollectionEquality().hash(_data));
   }
 }
 
@@ -2940,7 +2961,12 @@ firestore_v1.Value _relativeReference(String path) {
 /// [Firestore.projectId] throws until the ID is discovered, and these are pure
 /// builder methods that must keep working on an instance whose ID only
 /// resolves on its first request.
-void _validateSameDatabase(Firestore target, Firestore other, String name) {
+void _validateSameDatabase(
+  Firestore target,
+  Firestore other,
+  String name, {
+  String targetDescription = 'Pipeline',
+}) {
   final targetProject = target._knownProjectId;
   final otherProject = other._knownProjectId;
   final sameProject =
@@ -2954,7 +2980,8 @@ void _validateSameDatabase(Firestore target, Firestore other, String name) {
     _databaseLabel(otherProject, other.databaseId),
     name,
     'The database of this $name does not match the target database '
-    '(${_databaseLabel(targetProject, target.databaseId)}) of this Pipeline.',
+    '(${_databaseLabel(targetProject, target.databaseId)}) of this '
+    '$targetDescription.',
   );
 }
 

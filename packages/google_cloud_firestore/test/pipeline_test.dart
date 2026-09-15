@@ -179,9 +179,91 @@ void main() {
       expect(snapshot.results.single.id, 'book-1');
       // The snapshot carries the Pipeline that produced it, as in Node.
       expect(snapshot.pipeline, isA<Pipeline>());
+    });
 
-      // Two results decoded from the same document compare equal.
-      expect(snapshot.results.single, equals(snapshot.results.single));
+    test('results compare by reference and fields, not read time', () async {
+      firestore_v1.ExecutePipelineResponse chunk({
+        required String path,
+        required Object? title,
+        int seconds = 42,
+      }) {
+        final time = protobuf_v1.Timestamp(seconds: seconds);
+        return firestore_v1.ExecutePipelineResponse(
+          results: [
+            firestore_v1.Document(
+              name: 'projects/$_projectId/databases/enterprise/documents/$path',
+              fields: {'title': firestore.serializer.encodeValue(title)!},
+              createTime: time,
+              updateTime: time,
+            ),
+          ],
+        );
+      }
+
+      Future<PipelineResult> runOne(
+        firestore_v1.ExecutePipelineResponse response,
+      ) async {
+        when(
+          () => mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(
+            any(),
+          ),
+        ).thenAnswer((invocation) async {
+          final callback =
+              invocation.positionalArguments.single
+                  as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                  Function(firestore_v1.Firestore api, String projectId);
+          return callback(
+            FakeFirestore(executePipeline: (_) => Stream.value(response)),
+            _projectId,
+          );
+        });
+
+        final snapshot = await firestore
+            .pipeline()
+            .collection('books')
+            .execute();
+        return snapshot.results.single;
+      }
+
+      final first = await runOne(chunk(path: 'books/book-1', title: 'Dart'));
+      final same = await runOne(chunk(path: 'books/book-1', title: 'Dart'));
+      final laterRead = await runOne(
+        chunk(path: 'books/book-1', title: 'Dart', seconds: 99),
+      );
+      final otherFields = await runOne(
+        chunk(path: 'books/book-1', title: 'Other'),
+      );
+      final otherDoc = await runOne(chunk(path: 'books/book-2', title: 'Dart'));
+
+      // Distinct instances, same document and fields.
+      expect(identical(first, same), isFalse);
+      expect(first, equals(same));
+      expect(first.hashCode, same.hashCode);
+
+      // Read times are excluded, matching Node's `isEqual`.
+      expect(first, equals(laterRead));
+
+      expect(first, isNot(equals(otherFields)));
+      expect(first, isNot(equals(otherDoc)));
+
+      // Same resource name, different Firestore instance. `DocumentReference`
+      // equality includes the instance, so these must not compare equal --
+      // comparing the raw `name` string instead would wrongly say they do.
+      final otherClient = MockFirestoreHttpClient();
+      when(() => otherClient.cachedProjectId).thenReturn(_projectId);
+      final otherInstance = Firestore.internal(
+        settings: const Settings(
+          projectId: _projectId,
+          databaseId: 'enterprise',
+        ),
+        client: otherClient,
+      );
+
+      expect(first.ref, isNot(equals(otherInstance.doc('books/book-1'))));
+      expect(
+        first.name,
+        'projects/$_projectId/databases/enterprise/documents/books/book-1',
+      );
     });
 
     test('data() is unmodifiable and empty rather than null', () async {
