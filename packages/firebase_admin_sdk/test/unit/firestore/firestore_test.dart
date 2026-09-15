@@ -66,6 +66,28 @@ void main() {
       });
     });
 
+    group('project id', () {
+      test('falls back to the app credential', () {
+        final credentialApp = FirebaseApp.initializeApp(
+          name: 'firestore-credential-${DateTime.now().microsecondsSinceEpoch}',
+          options: AppOptions(
+            credential: Credential.fromServiceAccountParams(
+              clientId: 'client-id',
+              privateKey: mockPrivateKey,
+              email: mockClientEmail,
+              projectId: 'sa-project',
+            ),
+          ),
+        );
+        addTearDown(() => credentialApp.close().catchError((Object _) {}));
+
+        expect(
+          Firestore.internal(credentialApp).getDatabase().projectId,
+          'sa-project',
+        );
+      });
+    });
+
     group('initializeDatabase', () {
       test('should initialize database with settings', () {
         const settings = gfs.Settings(projectId: 'test-project');

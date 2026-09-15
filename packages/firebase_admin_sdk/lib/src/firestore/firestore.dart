@@ -118,7 +118,7 @@ class Firestore implements FirebaseService {
     String databaseId,
     google_cloud_firestore.Settings? userSettings,
   ) {
-    final projectId = app.projectId;
+    final projectId = app.resolveProjectIdSync();
     final appCredential = app.options.credential;
 
     var settings = userSettings ?? const google_cloud_firestore.Settings();
