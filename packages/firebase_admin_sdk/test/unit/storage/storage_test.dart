@@ -503,6 +503,24 @@ void main() {
         expect(errors, isEmpty);
       });
 
+      test('is not closed when the app owns it', () async {
+        await _withoutEmulator(() async {
+          final app = FirebaseApp.initializeApp(
+            name: 'client-lifecycle-${DateTime.now().millisecondsSinceEpoch}',
+            options: AppOptions(
+              projectId: projectId,
+              storageBucket: 'lifecycle-bucket.appspot.com',
+              httpClient: mockClient,
+            ),
+          );
+
+          Storage.internal(app).bucket('some-bucket');
+          await app.close();
+
+          verifyNever(() => mockClient.close());
+        });
+      });
+
       test('failure surfaces on the operation that needs it', () async {
         final app = _mockApp(
           client: () =>

@@ -149,6 +149,9 @@ class Storage implements FirebaseService {
   Future<void> delete() async {
     if (_isDeleted) return;
     _isDeleted = true;
-    _delegateOrNull?.close();
+    // Only the emulator delegate owns its client: `gcs.Storage` builds an
+    // unauthenticated one when `client` is null. In production it holds
+    // `app.client`, whose lifecycle belongs to FirebaseApp.close().
+    if (_isEmulator) _delegateOrNull?.close();
   }
 }
