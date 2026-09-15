@@ -33,7 +33,7 @@ for (final doc in querySnapshot.docs) {
 final snapshot = await firestore
     .pipeline()
     .collection('books')
-    .where(field('rating').greaterThanValue(4.0))
+    .where(field('rating').greaterThan(4.0))
     .aggregate(
       [
         PipelineFunctions.count().as('bookCount'),

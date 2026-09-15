@@ -50,7 +50,7 @@ Future<void> basicPipeline(Firestore firestore) async {
     final snapshot = await firestore
         .pipeline()
         .collection(books.path)
-        .where(field('rating').greaterThanValue(4.0))
+        .where(field('rating').greaterThan(4.0))
         .sort([field('rating').descending()])
         .select([
           'title',
@@ -201,13 +201,13 @@ Future<void> unionPipeline(Firestore firestore) async {
     final fiction = firestore
         .pipeline()
         .collection(books.path)
-        .where(field('genre').equalValue('fiction'));
+        .where(field('genre').equal('fiction'));
 
     // `union` keeps duplicates; follow it with `distinct` to drop them.
     final snapshot = await firestore
         .pipeline()
         .collection(books.path)
-        .where(field('genre').equalValue('poetry'))
+        .where(field('genre').equal('poetry'))
         .union(fiction)
         .select(['title', 'genre'])
         .execute();

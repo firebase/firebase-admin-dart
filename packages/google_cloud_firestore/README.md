@@ -173,7 +173,7 @@ the previous stage's output and produces the next, ending in `execute()`.
 final snapshot = await firestore
     .pipeline()
     .collection('books')
-    .where(field('rating').greaterThanValue(4.0))
+    .where(field('rating').greaterThan(4.0))
     .sort([field('rating').descending()])
     .select(['title', field('rating')])
     .limit(10)
@@ -214,8 +214,8 @@ firestore.pipeline().documents([firestore.doc('books/book-1')]);
 
 ```dart
 .where(and([
-  field('genre').equalValue('fiction'),
-  field('rating').greaterThanValue(4.0),
+  field('genre').equal('fiction'),
+  field('rating').greaterThan(4.0),
 ]))
 ```
 
@@ -308,10 +308,24 @@ proportion between 0 and 1. Exactly one of the two must be given.
 ```
 
 **`rawStage`** — escape hatch for preview stages this SDK does not yet wrap.
-`search` and `withOptions` are thin wrappers over the same mechanism.
+`search` is a thin wrapper over the same mechanism.
 
 ```dart
 .rawStage('sample', [10, 'documents'], options: {'stable': true})
+```
+
+Query-level options are passed to `execute()` rather than built onto the
+Pipeline, so a Pipeline value stays a pure description of what to fetch. Use
+`rawOptions` for options this SDK does not wrap yet; they take precedence.
+
+```dart
+.execute(
+  indexMode: PipelineIndexMode.recommended,
+  explain: const PipelineExplainOptions(
+    mode: PipelineExplainMode.analyze,
+    outputFormat: PipelineExplainOutputFormat.text,
+  ),
+)
 ```
 
 #### Expressions
@@ -359,13 +373,13 @@ available on `PipelineFunctions`; most also exist as a fluent method.
 | --- | --- | --- |
 | Comparison | `equal`, `notEqual`, `lessThan`, `lessThanOrEqual`, `greaterThan`, `greaterThanOrEqual`, `cmp` | `equal`, `not_equal`, `less_than`, `less_than_or_equal`, `greater_than`, `greater_than_or_equal`, `cmp` |
 | Logical | `and`, `or`, `xor`, `nor`, `not`, `conditional`, `ifNull`, `coalesce`, `switchOn`, `equalAny`, `notEqualAny` | `and`, `or`, `xor`, `nor`, `not`, `conditional`, `if_null`, `coalesce`, `switch_on`, `equal_any`, `not_equal_any` |
-| Aggregate | `count`, `countIf`, `countDistinct`, `sum`, `average`, `minimum`, `maximum`, `first`, `last`, `arrayAgg`, `arrayAggDistinct` | `count`, `count_if`, `count_distinct`, `sum`, `average`, `minimum`, `maximum`, `first`, `last`, `array_agg`, `array_agg_distinct` |
+| Aggregate | `count`, `countAll`, `countIf`, `countDistinct`, `sum`, `average`, `minimum`, `maximum`, `first`, `last`, `arrayAgg`, `arrayAggDistinct` | `count`, `count_if`, `count_distinct`, `sum`, `average`, `minimum`, `maximum`, `first`, `last`, `array_agg`, `array_agg_distinct` |
 | Arithmetic | `add`, `subtract`, `multiply`, `divide`, `mod`, `abs`, `ceil`, `floor`, `round`, `trunc`, `sqrt`, `pow`, `exp`, `ln`, `log`, `log10`, `rand`, `logicalMinimum`, `logicalMaximum` | `add`, `subtract`, `multiply`, `divide`, `mod`, `abs`, `ceil`, `floor`, `round`, `trunc`, `sqrt`, `pow`, `exp`, `ln`, `log`, `log10`, `rand`, `minimum`, `maximum` |
-| Array | `array`, `arrayConcat`, `arrayContains`, `arrayContainsAll`, `arrayContainsAny`, `arrayFilter`, `arrayGet`, `arrayLength`, `arrayReverse`, `arrayFirst`, `arrayFirstN`, `arrayLast`, `arrayLastN`, `arrayIndexOf`, `arrayIndexOfAll`, `arrayLastIndexOf`, `arraySlice`, `arrayTransform`, `maximumN`, `minimumN`, `join` | `array`, `array_concat`, `array_contains`, `array_contains_all`, `array_contains_any`, `array_filter`, `array_get`, `array_length`, `array_reverse`, `array_first`, `array_first_n`, `array_last`, `array_last_n`, `array_index_of`, `array_index_of_all`, `array_index_of`, `array_slice`, `array_transform`, `maximum_n`, `minimum_n`, `join` |
+| Array | `array`, `arrayConcat`, `arrayContains`, `arrayContainsAll`, `arrayContainsAny`, `arrayFilter`, `arrayGet`, `arrayLength`, `arrayReverse`, `arrayFirst`, `arrayFirstN`, `arrayLast`, `arrayLastN`, `arrayIndexOf`, `arrayIndexOfAll`, `arrayLastIndexOf`, `arraySlice`, `arrayTransform`, `arrayMaximum`, `arrayMaximumN`, `arrayMinimum`, `arrayMinimumN`, `arraySum`, `maximumN`, `minimumN`, `join` | `array`, `array_concat`, `array_contains`, `array_contains_all`, `array_contains_any`, `array_filter`, `array_get`, `array_length`, `array_reverse`, `array_first`, `array_first_n`, `array_last`, `array_last_n`, `array_index_of`, `array_index_of_all`, `array_index_of`, `array_slice`, `array_transform`, `array_maximum`, `array_maximum_n`, `array_minimum`, `array_minimum_n`, `array_sum`, `maximum_n`, `minimum_n`, `join` |
 | String | `byteLength`, `charLength`, `startsWith`, `endsWith`, `like`, `regexContains`, `regexMatch`, `regexFind`, `regexFindAll`, `stringConcat`, `stringContains`, `stringIndexOf`, `toUpper`, `toLower`, `substring`, `stringReverse`, `stringRepeat`, `stringReplaceAll`, `stringReplaceOne`, `trim`, `ltrim`, `rtrim`, `split` | `byte_length`, `char_length`, `starts_with`, `ends_with`, `like`, `regex_contains`, `regex_match`, `regex_find`, `regex_find_all`, `string_concat`, `string_contains`, `string_index_of`, `to_upper`, `to_lower`, `substring`, `string_reverse`, `string_repeat`, `string_replace_all`, `string_replace_one`, `trim`, `ltrim`, `rtrim`, `split` |
 | Generic | `length`, `reverse`, `concat` | `length`, `reverse`, `concat` |
 | Map | `map`, `mapGet`, `getField`, `mapSet`, `mapRemove`, `mapMerge`, `mapKeys`, `mapValues`, `mapEntries` | `map`, `map_get`, `get_field`, `map_set`, `map_remove`, `map_merge`, `map_keys`, `map_values`, `map_entries` |
-| Timestamp | `currentTimestamp`, `timestampTrunc`, `timestampAdd`, `timestampSubtract`, `timestampDiff`, `timestampExtract`, `timestampToUnixMicros`/`Millis`/`Seconds`, `unixMicrosToTimestamp`/`Millis`/`Seconds` | `current_timestamp`, `timestamp_trunc`, `timestamp_add`, `timestamp_subtract`, `timestamp_diff`, `timestamp_extract`, `timestamp_to_unix_*`, `unix_*_to_timestamp` |
+| Timestamp | `currentTimestamp`, `timestampTruncate`, `timestampAdd`, `timestampSubtract`, `timestampDiff`, `timestampExtract`, `timestampToUnixMicros`/`Millis`/`Seconds`, `unixMicrosToTimestamp`/`Millis`/`Seconds` | `current_timestamp`, `timestamp_trunc`, `timestamp_add`, `timestamp_subtract`, `timestamp_diff`, `timestamp_extract`, `timestamp_to_unix_*`, `unix_*_to_timestamp` |
 | Vector | `cosineDistance`, `dotProduct`, `euclideanDistance`, `vectorLength`, `geoDistance` | `cosine_distance`, `dot_product`, `euclidean_distance`, `vector_length`, `geo_distance` |
 | Reference | `collectionId`, `documentId`, `parent`, `referenceSlice`, `currentDocument` | `collection_id`, `document_id`, `parent`, `reference_slice`, `current_document` |
 | Type | `type`, `isType` | `type`, `is_type` |
@@ -387,8 +401,7 @@ PipelineFunctions.raw('some_new_function', [field('x'), 42]);
 
 #### Executing and reading results
 
-`execute()` optionally runs inside a transaction, or at a past read time. The
-two are mutually exclusive.
+`execute()` optionally reads the database as it was at a past timestamp.
 
 ```dart
 final snapshot = await firestore
@@ -399,31 +412,62 @@ final snapshot = await firestore
     )));
 ```
 
+To run a Pipeline at a transaction's snapshot, use
+`Transaction.executePipeline()` instead:
+
+```dart
+final titles = await firestore.runTransaction((transaction) async {
+  final snapshot = await transaction.executePipeline(
+    firestore.pipeline().collection('books').where(field('active').equal(true)),
+  );
+  return [for (final result in snapshot.results) result.get('title')];
+});
+```
+
 `PipelineSnapshot` carries the results plus execution metadata:
 
 | Member | Description |
 | --- | --- |
-| `results` (alias `result`) | The returned `PipelineResult`s. |
+| `results` | The returned `PipelineResult`s. |
 | `size`, `empty` | Result count, and whether there are none. |
 | `executionTime` | When the results were valid. |
-| `transaction` | A newly created transaction ID, when the backend returns one. |
-| `explainStats` | Raw explain stats, when the backend returns them. |
+| `explainStats` | An `ExplainStats`, when requested via `execute(explain: ...)`. |
+| `pipeline` | The Pipeline that produced this snapshot. |
+
+`ExplainStats` exposes `text` for the `TEXT` and `JSON` output formats,
+`typeName` for the payload's proto type, and `raw` with the payload exactly as
+the backend encoded it, so a format this SDK does not decode is never lost.
+
+```dart
+final snapshot = await firestore
+    .pipeline()
+    .collection('books')
+    .execute(
+      explain: const PipelineExplainOptions(
+        mode: PipelineExplainMode.analyze,
+        outputFormat: PipelineExplainOutputFormat.text,
+      ),
+    );
+
+print(snapshot.explainStats?.text);
+```
 
 Each `PipelineResult` exposes its fields and, when the backend includes document
 metadata, its identity:
 
 ```dart
 for (final result in snapshot.results) {
-  print(result.data());          // all decoded fields
-  print(result.get('title'));    // a single field
-  print(result.document?.path);  // null when a projection dropped metadata
+  print(result.data());       // all decoded fields
+  print(result.get('title')); // a single field
+  print(result.ref?.path);    // null when a projection dropped metadata
+  print(result.id);           // the document ID, or null
   print(result.createTime);
   print(result.updateTime);
 }
 ```
 
 Projection stages such as `select` and `aggregate` may drop document metadata,
-in which case `name`, `document`, `createTime` and `updateTime` are `null`.
+in which case `name`, `ref`, `id`, `createTime` and `updateTime` are `null`.
 
 #### Migrating a Query to a Pipeline
 

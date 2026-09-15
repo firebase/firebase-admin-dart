@@ -143,6 +143,70 @@ class Transaction {
     );
   }
 
+  /// Executes a Pipeline and returns the results as part of this transaction.
+  ///
+  /// The Pipeline is executed at the transaction's snapshot. [indexMode],
+  /// [explain] and [rawOptions] behave as they do on [Pipeline.execute].
+  ///
+  /// ```dart
+  /// firestore.runTransaction((transaction) async {
+  ///   final pipeline = firestore
+  ///       .pipeline()
+  ///       .collection('books')
+  ///       .where(field('active').equal(true));
+  ///
+  ///   final snapshot = await transaction.executePipeline(pipeline);
+  ///
+  ///   for (final result in snapshot.results) {
+  ///     print(result.data());
+  ///   }
+  /// });
+  /// ```
+  Future<PipelineSnapshot> executePipeline(
+    Pipeline pipeline, {
+    PipelineIndexMode? indexMode,
+    PipelineExplainOptions? explain,
+    Map<String, Object?> rawOptions = const {},
+  }) async {
+    if (_writeBatch != null && _writeBatch._operations.isNotEmpty) {
+      throw FirestoreException(
+        FirestoreClientErrorCode.failedPrecondition,
+        readAfterWriteErrorMsg,
+      );
+    }
+    _validateSameDatabase(
+      _firestore,
+      pipeline.firestore,
+      'pipeline',
+      targetDescription: 'Transaction',
+    );
+
+    final options = Pipeline._executeOptions(
+      indexMode: indexMode,
+      explain: explain,
+      rawOptions: rawOptions,
+    );
+
+    return _withLazyStartedTransaction<Pipeline, PipelineSnapshot>(
+      pipeline,
+      // `resultFn`'s signature is fixed by the lazy-start machinery, so the
+      // options ride along in the closure rather than as a parameter.
+      resultFn:
+          (
+            pipeline, {
+            String? transactionId,
+            Timestamp? readTime,
+            firestore_v1.TransactionOptions? transactionOptions,
+            List<FieldPath>? fieldMask,
+          }) => pipeline._execute(
+            transactionId: transactionId,
+            readTime: readTime,
+            transactionOptions: transactionOptions,
+            options: options,
+          ),
+    );
+  }
+
   /// Executes an aggregation query and returns the results as part of this
   /// transaction. The aggregation is executed at the transaction's snapshot.
   ///

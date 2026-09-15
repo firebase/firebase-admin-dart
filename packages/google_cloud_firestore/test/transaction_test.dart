@@ -129,6 +129,18 @@ void main() {
         );
       });
 
+      test('executePipeline() after write throws', () async {
+        final docRef = firestore.doc('col/doc');
+        final tx = Transaction(firestore, null);
+
+        tx.create(docRef, {'foo': 'bar'});
+
+        await expectLater(
+          tx.executePipeline(firestore.pipeline().collection('col')),
+          throwsA(isA<FirestoreException>()),
+        );
+      });
+
       test('getAll() after write throws', () async {
         final docRef = firestore.doc('col/doc');
         final tx = Transaction(firestore, null);
