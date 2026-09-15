@@ -129,12 +129,13 @@ class FirestoreHttpClient {
 
   String? get cachedProjectId => _cachedProjectId;
 
-  /// Synchronously resolves the project ID from environment variables or the
-  /// credentials file, without any network I/O.
+  /// Synchronously resolves the project ID from settings, credentials,
+  /// environment variables, or the credentials file, without any network I/O.
   ///
   /// Checks (in order): [cachedProjectId], Zone env ([envSymbol]),
-  /// [Settings.environmentOverride], real environment variables, then the
-  /// credentials file at `GOOGLE_APPLICATION_CREDENTIALS`.
+  /// [Settings.environmentOverride], [Settings.projectId],
+  /// [Credential.serviceAccountCredentials], real environment variables, then
+  /// the credentials file at `GOOGLE_APPLICATION_CREDENTIALS`.
   ///
   /// Returns `null` when only async strategies (gcloud CLI, metadata server)
   /// could succeed; those are handled by [_run] and cached in [cachedProjectId].
@@ -147,7 +148,7 @@ class FirestoreHttpClient {
     if (zoneEnv != null) {
       for (final envKey in google_cloud.projectIdEnvironmentVariableOptions) {
         final value = zoneEnv[envKey];
-        if (value != null) {
+        if (value != null && value.isNotEmpty) {
           discovered = value;
           break;
         }
@@ -157,16 +158,23 @@ class FirestoreHttpClient {
       if (envOverride != null) {
         for (final envKey in google_cloud.projectIdEnvironmentVariableOptions) {
           final value = envOverride[envKey];
-          if (value != null) {
+          if (value != null && value.isNotEmpty) {
             discovered = value;
             break;
           }
         }
-      } else {
-        discovered =
-            google_cloud.projectIdFromEnvironmentVariables() ??
-            google_cloud.projectIdFromCredentialsFile();
       }
+    }
+
+    discovered ??=
+        _settings.projectId ?? credential.serviceAccountCredentials?.projectId;
+
+    if (discovered == null &&
+        zoneEnv == null &&
+        _settings.environmentOverride == null) {
+      discovered =
+          google_cloud.projectIdFromEnvironmentVariables() ??
+          google_cloud.projectIdFromCredentialsFile();
     }
 
     return discovered != null ? (_cachedProjectId = discovered) : null;
@@ -235,10 +243,7 @@ class FirestoreHttpClient {
   ) async {
     final client = await _client;
 
-    final projectId =
-        getProjectId() ??
-        _settings.projectId ??
-        await google_cloud.computeProjectId();
+    final projectId = getProjectId() ?? await google_cloud.computeProjectId();
 
     _cachedProjectId = projectId;
 

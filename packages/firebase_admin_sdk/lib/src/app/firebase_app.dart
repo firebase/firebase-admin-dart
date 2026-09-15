@@ -153,19 +153,74 @@ class FirebaseApp {
   Future<String> getProjectId({
     String? projectIdOverride,
     Map<String, String>? environment,
-  }) async {
-    final env = environment ?? Zone.current[envSymbol] as Map<String, String>?;
-    if (env != null) {
-      for (final envKey in google_cloud.projectIdEnvironmentVariableOptions) {
-        final value = env[envKey];
-        if (value != null) return value;
-      }
+  }) async =>
+      resolveProjectIdSync(
+        projectIdOverride: projectIdOverride,
+        environment: environment,
+      ) ??
+      await google_cloud.computeProjectId();
+
+  /// Resolves the project ID without performing any asynchronous work.
+  ///
+  /// Covers every source that can be read synchronously, in the same order
+  /// [getProjectId] applies:
+  ///
+  /// 1. [environment], or the zone-injected environment
+  /// 2. [projectIdOverride]
+  /// 3. [AppOptions.projectId]
+  /// 4. the [AppOptions.credential] service account
+  /// 5. the process environment
+  /// 6. the `GOOGLE_APPLICATION_CREDENTIALS` service account file
+  ///
+  /// The credential outranks the ambient environment, matching
+  /// `getExplicitProjectId` in the Node Admin SDK, so a service account for one
+  /// project still resolves to that project while running on Google Cloud
+  /// infrastructure belonging to another.
+  ///
+  /// An [environment] — or a zone-injected one — replaces the process
+  /// environment rather than layering on top of it, so steps 5 and 6, which
+  /// read the process environment, are skipped when one is supplied.
+  ///
+  /// Returns null when the project ID can only be discovered asynchronously,
+  /// through the gcloud CLI or the GCE metadata server. Callers that can await
+  /// should use [getProjectId], which falls back to that discovery; callers on
+  /// a synchronous path use this and handle null themselves.
+  @internal
+  String? resolveProjectIdSync({
+    String? projectIdOverride,
+    Map<String, String>? environment,
+    @visibleForTesting Map<String, String>? processEnvironment,
+  }) {
+    final injectedEnv =
+        environment ?? Zone.current[envSymbol] as Map<String, String>?;
+    if (injectedEnv != null) {
+      final injected = _projectIdFromEnvironment(injectedEnv);
+      if (injected != null) return injected;
     }
 
     final explicitProjectId = projectIdOverride ?? options.projectId;
     if (explicitProjectId != null) return explicitProjectId;
 
-    return google_cloud.computeProjectId();
+    final credentialProjectId =
+        options.credential?.serviceAccountCredentials?.projectId;
+    if (credentialProjectId != null) return credentialProjectId;
+
+    if (injectedEnv != null) return null;
+
+    final processProjectId = _projectIdFromEnvironment(
+      processEnvironment ?? Platform.environment,
+    );
+    if (processProjectId != null) return processProjectId;
+
+    return google_cloud.projectIdFromCredentialsFile();
+  }
+
+  static String? _projectIdFromEnvironment(Map<String, String> environment) {
+    for (final envKey in google_cloud.projectIdEnvironmentVariableOptions) {
+      final value = environment[envKey];
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return null;
   }
 
   /// Returns the explicitly configured project ID, if available.

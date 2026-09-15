@@ -418,6 +418,125 @@ void main() {
           expect(resolved, 'configured-project');
         },
       );
+
+      test('ignores empty environment values', () async {
+        final appWithProject = FirebaseApp.initializeApp(
+          name: 'empty-env-${DateTime.now().microsecondsSinceEpoch}',
+          options: const AppOptions(projectId: 'configured-project'),
+        );
+        addTearDown(() async {
+          if (!appWithProject.isDeleted) await appWithProject.close();
+        });
+
+        final resolved = await appWithProject.getProjectId(
+          environment: {'GOOGLE_CLOUD_PROJECT': ''},
+        );
+        expect(resolved, 'configured-project');
+      });
+
+      test('falls back to the service account credential', () async {
+        final appWithCredential = FirebaseApp.initializeApp(
+          name: 'credential-project-${DateTime.now().microsecondsSinceEpoch}',
+          options: AppOptions(
+            credential: Credential.fromServiceAccountParams(
+              clientId: 'client-id',
+              privateKey: mockPrivateKey,
+              email: mockClientEmail,
+              projectId: 'from-credential',
+            ),
+          ),
+        );
+        addTearDown(() async {
+          if (!appWithCredential.isDeleted) await appWithCredential.close();
+        });
+
+        final resolved = await appWithCredential.getProjectId(
+          environment: <String, String>{},
+        );
+        expect(resolved, 'from-credential');
+      });
+
+      test('prefers options.projectId over the credential', () async {
+        final appWithBoth = FirebaseApp.initializeApp(
+          name:
+              'options-over-credential-${DateTime.now().microsecondsSinceEpoch}',
+          options: AppOptions(
+            projectId: 'options-project',
+            credential: Credential.fromServiceAccountParams(
+              clientId: 'client-id',
+              privateKey: mockPrivateKey,
+              email: mockClientEmail,
+              projectId: 'from-credential',
+            ),
+          ),
+        );
+        addTearDown(() async {
+          if (!appWithBoth.isDeleted) await appWithBoth.close();
+        });
+
+        final resolved = await appWithBoth.getProjectId(
+          environment: <String, String>{},
+        );
+        expect(resolved, 'options-project');
+      });
+    });
+
+    group('resolveProjectIdSync', () {
+      test('prefers the credential over ambient project variables', () {
+        final appWithCredential = FirebaseApp.initializeApp(
+          name: 'credential-over-env-${DateTime.now().microsecondsSinceEpoch}',
+          options: AppOptions(
+            credential: Credential.fromServiceAccountParams(
+              clientId: 'client-id',
+              privateKey: mockPrivateKey,
+              email: mockClientEmail,
+              projectId: 'sa-project',
+            ),
+          ),
+        );
+        addTearDown(() async {
+          if (!appWithCredential.isDeleted) await appWithCredential.close();
+        });
+
+        expect(
+          appWithCredential.resolveProjectIdSync(
+            processEnvironment: const {
+              'GOOGLE_CLOUD_PROJECT': 'ambient-host-project',
+            },
+          ),
+          'sa-project',
+        );
+      });
+
+      test('resolves without any asynchronous work', () {
+        final appWithProject = FirebaseApp.initializeApp(
+          name: 'sync-options-${DateTime.now().microsecondsSinceEpoch}',
+          options: const AppOptions(projectId: 'sync-project'),
+        );
+        addTearDown(() async {
+          if (!appWithProject.isDeleted) await appWithProject.close();
+        });
+
+        expect(
+          appWithProject.resolveProjectIdSync(environment: <String, String>{}),
+          'sync-project',
+        );
+      });
+
+      test('returns null when only async discovery could resolve it', () {
+        final bareApp = FirebaseApp.initializeApp(
+          name: 'sync-unresolvable-${DateTime.now().microsecondsSinceEpoch}',
+          options: const AppOptions(),
+        );
+        addTearDown(() async {
+          if (!bareApp.isDeleted) await bareApp.close();
+        });
+
+        expect(
+          bareApp.resolveProjectIdSync(environment: <String, String>{}),
+          isNull,
+        );
+      });
     });
 
     group('client', () {

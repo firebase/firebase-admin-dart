@@ -6,6 +6,7 @@
 - Added Pipeline execution options on `Pipeline.execute()`: `indexMode`, `explain` for planner statistics (read back from `PipelineSnapshot.explainStats`), and a `rawOptions` escape hatch for options this SDK does not wrap yet.
 - `PipelineFunctions.minimum()`/`maximum()` are aggregate-only; use `logicalMinimum()`/`logicalMaximum()` for the element-wise form.
 - Fixed `Settings.ssl` being ignored when connecting to a custom `Settings.host` endpoint without `FIRESTORE_EMULATOR_HOST`.
+- Fixed `FirestoreHttpClient.getProjectId()` and `_run()` ignoring `Settings.projectId` and `Settings.credential` service account project IDs when `GOOGLE_CLOUD_PROJECT` is set in the ambient process environment.
 
 ## 0.5.3
 
