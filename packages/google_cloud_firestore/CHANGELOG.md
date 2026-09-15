@@ -1,9 +1,9 @@
 ## 0.5.4
 
-- Added support for Firestore Pipelines: `Firestore.pipeline()`, the `Pipeline` stage builders, and the `PipelineFunctions` expression catalog.
+- Added support for Firestore Pipelines: `Firestore.pipeline()`, the `Pipeline` stage builders, the `PipelineFunctions` expression catalog, and the top-level `equal`, `notEqual`, `lessThan`, `lessThanOrEqual`, `greaterThan`, `greaterThanOrEqual`, `and`, `or`, `not`, `field`, `constant`, `ascending` and `descending` helpers. The expression surface mirrors the Node Admin SDK.
 - Added `PipelineSource.createFrom()` to convert a `Query` or `VectorQuery` into an equivalent Pipeline.
-- `Pipeline.unnest()` now takes the selectable whose alias names each emitted element, and encodes `indexField` as a field reference.
-- `Pipeline.replaceWith()` now sends the required replace mode, `Pipeline.sample()` sends the sampling rate and mode as arguments, and `Pipeline.distinct()` sends its groups as a single map, all matching the backend contract.
+- Added `Transaction.executePipeline()` to run a Pipeline at a transaction's snapshot, with the same `indexMode`, `explain` and `rawOptions` parameters as `Pipeline.execute()`.
+- Added Pipeline execution options on `Pipeline.execute()`: `indexMode`, `explain` for planner statistics (read back from `PipelineSnapshot.explainStats`), and a `rawOptions` escape hatch for options this SDK does not wrap yet.
 - `PipelineFunctions.minimum()`/`maximum()` are aggregate-only; use `logicalMinimum()`/`logicalMaximum()` for the element-wise form.
 - Fixed `Settings.ssl` being ignored when connecting to a custom `Settings.host` endpoint without `FIRESTORE_EMULATOR_HOST`.
 
