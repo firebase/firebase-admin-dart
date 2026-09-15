@@ -1,6 +1,7 @@
 ## 0.5.5
 
 - Widen dependency upper bounds for `google_cloud_firestore_v1` (`>=0.5.2 <0.7.0`) and `google_cloud_rpc` (`>=0.5.2 <0.7.0`).
+- Update `handleFirestoreException` to inspect `ServiceException.status` and `ServiceException.message` for compatibility with `google_cloud_rpc 0.6.0`.
 
 ## 0.5.4
 

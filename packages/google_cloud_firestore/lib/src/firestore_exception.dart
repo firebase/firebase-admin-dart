@@ -48,44 +48,46 @@ String? _getErrorMessage(Object? response) {
   return null;
 }
 
+FirestoreClientErrorCode _httpStatusCodeToErrorCode(int? statusCode) {
+  return switch (statusCode) {
+    400 => FirestoreClientErrorCode.invalidArgument,
+    401 => FirestoreClientErrorCode.unauthenticated,
+    403 => FirestoreClientErrorCode.permissionDenied,
+    404 => FirestoreClientErrorCode.notFound,
+    409 => FirestoreClientErrorCode.aborted,
+    412 => FirestoreClientErrorCode.failedPrecondition,
+    429 => FirestoreClientErrorCode.resourceExhausted,
+    499 => FirestoreClientErrorCode.cancelled,
+    500 => FirestoreClientErrorCode.internal,
+    501 => FirestoreClientErrorCode.unimplemented,
+    503 => FirestoreClientErrorCode.unavailable,
+    504 => FirestoreClientErrorCode.deadlineExceeded,
+    _ => FirestoreClientErrorCode.unknown,
+  };
+}
+
 /// Creates a new FirestoreError by extracting the error code, message and other relevant
 /// details from an HTTP error response.
 FirestoreException _createFirestoreError({
   required String body,
   required int? statusCode,
-  required bool isJson,
 }) {
-  if (isJson) {
-    // For JSON responses, map the server response to a client-side error.
+  try {
     final json = jsonDecode(body);
-    final errorCode = _getErrorCode(json)!;
-    final errorMessage = _getErrorMessage(json);
-
-    return FirestoreException.fromServerError(
-      serverErrorCode: errorCode,
-      message: errorMessage,
-      rawServerResponse: json,
-    );
+    final errorCode = _getErrorCode(json);
+    if (errorCode != null) {
+      return FirestoreException.fromServerError(
+        serverErrorCode: errorCode,
+        message: _getErrorMessage(json),
+        rawServerResponse: json,
+      );
+    }
+  } on FormatException {
+    // Non-JSON response
   }
 
   // Non-JSON response
-  FirestoreClientErrorCode error;
-  switch (statusCode) {
-    case 400:
-      error = FirestoreClientErrorCode.invalidArgument;
-    case 401:
-    case 403:
-      error = FirestoreClientErrorCode.unauthenticated;
-    case 500:
-      error = FirestoreClientErrorCode.internal;
-    case 503:
-      error = FirestoreClientErrorCode.unavailable;
-    case 409: // HTTP Mapping: 409 Conflict
-      error = FirestoreClientErrorCode.aborted;
-    default:
-      // Treat non-JSON responses with unexpected status codes as unknown errors.
-      error = FirestoreClientErrorCode.unknown;
-  }
+  final error = _httpStatusCodeToErrorCode(statusCode);
 
   return FirestoreException(
     error,
@@ -114,11 +116,28 @@ R firestoreGuard<R>(R Function() cb) {
 @internal
 Never handleFirestoreException(Object exception, StackTrace stackTrace) {
   if (exception is ServiceException) {
+    final status = exception.status;
+    if (status != null) {
+      var errorCode = FirestoreClientErrorCode.fromStatusCode(status.code);
+      if (errorCode == FirestoreClientErrorCode.unknown) {
+        errorCode = _httpStatusCodeToErrorCode(
+          status.code != 0 ? status.code : exception.statusCode,
+        );
+      }
+      Error.throwWithStackTrace(
+        FirestoreException.fromServerError(
+          serverErrorCode: errorCode.code.toUpperCase().replaceAll('-', '_'),
+          message: status.message.isNotEmpty ? status.message : null,
+          rawServerResponse: {'error': status.toJson()},
+        ),
+        stackTrace,
+      );
+    }
+
     Error.throwWithStackTrace(
       _createFirestoreError(
         statusCode: exception.statusCode,
-        body: exception.responseBody ?? '',
-        isJson: exception.status != null,
+        body: exception.message,
       ),
       stackTrace,
     );
