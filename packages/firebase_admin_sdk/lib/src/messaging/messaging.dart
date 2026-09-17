@@ -14,6 +14,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:googleapis/fcm/v1.dart' as fmc1;
 import 'package:googleapis_auth/auth_io.dart' as googleapis_auth;
@@ -135,6 +136,45 @@ class Messaging implements FirebaseService {
     String topic,
   ) {
     return _requestHandler.unsubscribeFromTopic(registrationTokens, topic);
+  }
+
+  /// Subscribes a list of registration tokens to an FCM topic using the legacy IID API.
+  ///
+  /// See [Subscribe to a topic](https://firebase.google.com/docs/cloud-messaging/admin/manage-topic-subscriptions#subscribe_to_a_topic)
+  /// for code samples and detailed documentation.
+  ///
+  /// - [registrationTokens]: A list of registration tokens to subscribe to the topic.
+  /// - [topic]: The topic to which to subscribe.
+  ///
+  /// Returns a Future fulfilled with the server's response after the registration
+  /// tokens have been subscribed to the topic.
+  @Deprecated('Use subscribeToTopic instead.')
+  Future<MessagingTopicManagementResponse> subscribeToTopicLegacy(
+    List<String> registrationTokens,
+    String topic,
+  ) {
+    return _requestHandler.subscribeToTopicLegacy(registrationTokens, topic);
+  }
+
+  /// Unsubscribes a list of registration tokens from an FCM topic using the legacy IID API.
+  ///
+  /// See [Unsubscribe from a topic](https://firebase.google.com/docs/cloud-messaging/admin/manage-topic-subscriptions#unsubscribe_from_a_topic)
+  /// for code samples and detailed documentation.
+  ///
+  /// - [registrationTokens]: A list of registration tokens to unsubscribe from the topic.
+  /// - [topic]: The topic from which to unsubscribe.
+  ///
+  /// Returns a Future fulfilled with the server's response after the registration
+  /// tokens have been unsubscribed from the topic.
+  @Deprecated('Use unsubscribeFromTopic instead.')
+  Future<MessagingTopicManagementResponse> unsubscribeFromTopicLegacy(
+    List<String> registrationTokens,
+    String topic,
+  ) {
+    return _requestHandler.unsubscribeFromTopicLegacy(
+      registrationTokens,
+      topic,
+    );
   }
 
   @override

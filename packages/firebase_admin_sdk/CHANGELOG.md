@@ -4,6 +4,7 @@
 
 ## 0.5.5
 
+- Migrate FCM topic management (`subscribeToTopic`, `unsubscribeFromTopic`) to FCM v1 REST API, and deprecate legacy IID methods (`subscribeToTopicLegacy`, `unsubscribeFromTopicLegacy`).
 - Ensure usage tracking headers (`X-Firebase-Client`, `X-Goog-Api-Client`) are appended to outgoing requests without overwriting existing client library headers or duplicating runtime tokens.
 - Fixed `app.storage()` ignoring `AppOptions.credential` and authenticating with
   Application Default Credentials instead. Storage now uses the app's
