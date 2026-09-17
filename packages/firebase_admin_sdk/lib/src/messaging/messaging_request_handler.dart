@@ -175,11 +175,11 @@ class FirebaseMessagingRequestHandler {
     List<String> registrationTokens,
     String topic,
   ) {
-    return _sendTopicManagementRequest(
-      registrationTokens,
-      topic,
-      'subscribeToTopic',
-      '/iid/v1:batchAdd',
+    return _sendTopicManagementRequestV1(
+      registrationTokens: registrationTokens,
+      topic: topic,
+      methodName: 'subscribeToTopic',
+      isSubscribe: true,
     );
   }
 
@@ -188,16 +188,212 @@ class FirebaseMessagingRequestHandler {
     List<String> registrationTokens,
     String topic,
   ) {
-    return _sendTopicManagementRequest(
+    return _sendTopicManagementRequestV1(
+      registrationTokens: registrationTokens,
+      topic: topic,
+      methodName: 'unsubscribeFromTopic',
+      isSubscribe: false,
+    );
+  }
+
+  /// Subscribes a list of registration tokens to an FCM topic using the legacy IID API.
+  Future<MessagingTopicManagementResponse> subscribeToTopicLegacy(
+    List<String> registrationTokens,
+    String topic,
+  ) {
+    return _sendTopicManagementRequestLegacy(
       registrationTokens,
       topic,
-      'unsubscribeFromTopic',
+      'subscribeToTopicLegacy',
+      '/iid/v1:batchAdd',
+    );
+  }
+
+  /// Unsubscribes a list of registration tokens from an FCM topic using the legacy IID API.
+  Future<MessagingTopicManagementResponse> unsubscribeFromTopicLegacy(
+    List<String> registrationTokens,
+    String topic,
+  ) {
+    return _sendTopicManagementRequestLegacy(
+      registrationTokens,
+      topic,
+      'unsubscribeFromTopicLegacy',
       '/iid/v1:batchRemove',
     );
   }
 
-  /// Sends a topic management request to the IID API.
-  Future<MessagingTopicManagementResponse> _sendTopicManagementRequest(
+  /// Sends a topic management request using FCM v1 REST API.
+  Future<MessagingTopicManagementResponse> _sendTopicManagementRequestV1({
+    required List<String> registrationTokens,
+    required String topic,
+    required String methodName,
+    required bool isSubscribe,
+  }) async {
+    _validateRegistrationTokens(registrationTokens, methodName);
+    _validateTopic(topic, methodName);
+
+    final cleanTopic = topic.startsWith('/topics/')
+        ? topic.substring('/topics/'.length)
+        : topic;
+
+    return _httpClient.withClient((client, projectId) async {
+      final maxWorkers = math.min(registrationTokens.length, 100);
+      final results = List<_TopicWorkerResult?>.filled(
+        registrationTokens.length,
+        null,
+      );
+      var nextIndex = 0;
+
+      Future<void> runWorker() async {
+        while (true) {
+          if (nextIndex >= registrationTokens.length) {
+            return;
+          }
+          final i = nextIndex++;
+          final token = registrationTokens[i];
+          results[i] = await _sendSingleTopicRequestV1(
+            client: client,
+            projectId: projectId,
+            token: token,
+            cleanTopic: cleanTopic,
+            isSubscribe: isSubscribe,
+            index: i,
+          );
+        }
+      }
+
+      await Future.wait(List.generate(maxWorkers, (_) => runWorker()));
+
+      var successCount = 0;
+      var failureCount = 0;
+      final errors = <FirebaseArrayIndexError>[];
+
+      for (var i = 0; i < results.length; i++) {
+        final result = results[i]!;
+        if (result.isSuccess) {
+          successCount++;
+        } else {
+          failureCount++;
+          errors.add(FirebaseArrayIndexError(index: i, error: result.error!));
+        }
+      }
+
+      return MessagingTopicManagementResponse._(
+        failureCount: failureCount,
+        successCount: successCount,
+        errors: errors,
+      );
+    });
+  }
+
+  Future<_TopicWorkerResult> _sendSingleTopicRequestV1({
+    required googleapis_auth.AuthClient client,
+    required String projectId,
+    required String token,
+    required String cleanTopic,
+    required bool isSubscribe,
+    required int index,
+  }) async {
+    try {
+      final encodedToken = Uri.encodeComponent(token);
+      final encodedTopic = Uri.encodeComponent(cleanTopic);
+
+      final Response response;
+      if (isSubscribe) {
+        final uri = Uri.https(
+          _httpClient.fcmHost,
+          '/v1/projects/$projectId/registrations/$encodedToken/topicSubscriptions',
+          {'topic_name': cleanTopic},
+        );
+        response = await client.post(
+          uri,
+          headers: {
+            'content-type': 'application/json; charset=UTF-8',
+            'x-goog-api-format-version': '2',
+          },
+          body: '{}',
+        );
+      } else {
+        final uri = Uri.https(
+          _httpClient.fcmHost,
+          '/v1/projects/$projectId/registrations/$encodedToken/topicSubscriptions/$encodedTopic',
+          {'allow_missing': 'true'},
+        );
+        response = await client.delete(
+          uri,
+          headers: {'x-goog-api-format-version': '2'},
+        );
+      }
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return _TopicWorkerResult.success(index);
+      }
+
+      if (isSubscribe && _isAlreadyExists(response)) {
+        return _TopicWorkerResult.success(index);
+      }
+
+      final error = _parseTopicError(response);
+      return _TopicWorkerResult.failure(index, error);
+    } catch (e) {
+      final adminException = e is FirebaseMessagingAdminException
+          ? e
+          : FirebaseMessagingAdminException(
+              MessagingClientErrorCode.unknownError,
+              e.toString(),
+            );
+      return _TopicWorkerResult.failure(index, adminException);
+    }
+  }
+
+  bool _isAlreadyExists(Response response) {
+    if (response.statusCode == 409) return true;
+    if (response.isJson) {
+      try {
+        final json = jsonDecode(response.body);
+        final errorCode = _getErrorCode(json);
+        if (errorCode == 'ALREADY_EXISTS' || errorCode == 'CONFLICT') {
+          return true;
+        }
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  FirebaseMessagingAdminException _parseTopicError(Response response) {
+    if (response.isJson) {
+      try {
+        final json = jsonDecode(response.body);
+        final errorCode = _getErrorCode(json);
+        final errorMessage = _getErrorMessage(json);
+        if (errorCode != null) {
+          return FirebaseMessagingAdminException.fromServerError(
+            serverErrorCode: errorCode,
+            message: errorMessage,
+            rawServerResponse: json,
+          );
+        }
+      } catch (_) {}
+    }
+
+    final error = switch (response.statusCode) {
+      400 => MessagingClientErrorCode.invalidArgument,
+      401 || 403 => MessagingClientErrorCode.authenticationError,
+      404 => MessagingClientErrorCode.registrationTokenNotRegistered,
+      429 => MessagingClientErrorCode.messageRateExceeded,
+      500 => MessagingClientErrorCode.internalError,
+      503 => MessagingClientErrorCode.serverUnavailable,
+      _ => MessagingClientErrorCode.unknownError,
+    };
+
+    return FirebaseMessagingAdminException(
+      error,
+      '${error.message} Raw server response: "${response.body}". Status code: ${response.statusCode}.',
+    );
+  }
+
+  /// Sends a topic management request to the legacy IID API.
+  Future<MessagingTopicManagementResponse> _sendTopicManagementRequestLegacy(
     List<String> registrationTokens,
     String topic,
     String methodName,
@@ -236,6 +432,13 @@ class FirebaseMessagingRequestHandler {
       );
     }
 
+    if (registrationTokens.length > 1000) {
+      throw FirebaseMessagingAdminException(
+        MessagingClientErrorCode.invalidArgument,
+        'Registration tokens provided to $methodName() must not contain more than 1000 tokens.',
+      );
+    }
+
     for (final token in registrationTokens) {
       if (token.isEmpty) {
         throw FirebaseMessagingAdminException(
@@ -255,11 +458,9 @@ class FirebaseMessagingRequestHandler {
       );
     }
 
-    // Topic should match pattern: /topics/[a-zA-Z0-9-_.~%]+
-    final normalizedTopic = _normalizeTopic(topic);
-    final topicRegex = RegExp(r'^/topics/[a-zA-Z0-9\-_.~%]+$');
+    final topicRegex = RegExp(r'^(/topics/)?(private/)?[a-zA-Z0-9\-_.~%]+$');
 
-    if (!topicRegex.hasMatch(normalizedTopic)) {
+    if (!topicRegex.hasMatch(topic)) {
       throw FirebaseMessagingAdminException(
         MessagingClientErrorCode.invalidArgument,
         'Topic provided to $methodName() must be a string which matches the format '
@@ -315,4 +516,13 @@ class FirebaseMessagingRequestHandler {
       errors: errors,
     );
   }
+}
+
+class _TopicWorkerResult {
+  _TopicWorkerResult.success(this.index) : error = null;
+  _TopicWorkerResult.failure(this.index, this.error);
+
+  final int index;
+  final FirebaseMessagingAdminException? error;
+  bool get isSuccess => error == null;
 }
