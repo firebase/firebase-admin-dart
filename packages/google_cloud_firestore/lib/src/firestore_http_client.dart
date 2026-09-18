@@ -119,6 +119,40 @@ class EmulatorClient extends BaseClient implements googleapis_auth.AuthClient {
   void close() => client.close();
 }
 
+/// Routes `https` requests over a pooled HTTP/2 transport and everything
+/// else over plain HTTP/1.1.
+///
+/// googleapis_auth sends more than Firestore's own API calls through the
+/// `baseClient` it is handed. Credential negotiation can target plain
+/// `http` endpoints that speak no HTTP/2 at all: Application Default
+/// Credentials on GCE and Cloud Run fetch tokens from
+/// `http://metadata.google.internal`, and an external-account
+/// (WIF/OIDC) `credential_source` commonly points at a link-local
+/// metadata address. [Http2Client] rejects a non-`https` URL outright, so
+/// those requests need a transport of their own.
+@internal
+class Http2WithHttp1FallbackClient extends BaseClient {
+  Http2WithHttp1FallbackClient({Http2Client? http2, Client? http1})
+    : _http2 = http2 ?? Http2Client(),
+      _http1 = http1;
+
+  final Http2Client _http2;
+
+  Client? _http1;
+
+  @override
+  Future<StreamedResponse> send(BaseRequest request) =>
+      request.url.scheme == 'https'
+      ? _http2.send(request)
+      : (_http1 ??= Client()).send(request);
+
+  @override
+  void close() {
+    _http2.close();
+    _http1?.close();
+  }
+}
+
 /// HTTP client wrapper for Firestore API operations.
 ///
 /// Provides authenticated API access with automatic project ID discovery.
@@ -213,7 +247,7 @@ class FirestoreHttpClient {
   late final Future<googleapis_auth.AuthClient> _client = _createClient();
 
   // googleapis_auth never closes a caller-supplied baseClient.
-  Http2Client? _transport;
+  Http2WithHttp1FallbackClient? _transport;
 
   /// Creates the appropriate HTTP client based on emulator configuration.
   Future<googleapis_auth.AuthClient> _createClient() async {
@@ -231,7 +265,7 @@ class FirestoreHttpClient {
       return EmulatorClient(Client());
     }
 
-    final transport = Http2Client();
+    final transport = Http2WithHttp1FallbackClient();
     _transport = transport;
 
     final serviceAccountCreds = credential.serviceAccountCredentials;
