@@ -19,6 +19,7 @@ dependencies:
   google_cloud_type: ^0.5.2
   googleapis_auth: ^2.3.3
   http: ^1.6.0
+  http2: ^3.1.0
   intl: ^0.20.0
   meta: ^1.17.0
   retry: ^3.1.2
