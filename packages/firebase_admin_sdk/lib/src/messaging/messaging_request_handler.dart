@@ -295,15 +295,20 @@ class FirebaseMessagingRequestHandler {
     required int index,
   }) async {
     try {
-      final encodedToken = Uri.encodeComponent(token);
-      final encodedTopic = Uri.encodeComponent(cleanTopic);
-
       final Response response;
       if (isSubscribe) {
-        final uri = Uri.https(
-          _httpClient.fcmHost,
-          '/v1/projects/$projectId/registrations/$encodedToken/topicSubscriptions',
-          {'topic_name': cleanTopic},
+        final uri = Uri(
+          scheme: 'https',
+          host: _httpClient.fcmHost,
+          pathSegments: [
+            'v1',
+            'projects',
+            projectId,
+            'registrations',
+            token,
+            'topicSubscriptions',
+          ],
+          queryParameters: {'topic_name': cleanTopic},
         );
         response = await client.post(
           uri,
@@ -314,10 +319,19 @@ class FirebaseMessagingRequestHandler {
           body: '{}',
         );
       } else {
-        final uri = Uri.https(
-          _httpClient.fcmHost,
-          '/v1/projects/$projectId/registrations/$encodedToken/topicSubscriptions/$encodedTopic',
-          {'allow_missing': 'true'},
+        final uri = Uri(
+          scheme: 'https',
+          host: _httpClient.fcmHost,
+          pathSegments: [
+            'v1',
+            'projects',
+            projectId,
+            'registrations',
+            token,
+            'topicSubscriptions',
+            cleanTopic,
+          ],
+          queryParameters: {'allow_missing': 'true'},
         );
         response = await client.delete(
           uri,
@@ -458,7 +472,7 @@ class FirebaseMessagingRequestHandler {
       );
     }
 
-    final topicRegex = RegExp(r'^(/topics/)?(private/)?[a-zA-Z0-9\-_.~%]+$');
+    final topicRegex = RegExp(r'^(/topics/)?[a-zA-Z0-9\-_.~%]+$');
 
     if (!topicRegex.hasMatch(topic)) {
       throw FirebaseMessagingAdminException(
