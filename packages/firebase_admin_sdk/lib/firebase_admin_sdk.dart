@@ -22,7 +22,6 @@ export 'src/app.dart'
         FirebaseService,
         FirebaseServiceType,
         FirebaseUserAgentClient,
-        Http2WithHttp1FallbackClient,
         RefreshTokenCredential,
         ServiceAccountCredential,
         envSymbol;

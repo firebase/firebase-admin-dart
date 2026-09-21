@@ -14,7 +14,7 @@
 
 import 'dart:io';
 
-import 'package:firebase_admin_sdk/src/app.dart';
+import 'package:firebase_admin_sdk/src/app/http2_client.dart';
 import 'package:http/http.dart';
 import 'package:test/test.dart';
 

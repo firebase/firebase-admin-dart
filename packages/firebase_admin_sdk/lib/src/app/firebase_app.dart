@@ -345,14 +345,13 @@ class FirebaseApp {
 
     // Only close client if it was initialized AND we created it (not user-provided)
     if (_httpClient != null && options.httpClient == null) {
+      _transport?.close();
       try {
         final client = await _httpClient!;
         client.close();
       } catch (_) {
         // Ignore errors during client initialization/closure to ensure
-        // transport is closed and app is marked as deleted.
-      } finally {
-        _transport?.close();
+        // app is marked as deleted.
       }
     }
 

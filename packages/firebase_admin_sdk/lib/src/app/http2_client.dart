@@ -14,8 +14,11 @@
 
 // `Http2Client` is `@experimental` upstream; the `^3.1.0` pin bounds the risk.
 // ignore_for_file: experimental_member_use
+import 'dart:async';
 
-part of '../app.dart';
+import 'package:http/http.dart';
+import 'package:http2/client.dart';
+import 'package:meta/meta.dart';
 
 /// Routes `https` requests over a pooled HTTP/2 transport and everything
 /// else over plain HTTP/1.1.
