@@ -25,6 +25,7 @@ import 'package:google_cloud_firestore/google_cloud_firestore.dart'
 import 'package:googleapis/identitytoolkit/v3.dart' as auth3;
 import 'package:googleapis_auth/auth_io.dart' as googleapis_auth;
 import 'package:http/http.dart';
+import 'package:http2/client.dart';
 import 'package:meta/meta.dart';
 
 import '../app_check.dart';
@@ -46,3 +47,4 @@ part 'app/exception.dart';
 part 'app/firebase_app.dart';
 part 'app/firebase_service.dart';
 part 'app/firebase_user_agent_client.dart';
+part 'app/http2_client.dart';
