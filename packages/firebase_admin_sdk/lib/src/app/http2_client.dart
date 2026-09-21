@@ -37,15 +37,21 @@ class Http2WithHttp1FallbackClient extends BaseClient {
   final Http2Client _http2;
 
   Client? _http1;
+  bool _isClosed = false;
 
   @override
-  Future<StreamedResponse> send(BaseRequest request) =>
-      request.url.scheme == 'https'
-      ? _http2.send(request)
-      : (_http1 ??= Client()).send(request);
+  Future<StreamedResponse> send(BaseRequest request) {
+    if (_isClosed) {
+      throw ClientException('Client is closed', request.url);
+    }
+    return request.url.scheme == 'https'
+        ? _http2.send(request)
+        : (_http1 ??= Client()).send(request);
+  }
 
   @override
   void close() {
+    _isClosed = true;
     _http2.close();
     _http1?.close();
   }

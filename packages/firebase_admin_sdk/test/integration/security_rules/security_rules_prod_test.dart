@@ -123,27 +123,31 @@ void main() {
       expect(after.name, ruleset.name);
     });
 
-    test('storage release flow', () async {
-      const bucket = 'dart-firebase-admin.appspot.com';
+    test(
+      'storage release flow',
+      () async {
+        const bucket = 'dart-firebase-admin.appspot.com';
 
-      // Create and release a new ruleset from source
-      final newRuleset = await securityRules.releaseStorageRulesetFromSource(
-        simpleStorageContent,
-        bucket,
-      );
-      createdRulesets.add(newRuleset.name);
+        // Create and release a new ruleset from source
+        final newRuleset = await securityRules.releaseStorageRulesetFromSource(
+          simpleStorageContent,
+          bucket,
+        );
+        createdRulesets.add(newRuleset.name);
 
-      expect(newRuleset.name, isNotEmpty);
-      expect(newRuleset.source.length, 1);
-      expect(newRuleset.source.single.name, 'storage.rules');
-      expect(newRuleset.source.single.content, simpleStorageContent);
+        expect(newRuleset.name, isNotEmpty);
+        expect(newRuleset.source.length, 1);
+        expect(newRuleset.source.single.name, 'storage.rules');
+        expect(newRuleset.source.single.content, simpleStorageContent);
 
-      // Verify it was applied by getting the current ruleset
-      final after = await securityRules.getStorageRuleset(bucket);
-      expect(after.name, newRuleset.name);
-      expect(after.source.length, 1);
-      expect(after.source.single.content, simpleStorageContent);
-    }, skip: 'Requires Storage bucket to be configured in Firebase project');
+        // Verify it was applied by getting the current ruleset
+        final after = await securityRules.getStorageRuleset(bucket);
+        expect(after.name, newRuleset.name);
+        expect(after.source.length, 1);
+        expect(after.source.single.content, simpleStorageContent);
+      },
+      skip: 'Requires Storage bucket to be configured in Firebase project',
+    );
 
     group('Error Handling', () {
       test(

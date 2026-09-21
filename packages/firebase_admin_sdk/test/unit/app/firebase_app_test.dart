@@ -888,6 +888,30 @@ void main() {
         verifyNever(mockClient.close);
       });
 
+      test(
+        'cleans up transport and marks app as deleted even if default client creation fails',
+        () async {
+          final credential = Credential.fromRefreshTokenParams(
+            clientId: 'client-id',
+            clientSecret: 'client-secret',
+            refreshToken: 'dummy-refresh-token',
+          );
+          final app = FirebaseApp.initializeApp(
+            options: AppOptions(
+              projectId: mockProjectId,
+              credential: credential,
+            ),
+          );
+
+          // Access app.client to trigger _createDefaultClient(), which fails.
+          await expectLater(app.client, throwsA(anything));
+
+          // Closing the app must not rethrow and must mark app as deleted.
+          await expectLater(app.close(), completes);
+          expect(app.isDeleted, isTrue);
+        },
+      );
+
       test('throws when called twice', () async {
         final app = FirebaseApp.initializeApp(
           options: const AppOptions(projectId: mockProjectId),

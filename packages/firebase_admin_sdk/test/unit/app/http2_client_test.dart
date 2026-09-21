@@ -71,25 +71,40 @@ void main() {
       expect(http1.requests, isEmpty);
     });
 
-    test('close() closes both transports', () async {
+    test('close() closes transports and rejects subsequent requests', () async {
       final http1 = _RecordingClient();
       final client = Http2WithHttp1FallbackClient(http1: http1);
 
       // Force the lazily created fallback into existence before closing.
       await client.get(Uri.http('localhost:1', '/'));
+      expect(http1.requests, hasLength(1));
       client.close();
 
       expect(http1.closed, isTrue);
+
       await expectLater(
         client.get(Uri.https('localhost:1', '/')),
         throwsA(
           isA<ClientException>().having(
             (e) => e.message,
             'message',
-            contains('already closed'),
+            contains('Client is closed'),
           ),
         ),
       );
+
+      await expectLater(
+        client.get(Uri.http('localhost:1', '/')),
+        throwsA(
+          isA<ClientException>().having(
+            (e) => e.message,
+            'message',
+            contains('Client is closed'),
+          ),
+        ),
+      );
+      // Ensure no new request reached http1 after close.
+      expect(http1.requests, hasLength(1));
     });
   });
 }
