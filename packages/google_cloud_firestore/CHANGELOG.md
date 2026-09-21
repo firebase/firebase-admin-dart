@@ -1,3 +1,7 @@
+## Unreleased
+
+- Fixed slow and failing requests under high concurrency by pooling shared HTTP/2 connections by default instead of opening a new HTTP/1.1 connection per request, via `package:http2`'s `Http2Client`. Credential endpoints that speak plain HTTP, such as the GCE/Cloud Run metadata server, keep using HTTP/1.1.
+
 ## 0.5.4
 
 - Added support for Firestore Pipelines: `Firestore.pipeline()`, the `Pipeline` stage builders, the `PipelineFunctions` expression catalog, and the top-level `equal`, `notEqual`, `lessThan`, `lessThanOrEqual`, `greaterThan`, `greaterThanOrEqual`, `and`, `or`, `not`, `field`, `constant`, `ascending` and `descending` helpers. The expression surface mirrors the Node Admin SDK.
