@@ -779,6 +779,8 @@ void main() {
           'test topic', // space not allowed
           'test@topic', // @ not allowed
           'test#topic', // # not allowed
+          'private/test-topic', // nested path / private not allowed
+          'test/topic', // slashes not allowed
         ]) {
           expect(
             () => messaging.subscribeToTopic(['token1'], topic),
