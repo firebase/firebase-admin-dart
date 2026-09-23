@@ -117,7 +117,7 @@ interface class CollectionReference<T> extends Query<T> {
           // Setting `pageSize` to an arbitrarily large value lets the backend
           // cap the page size (currently to 300). Note that the backend
           // rejects MAX_INT32 (b/146883794).
-          pageSize: math.pow(2, 16 - 1).toInt(),
+          pageSize: (math.pow(2, 16) - 1).toInt(),
           pageToken: pageToken,
           mask: firestore_v1.DocumentMask(fieldPaths: []),
         );
