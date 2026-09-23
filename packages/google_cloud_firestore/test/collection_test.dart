@@ -148,6 +148,40 @@ void main() {
       expect(documents, orderedEquals(expected));
     });
 
+    test('listDocumentsPages() pages and resumes', () async {
+      final collection = firestore.collection('listDocumentsPages');
+
+      final expected = <DocumentReference<DocumentData>>[];
+      final batch = firestore.batch();
+      for (var i = 0; i < 250; i++) {
+        final ref = collection.doc('doc${i.toString().padLeft(3, '0')}');
+        expected.add(ref);
+        batch.set(ref, {'i': i});
+      }
+      await batch.commit();
+
+      final missing = collection.doc('zzz');
+      await missing.collection('items').doc('item').set({'foo': 'bar'});
+      expected.add(missing);
+
+      final pages = await collection.listDocumentsPages(pageSize: 100).toList();
+
+      expect(pages.map((page) => page.documents.length), [100, 100, 51]);
+      expect(pages.last.nextPageToken, isNull);
+      expect(pages.expand((page) => page.documents), orderedEquals(expected));
+
+      // Resume after the first page, as a separate job would.
+      final resumed = await collection
+          .listDocumentsPages(
+            pageSize: 100,
+            pageToken: pages.first.nextPageToken,
+          )
+          .expand((page) => page.documents)
+          .toList();
+
+      expect(resumed, orderedEquals(expected.skip(100)));
+    });
+
     test('override equal', () async {
       final coll1 = firestore.collection('coll1');
       final coll1Equals = firestore.collection('coll1');

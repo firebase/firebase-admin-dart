@@ -97,46 +97,88 @@ interface class CollectionReference<T> extends Query<T> {
   /// which contain subcollections with documents. Attempting to read such a
   /// document reference (e.g. via [DocumentReference.get]) will return a
   /// [DocumentSnapshot] whose [DocumentSnapshot.exists] property is `false`.
-  Future<List<DocumentReference<T>>> listDocuments() async {
-    final documents = <DocumentReference<T>>[];
+  ///
+  /// Every page is fetched before this returns, so the whole collection is
+  /// held in memory. Use [listDocumentsPages] for large collections.
+  Future<List<DocumentReference<T>>> listDocuments() {
+    return listDocumentsPages().expand((page) => page.documents).toList();
+  }
 
-    // The backend caps each page, so follow `nextPageToken` until the
-    // collection is exhausted.
-    var pageToken = '';
+  /// Retrieves the documents in this collection one page at a time.
+  ///
+  /// Like [listDocuments], the results include "missing documents". Each page
+  /// is fetched only when the stream is ready for it, and cancelling the
+  /// subscription stops any further requests.
+  ///
+  /// [pageSize] is the maximum number of documents per page. The backend may
+  /// return fewer. When omitted, the backend's maximum is used.
+  ///
+  /// Pass a [DocumentReferencePage.nextPageToken] from an earlier call as
+  /// [pageToken] to resume listing where that page ended.
+  ///
+  /// ```dart
+  /// await for (final page in collectionRef.listDocumentsPages(pageSize: 500)) {
+  ///   for (final documentRef in page.documents) {
+  ///     print('Found document with id: ${documentRef.id}');
+  ///   }
+  ///   await saveCheckpoint(page.nextPageToken);
+  /// }
+  /// ```
+  Stream<DocumentReferencePage<T>> listDocumentsPages({
+    int? pageSize,
+    String? pageToken,
+  }) async* {
+    if (pageSize != null && pageSize < 1) {
+      throw ArgumentError.value(pageSize, 'pageSize', 'Must be positive.');
+    }
+
+    var token = pageToken ?? '';
     do {
-      final response = await firestore._firestoreClient.v1((api, projectId) {
-        final parentPath = _queryOptions.parentPath._toQualifiedResourcePath(
-          projectId,
-          firestore.databaseId,
-        );
+      final page = await _listDocumentsPage(
+        pageSize: pageSize,
+        pageToken: token,
+      );
+      yield page;
+      token = page.nextPageToken ?? '';
+    } while (token.isNotEmpty);
+  }
 
-        final request = firestore_v1.ListDocumentsRequest(
-          parent: parentPath._formattedName,
-          collectionId: id,
-          showMissing: true,
-          // Setting `pageSize` to an arbitrarily large value lets the backend
-          // cap the page size (currently to 300). Note that the backend
-          // rejects MAX_INT32 (b/146883794).
-          pageSize: (math.pow(2, 16) - 1).toInt(),
-          pageToken: pageToken,
-          mask: firestore_v1.DocumentMask(fieldPaths: []),
-        );
+  Future<DocumentReferencePage<T>> _listDocumentsPage({
+    required int? pageSize,
+    required String pageToken,
+  }) async {
+    final response = await firestore._firestoreClient.v1((api, projectId) {
+      final parentPath = _queryOptions.parentPath._toQualifiedResourcePath(
+        projectId,
+        firestore.databaseId,
+      );
 
-        return api.listDocuments(request);
-      });
+      final request = firestore_v1.ListDocumentsRequest(
+        parent: parentPath._formattedName,
+        collectionId: id,
+        showMissing: true,
+        // Setting `pageSize` to an arbitrarily large value lets the backend cap
+        // the page size (currently to 300). Note that the backend rejects
+        // MAX_INT32 (b/146883794).
+        pageSize: pageSize ?? (math.pow(2, 16) - 1).toInt(),
+        pageToken: pageToken,
+        mask: firestore_v1.DocumentMask(fieldPaths: []),
+      );
 
-      for (final document in response.documents) {
-        documents.add(
+      return api.listDocuments(request);
+    });
+
+    return DocumentReferencePage._(
+      documents: [
+        for (final document in response.documents)
           doc(
             _QualifiedResourcePath.fromSlashSeparatedString(document.name).id!,
           ),
-        );
-      }
-
-      pageToken = response.nextPageToken;
-    } while (pageToken.isNotEmpty);
-
-    return documents;
+      ],
+      nextPageToken: response.nextPageToken.isEmpty
+          ? null
+          : response.nextPageToken,
+    );
   }
 
   /// Add a new document to this collection with the specified data, assigning
