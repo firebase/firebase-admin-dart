@@ -92,11 +92,13 @@ void main() {
   group('DocumentReference.listCollections()', () {
     test('follows nextPageToken across pages', () async {
       final pageTokens = <String>[];
+      final parents = <String>[];
 
       stubApi<firestore_v1.ListCollectionIdsResponse>(
         FakeFirestore(
           listCollectionIds: (request) async {
             pageTokens.add(request.pageToken);
+            parents.add(request.parent);
 
             return switch (request.pageToken) {
               '' => firestore_v1.ListCollectionIdsResponse(
@@ -116,6 +118,7 @@ void main() {
       final collections = await document.listCollections();
 
       expect(pageTokens, ['', 'page-2']);
+      expect(parents, ['$_documentsPath/col/doc', '$_documentsPath/col/doc']);
       expect(
         collections,
         orderedEquals([
