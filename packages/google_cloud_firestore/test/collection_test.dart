@@ -125,6 +125,29 @@ void main() {
       expect(documents, unorderedEquals([a, b]));
     });
 
+    test('listDocuments() follows every page', () async {
+      final collection = firestore.collection('listDocumentsPaging');
+
+      // More than one backend page (the emulator caps pages at 150).
+      final expected = <DocumentReference<DocumentData>>[];
+      final batch = firestore.batch();
+      for (var i = 0; i < 400; i++) {
+        final ref = collection.doc('doc${i.toString().padLeft(3, '0')}');
+        expected.add(ref);
+        batch.set(ref, {'i': i});
+      }
+      await batch.commit();
+
+      // A missing document sorted after the first page.
+      final missing = collection.doc('zzz');
+      await missing.collection('items').doc('item').set({'foo': 'bar'});
+      expected.add(missing);
+
+      final documents = await collection.listDocuments();
+
+      expect(documents, orderedEquals(expected));
+    });
+
     test('override equal', () async {
       final coll1 = firestore.collection('coll1');
       final coll1Equals = firestore.collection('coll1');
