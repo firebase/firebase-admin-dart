@@ -1,3 +1,7 @@
+## 0.5.7-wip
+
+- Use pooled HTTP/2 connections by default via `package:http2`'s `Http2Client` for `FirebaseApp.client`, multiplexing concurrent HTTPS requests over persistent connections while keeping plain HTTP endpoints (such as GCE metadata server) on HTTP/1.1 fallback.
+
 ## 0.5.6
 
 - Widen dependency upper bounds for `googleapis` (`>=16.0.0 <18.0.0`), `google_cloud_firestore` (`>=0.5.4 <0.7.0`), and `google_cloud_storage` (`>=0.6.0 <0.8.0`).

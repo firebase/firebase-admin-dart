@@ -106,6 +106,9 @@ class FirebaseApp {
   /// Nullable to avoid triggering lazy initialization during cleanup.
   Future<googleapis_auth.AuthClient>? _httpClient;
 
+  // googleapis_auth never closes a caller-supplied baseClient.
+  Http2WithHttp1FallbackClient? _transport;
+
   Future<googleapis_auth.AuthClient> _createDefaultClient() async {
     final scopes = [
       auth3.IdentityToolkitApi.cloudPlatformScope,
@@ -114,7 +117,11 @@ class FirebaseApp {
     ];
     final credential =
         options.credential ?? Credential.fromApplicationDefaultCredentials();
-    return FirebaseUserAgentClient(await credential.createClient(scopes));
+    final transport = Http2WithHttp1FallbackClient();
+    _transport = transport;
+    return FirebaseUserAgentClient(
+      await credential.createClient(scopes, baseClient: transport),
+    );
   }
 
   /// The authenticated HTTP client for this app.
@@ -338,7 +345,14 @@ class FirebaseApp {
 
     // Only close client if it was initialized AND we created it (not user-provided)
     if (_httpClient != null && options.httpClient == null) {
-      (await _httpClient!).close();
+      _transport?.close();
+      try {
+        final client = await _httpClient!;
+        client.close();
+      } catch (_) {
+        // Ignore errors during client initialization/closure to ensure
+        // app is marked as deleted.
+      }
     }
 
     _isDeleted = true;

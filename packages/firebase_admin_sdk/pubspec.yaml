@@ -3,7 +3,7 @@ description: >-
   Firebase Admin SDK implementation for Dart - 
   Firestore, Cloud Storage, Auth, and FCM
 resolution: workspace
-version: 0.5.6
+version: 0.5.7-wip
 repository: https://github.com/firebase/firebase-admin-dart/tree/main/packages/firebase_admin_sdk
 
 environment:
@@ -20,6 +20,7 @@ dependencies:
   googleapis: '>=16.0.0 <18.0.0'
   googleapis_auth: ^2.3.3
   http: ^1.6.0
+  http2: ^3.1.0
   http_parser: ^4.1.2
   intl: ^0.20.0
   meta: ^1.17.0

@@ -34,6 +34,7 @@ import '../functions.dart';
 import '../messaging.dart';
 import '../security_rules.dart';
 import '../storage.dart';
+import 'app/http2_client.dart';
 import 'utils/utils.dart';
 
 part 'app/app_exception.dart';
