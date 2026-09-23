@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Fixed `CollectionReference.listDocuments()` returning only the first page of results. It now follows `nextPageToken` until the collection is exhausted, matching the Node Admin SDK, so large collections and missing documents past the first page are no longer silently dropped.
+- Fixed `DocumentReference.listCollections()` and `Firestore.listCollections()` returning only the first page of collection IDs. They now follow `nextPageToken` until every collection has been returned.
 
 ## 0.5.5
 
