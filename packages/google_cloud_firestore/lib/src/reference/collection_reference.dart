@@ -114,14 +114,16 @@ interface class CollectionReference<T> extends Query<T> {
   /// return fewer. When omitted, the backend's maximum is used.
   ///
   /// Pass a [DocumentReferencePage.nextPageToken] from an earlier call as
-  /// [pageToken] to resume listing where that page ended.
+  /// [pageToken] to resume listing where that page ended. The last page has a
+  /// `null` token, which means the listing is complete.
   ///
   /// ```dart
   /// await for (final page in collectionRef.listDocumentsPages(pageSize: 500)) {
   ///   for (final documentRef in page.documents) {
   ///     print('Found document with id: ${documentRef.id}');
   ///   }
-  ///   await saveCheckpoint(page.nextPageToken);
+  ///   final token = page.nextPageToken;
+  ///   token == null ? await markDone() : await saveCheckpoint(token);
   /// }
   /// ```
   Stream<DocumentReferencePage<T>> listDocumentsPages({

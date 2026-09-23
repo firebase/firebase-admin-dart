@@ -15,7 +15,8 @@
 @Tags(['firebase-emulator'])
 library;
 
-import 'package:google_cloud_firestore/google_cloud_firestore.dart';
+import 'package:google_cloud_firestore/google_cloud_firestore.dart'
+    hide greaterThan;
 import 'package:test/test.dart' hide throwsArgumentError;
 
 import 'fixtures/helpers.dart';
@@ -166,7 +167,11 @@ void main() {
 
       final pages = await collection.listDocumentsPages(pageSize: 100).toList();
 
-      expect(pages.map((page) => page.documents.length), [100, 100, 51]);
+      expect(pages, hasLength(greaterThan(1)));
+      expect(
+        pages.map((page) => page.documents.length),
+        everyElement(lessThanOrEqualTo(100)),
+      );
       expect(pages.last.nextPageToken, isNull);
       expect(pages.expand((page) => page.documents), orderedEquals(expected));
 
@@ -179,7 +184,10 @@ void main() {
           .expand((page) => page.documents)
           .toList();
 
-      expect(resumed, orderedEquals(expected.skip(100)));
+      expect(
+        resumed,
+        orderedEquals(expected.skip(pages.first.documents.length)),
+      );
     });
 
     test('override equal', () async {

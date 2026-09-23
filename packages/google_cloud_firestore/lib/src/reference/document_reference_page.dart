@@ -19,9 +19,9 @@ part of '../firestore.dart';
 @immutable
 final class DocumentReferencePage<T> {
   DocumentReferencePage._({
-    required this.documents,
+    required List<DocumentReference<T>> documents,
     required this.nextPageToken,
-  });
+  }) : documents = List.unmodifiable(documents);
 
   /// The document references in this page, including "missing documents".
   final List<DocumentReference<T>> documents;
