@@ -57,6 +57,7 @@ part 'reference/collection_reference.dart';
 part 'reference/composite_filter_internal.dart';
 part 'reference/constants.dart';
 part 'reference/document_reference.dart';
+part 'reference/document_reference_page.dart';
 part 'reference/field_filter_internal.dart';
 part 'reference/field_order.dart';
 part 'reference/filter_internal.dart';
