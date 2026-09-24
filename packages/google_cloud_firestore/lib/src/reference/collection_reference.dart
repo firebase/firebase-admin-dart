@@ -98,30 +98,45 @@ interface class CollectionReference<T> extends Query<T> {
   /// document reference (e.g. via [DocumentReference.get]) will return a
   /// [DocumentSnapshot] whose [DocumentSnapshot.exists] property is `false`.
   Future<List<DocumentReference<T>>> listDocuments() async {
-    final response = await firestore._firestoreClient.v1((api, projectId) {
-      final parentPath = _queryOptions.parentPath._toQualifiedResourcePath(
-        projectId,
-        firestore.databaseId,
-      );
+    final documents = <DocumentReference<T>>[];
 
-      final request = firestore_v1.ListDocumentsRequest(
-        parent: parentPath._formattedName,
-        collectionId: id,
-        showMissing: true,
-        // Setting `pageSize` to an arbitrarily large value lets the backend cap
-        // the page size (currently to 300). Note that the backend rejects
-        // MAX_INT32 (b/146883794).
-        pageSize: math.pow(2, 16 - 1).toInt(),
-        mask: firestore_v1.DocumentMask(fieldPaths: []),
-      );
+    // The backend caps each page, so follow `nextPageToken` until the
+    // collection is exhausted.
+    var pageToken = '';
+    do {
+      final response = await firestore._firestoreClient.v1((api, projectId) {
+        final parentPath = _queryOptions.parentPath._toQualifiedResourcePath(
+          projectId,
+          firestore.databaseId,
+        );
 
-      return api.listDocuments(request);
-    });
+        final request = firestore_v1.ListDocumentsRequest(
+          parent: parentPath._formattedName,
+          collectionId: id,
+          showMissing: true,
+          // Setting `pageSize` to an arbitrarily large value lets the backend
+          // cap the page size (currently to 300). Note that the backend
+          // rejects MAX_INT32 (b/146883794).
+          pageSize: (math.pow(2, 16) - 1).toInt(),
+          pageToken: pageToken,
+          mask: firestore_v1.DocumentMask(fieldPaths: []),
+        );
 
-    return [
-      for (final document in response.documents)
-        doc(_QualifiedResourcePath.fromSlashSeparatedString(document.name).id!),
-    ];
+        return api.listDocuments(request);
+      });
+
+      for (final document in response.documents) {
+        documents.add(
+          doc(
+            _QualifiedResourcePath.fromSlashSeparatedString(document.name).id!,
+          ),
+        );
+      }
+
+      pageToken = response.nextPageToken;
+    } while (pageToken.isNotEmpty);
+
+    return documents;
   }
 
   /// Add a new document to this collection with the specified data, assigning

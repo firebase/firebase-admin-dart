@@ -1,3 +1,8 @@
+## Unreleased
+
+- Fixed `CollectionReference.listDocuments()` returning only the first page of results. It now follows `nextPageToken` until the collection is exhausted, matching the Node Admin SDK, so large collections and missing documents past the first page are no longer silently dropped.
+- Fixed `DocumentReference.listCollections()` and `Firestore.listCollections()` returning only the first page of collection IDs. They now follow `nextPageToken` until every collection has been returned.
+
 ## 0.5.5
 
 - Fixed slow and failing requests under high concurrency by pooling shared HTTP/2 connections by default instead of opening a new HTTP/1.1 connection per request, via `package:http2`'s `Http2Client`. Credential endpoints that speak plain HTTP, such as the GCE/Cloud Run metadata server, keep using HTTP/1.1.
