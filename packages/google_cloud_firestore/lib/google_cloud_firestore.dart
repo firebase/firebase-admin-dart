@@ -35,6 +35,7 @@ export 'src/firestore.dart'
         DocumentChangeType,
         DocumentData,
         DocumentReference,
+        DocumentReferencePage,
         DocumentSnapshot,
         EnabledThrottling,
         ExecutionStats,
