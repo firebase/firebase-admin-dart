@@ -319,6 +319,10 @@ class FirebaseMessagingRequestHandler {
           body: '{}',
         );
       } else {
+        // allow_missing=true ensures the request is idempotent if the token
+        // is not currently subscribed to the topic (returning 200 instead of 404).
+        // If the registration token itself is unregistered, the parent registration
+        // resource is missing and FCM still returns 404 NOT_FOUND.
         final uri = Uri(
           scheme: 'https',
           host: _httpClient.fcmHost,
