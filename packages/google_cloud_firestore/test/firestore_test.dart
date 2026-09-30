@@ -89,6 +89,42 @@ void main() {
       }, zoneValues: {envSymbol: <String, String>{}});
     });
 
+    test('projectId getter returns value from service account credential', () {
+      runZoned(() {
+        final firestore = Firestore(
+          settings: Settings(
+            credential: Credential.fromServiceAccountParams(
+              email: 'test@test-project.iam.gserviceaccount.com',
+              privateKey: mockPrivateKey,
+              projectId: 'sa-project',
+            ),
+          ),
+        );
+        expect(firestore.projectId, 'sa-project');
+      }, zoneValues: {envSymbol: <String, String>{}});
+    });
+
+    test(
+      'FirestoreHttpClient.getProjectId resolves Settings.projectId and credential projectId',
+      () {
+        final clientWithSettings = FirestoreHttpClient(
+          credential: Credential.fromApplicationDefaultCredentials(),
+          settings: const Settings(projectId: 'settings-project'),
+        );
+        expect(clientWithSettings.getProjectId(), 'settings-project');
+
+        final clientWithSa = FirestoreHttpClient(
+          credential: Credential.fromServiceAccountParams(
+            email: 'test@test-project.iam.gserviceaccount.com',
+            privateKey: mockPrivateKey,
+            projectId: 'sa-project',
+          ),
+          settings: const Settings(),
+        );
+        expect(clientWithSa.getProjectId(), 'sa-project');
+      },
+    );
+
     test('databaseId getter returns default when not set', () {
       final firestore = Firestore(settings: const Settings());
 

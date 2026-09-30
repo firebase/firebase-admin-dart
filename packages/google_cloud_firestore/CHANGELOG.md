@@ -1,10 +1,24 @@
 ## Unreleased
 
-- Added support for Firestore Pipelines: `Firestore.pipeline()`, the `Pipeline` stage builders, and the `PipelineFunctions` expression catalog.
+- Added `CollectionReference.listDocumentsPages()`, which lists a collection's documents, including missing documents, one `DocumentReferencePage` at a time. It takes an optional `pageSize` and a `pageToken` to resume from a previous page's `nextPageToken`, so large collections can be walked without holding every reference in memory.
+- Fixed `CollectionReference.listDocuments()` returning only the first page of results. It now follows `nextPageToken` until the collection is exhausted, matching the Node Admin SDK, so large collections and missing documents past the first page are no longer silently dropped.
+- Fixed `DocumentReference.listCollections()` and `Firestore.listCollections()` returning only the first page of collection IDs. They now follow `nextPageToken` until every collection has been returned.
+
+## 0.5.5
+
+- Fixed slow and failing requests under high concurrency by pooling shared HTTP/2 connections by default instead of opening a new HTTP/1.1 connection per request, via `package:http2`'s `Http2Client`. Credential endpoints that speak plain HTTP, such as the GCE/Cloud Run metadata server, keep using HTTP/1.1.
+- Widen dependency upper bounds for `google_cloud_firestore_v1` (`>=0.5.2 <0.7.0`) and `google_cloud_rpc` (`>=0.5.2 <0.7.0`).
+- Update `handleFirestoreException` to inspect `ServiceException.status` and `ServiceException.message` for compatibility with `google_cloud_rpc 0.6.0`.
+
+## 0.5.4
+
+- Added support for Firestore Pipelines: `Firestore.pipeline()`, the `Pipeline` stage builders, the `PipelineFunctions` expression catalog, and the top-level `equal`, `notEqual`, `lessThan`, `lessThanOrEqual`, `greaterThan`, `greaterThanOrEqual`, `and`, `or`, `not`, `field`, `constant`, `ascending` and `descending` helpers. The expression surface mirrors the Node Admin SDK.
 - Added `PipelineSource.createFrom()` to convert a `Query` or `VectorQuery` into an equivalent Pipeline.
-- `Pipeline.unnest()` now takes the selectable whose alias names each emitted element, and encodes `indexField` as a field reference.
-- `Pipeline.replaceWith()` now sends the required replace mode, `Pipeline.sample()` sends the sampling rate and mode as arguments, and `Pipeline.distinct()` sends its groups as a single map, all matching the backend contract.
+- Added `Transaction.executePipeline()` to run a Pipeline at a transaction's snapshot, with the same `indexMode`, `explain` and `rawOptions` parameters as `Pipeline.execute()`.
+- Added Pipeline execution options on `Pipeline.execute()`: `indexMode`, `explain` for planner statistics (read back from `PipelineSnapshot.explainStats`), and a `rawOptions` escape hatch for options this SDK does not wrap yet.
 - `PipelineFunctions.minimum()`/`maximum()` are aggregate-only; use `logicalMinimum()`/`logicalMaximum()` for the element-wise form.
+- Fixed `Settings.ssl` being ignored when connecting to a custom `Settings.host` endpoint without `FIRESTORE_EMULATOR_HOST`.
+- Fixed `FirestoreHttpClient.getProjectId()` and `_run()` ignoring `Settings.projectId` and `Settings.credential` service account project IDs when `GOOGLE_CLOUD_PROJECT` is set in the ambient process environment.
 
 ## 0.5.3
 

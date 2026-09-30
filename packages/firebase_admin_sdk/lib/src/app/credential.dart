@@ -261,7 +261,10 @@ sealed class Credential {
   ///   client.close();
   /// }
   /// ```
-  Future<googleapis_auth.AuthClient> createClient(List<String> scopes);
+  Future<googleapis_auth.AuthClient> createClient(
+    List<String> scopes, {
+    Client? baseClient,
+  });
 
   /// Returns the underlying [googleapis_auth.ServiceAccountCredentials] if this is a
   /// [ServiceAccountCredential], null otherwise.
@@ -308,11 +311,14 @@ final class ServiceAccountCredential extends Credential {
   String get privateKey => _serviceAccountCredentials.privateKey;
 
   @override
-  Future<googleapis_auth.AuthClient> createClient(List<String> scopes) =>
-      googleapis_auth.clientViaServiceAccount(
-        _serviceAccountCredentials,
-        scopes,
-      );
+  Future<googleapis_auth.AuthClient> createClient(
+    List<String> scopes, {
+    Client? baseClient,
+  }) => googleapis_auth.clientViaServiceAccount(
+    _serviceAccountCredentials,
+    scopes,
+    baseClient: baseClient,
+  );
 
   @override
   googleapis_auth.ServiceAccountCredentials? get serviceAccountCredentials =>
@@ -344,12 +350,15 @@ final class RefreshTokenCredential extends Credential {
   final String refreshToken;
 
   @override
-  Future<googleapis_auth.AuthClient> createClient(List<String> scopes) =>
-      googleapis_auth.clientViaRefreshToken(
-        googleapis_auth.ClientId(clientId, clientSecret),
-        refreshToken,
-        scopes,
-      );
+  Future<googleapis_auth.AuthClient> createClient(
+    List<String> scopes, {
+    Client? baseClient,
+  }) => googleapis_auth.clientViaRefreshToken(
+    googleapis_auth.ClientId(clientId, clientSecret),
+    refreshToken,
+    scopes,
+    baseClient: baseClient,
+  );
 
   @override
   googleapis_auth.ServiceAccountCredentials? get serviceAccountCredentials =>
@@ -383,8 +392,13 @@ final class ApplicationDefaultCredential extends Credential {
   final String? _serviceAccountId;
 
   @override
-  Future<googleapis_auth.AuthClient> createClient(List<String> scopes) =>
-      googleapis_auth.clientViaApplicationDefaultCredentials(scopes: scopes);
+  Future<googleapis_auth.AuthClient> createClient(
+    List<String> scopes, {
+    Client? baseClient,
+  }) => googleapis_auth.clientViaApplicationDefaultCredentials(
+    scopes: scopes,
+    baseClient: baseClient,
+  );
 
   @override
   googleapis_auth.ServiceAccountCredentials? get serviceAccountCredentials =>

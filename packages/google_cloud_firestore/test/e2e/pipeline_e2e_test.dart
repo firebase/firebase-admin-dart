@@ -165,7 +165,7 @@ void main() {
           .where(
             _runFilter(
               runId,
-              Expression.field('title').equalValue('Dart Pipelines'),
+              Expression.field('title').equal('Dart Pipelines'),
             ),
           )
           .limit(1)
@@ -173,14 +173,14 @@ void main() {
 
       expect(metadataSnapshot.results.single.createTime, isNotNull);
       expect(metadataSnapshot.results.single.updateTime, isNotNull);
-      expect(metadataSnapshot.results.single.document, isNotNull);
+      expect(metadataSnapshot.results.single.ref, isNotNull);
     });
 
     test('executes aggregate pipeline stages', () async {
       final aggregateSnapshot = await firestore
           .pipeline()
           .collection(_collectionPath)
-          .where(_runFilter(runId, Expression.field('active').equalValue(true)))
+          .where(_runFilter(runId, Expression.field('active').equal(true)))
           .aggregate([
             Expression.field('price').sum().as('totalPrice'),
             Expression.field('rating').average().as('averageRating'),
@@ -192,6 +192,41 @@ void main() {
       expect(aggregateSnapshot.results.single.get('totalPrice'), 30);
       expect(aggregateSnapshot.results.single.get('averageRating'), 4.5);
       expect(aggregateSnapshot.results.single.get('bookCount'), 2);
+    });
+
+    test('requests explain stats via typed options', () async {
+      final snapshot = await firestore
+          .pipeline()
+          .collection(_collectionPath)
+          .where(_runFilter(runId, Expression.field('active').equal(true)))
+          .execute(
+            explain: const PipelineExplainOptions(
+              mode: PipelineExplainMode.analyze,
+              outputFormat: PipelineExplainOutputFormat.text,
+            ),
+          );
+
+      // `analyze` runs the pipeline and returns planning stats alongside the
+      // results, which is what proves the option names reached the backend.
+      expect(snapshot.results, isNotEmpty);
+      expect(snapshot.explainStats, isNotNull);
+      expect(snapshot.explainStats!.text, isNotEmpty);
+    });
+
+    test('executes a pipeline inside a transaction', () async {
+      final titles = await firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.executePipeline(
+          firestore
+              .pipeline()
+              .collection(_collectionPath)
+              .where(_runFilter(runId, Expression.field('active').equal(true)))
+              .sort([Expression.field('price').ascending()])
+              .select([Expression.field('title')]),
+        );
+        return [for (final result in snapshot.results) result.get('title')];
+      }, transactionOptions: ReadOnlyTransactionOptions());
+
+      expect(titles, ['Dart Pipelines', 'Firestore Admin']);
     });
 
     test('executes a documents source stage', () async {
@@ -217,7 +252,7 @@ void main() {
               .where(
                 _runFilter(
                   runId,
-                  Expression.field('title').equalValue('Dart Pipelines'),
+                  Expression.field('title').equal('Dart Pipelines'),
                 ),
               )
               .select([
@@ -246,7 +281,7 @@ void main() {
           final snapshot = await firestore
               .pipeline()
               .collection(_collectionPath)
-              .where(Expression.field('runId').equalValue(runId))
+              .where(Expression.field('runId').equal(runId))
               .aggregate([
                 for (final expectation in scenario.expectations)
                   expectation.expression.as(expectation.alias),
@@ -270,7 +305,7 @@ void main() {
       final vectorSnapshot = await firestore
           .pipeline()
           .collection(_collectionPath)
-          .where(Expression.field('runId').equalValue(runId))
+          .where(Expression.field('runId').equal(runId))
           .findNearest(
             vectorField: 'embedding',
             queryVector: Expression.vector([1, 0, 0]),
@@ -299,7 +334,7 @@ PipelineBooleanExpression _runFilter(
   PipelineBooleanExpression? condition,
 ]) {
   return PipelineFunctions.and([
-    Expression.field('runId').equalValue(runId),
+    Expression.field('runId').equal(runId),
     ?condition,
   ]);
 }
@@ -355,23 +390,11 @@ final _functionScenarios = <_FunctionScenario>[
       Expression.field('score').abs(),
       closeTo(12.7, 0.0001),
     ),
-    _FunctionExpectation('add', Expression.field('price').addNumber(2), 12),
-    _FunctionExpectation(
-      'subtract',
-      Expression.field('price').subtractNumber(3),
-      7,
-    ),
-    _FunctionExpectation(
-      'multiply',
-      Expression.field('price').multiplyNumber(2),
-      20,
-    ),
-    _FunctionExpectation(
-      'divide',
-      Expression.field('price').divideNumber(2),
-      5,
-    ),
-    _FunctionExpectation('mod', Expression.field('price').moduloNumber(4), 2),
+    _FunctionExpectation('add', Expression.field('price').add(2), 12),
+    _FunctionExpectation('subtract', Expression.field('price').subtract(3), 7),
+    _FunctionExpectation('multiply', Expression.field('price').multiply(2), 20),
+    _FunctionExpectation('divide', Expression.field('price').divide(2), 5),
+    _FunctionExpectation('mod', Expression.field('price').mod(4), 2),
     _FunctionExpectation('ceil', Expression.constant(12.2).ceil(), 13),
     _FunctionExpectation('floor', Expression.constant(12.8).floor(), 12),
     _FunctionExpectation('round', Expression.constant(12.6).round(), 13),
@@ -413,14 +436,12 @@ final _functionScenarios = <_FunctionScenario>[
     ),
     _FunctionExpectation(
       'arrayContainsValue',
-      Expression.field('tags').arrayContainsValue('dart'),
+      Expression.field('tags').arrayContains('dart'),
       true,
     ),
     _FunctionExpectation(
       'arrayContainsElement',
-      Expression.field(
-        'tags',
-      ).arrayContainsElement(Expression.constant('firebase')),
+      Expression.field('tags').arrayContains(Expression.constant('firebase')),
       true,
     ),
     _FunctionExpectation(
@@ -440,10 +461,9 @@ final _functionScenarios = <_FunctionScenario>[
     ),
     _FunctionExpectation(
       'arrayFilter',
-      Expression.field('tags').arrayFilter(
-        'tag',
-        Expression.variable('tag').notEqualValue('firebase'),
-      ),
+      Expression.field(
+        'tags',
+      ).arrayFilter('tag', Expression.variable('tag').notEqual('firebase')),
       ['dart'],
     ),
     _FunctionExpectation(
@@ -505,7 +525,7 @@ final _functionScenarios = <_FunctionScenario>[
       'arrayTransform',
       Expression.field(
         'numbers',
-      ).arrayTransform('n', Expression.variable('n').addNumber(1)),
+      ).arrayTransform('n', Expression.variable('n').add(1)),
       [4, 2, 3, 4],
     ),
     _FunctionExpectation(
@@ -534,34 +554,30 @@ final _functionScenarios = <_FunctionScenario>[
     ),
   ]),
   _FunctionScenario('comparison functions', [
-    _FunctionExpectation(
-      'equal',
-      Expression.field('price').equalValue(10),
-      true,
-    ),
+    _FunctionExpectation('equal', Expression.field('price').equal(10), true),
     _FunctionExpectation(
       'notEqual',
-      Expression.field('price').notEqualValue(11),
+      Expression.field('price').notEqual(11),
       true,
     ),
     _FunctionExpectation(
       'greaterThan',
-      Expression.field('price').greaterThanValue(9),
+      Expression.field('price').greaterThan(9),
       true,
     ),
     _FunctionExpectation(
       'greaterThanOrEqual',
-      Expression.field('price').greaterThanOrEqualValue(10),
+      Expression.field('price').greaterThanOrEqual(10),
       true,
     ),
     _FunctionExpectation(
       'lessThan',
-      Expression.field('price').lessThanValue(11),
+      Expression.field('price').lessThan(11),
       true,
     ),
     _FunctionExpectation(
       'lessThanOrEqual',
-      Expression.field('price').lessThanOrEqualValue(10),
+      Expression.field('price').lessThanOrEqual(10),
       true,
     ),
     _FunctionExpectation(
@@ -579,13 +595,13 @@ final _functionScenarios = <_FunctionScenario>[
     ),
     _FunctionExpectation(
       'ifAbsent',
-      Expression.field('missing').ifAbsentValue('fallback'),
+      Expression.field('missing').ifAbsent('fallback'),
       'fallback',
     ),
     _FunctionExpectation('isError', Expression.field('title').isError(), false),
     _FunctionExpectation(
       'ifError',
-      Expression.field('title').ifErrorValue('caught'),
+      Expression.field('title').ifError('caught'),
       'Dart Pipelines',
     ),
   ]),
@@ -809,7 +825,7 @@ final _functionScenarios = <_FunctionScenario>[
     ),
     _FunctionExpectation(
       'timestampTrunc',
-      Expression.field('createdAt').timestampTrunc('day', 'UTC'),
+      Expression.field('createdAt').timestampTruncate('day', 'UTC'),
       isA<Timestamp>(),
     ),
     _FunctionExpectation(

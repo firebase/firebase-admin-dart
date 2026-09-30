@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// `Http2Client` is `@experimental` upstream; the `^3.1.0` pin bounds the risk.
+// ignore_for_file: experimental_member_use
+
 import 'dart:async';
 
 import 'package:google_cloud/constants.dart' as google_cloud;
@@ -19,6 +22,7 @@ import 'package:google_cloud/google_cloud.dart' as google_cloud;
 import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
 import 'package:googleapis_auth/auth_io.dart' as googleapis_auth;
 import 'package:http/http.dart';
+import 'package:http2/client.dart';
 import 'package:meta/meta.dart';
 
 import '../google_cloud_firestore.dart';
@@ -115,6 +119,40 @@ class EmulatorClient extends BaseClient implements googleapis_auth.AuthClient {
   void close() => client.close();
 }
 
+/// Routes `https` requests over a pooled HTTP/2 transport and everything
+/// else over plain HTTP/1.1.
+///
+/// googleapis_auth sends more than Firestore's own API calls through the
+/// `baseClient` it is handed. Credential negotiation can target plain
+/// `http` endpoints that speak no HTTP/2 at all: Application Default
+/// Credentials on GCE and Cloud Run fetch tokens from
+/// `http://metadata.google.internal`, and an external-account
+/// (WIF/OIDC) `credential_source` commonly points at a link-local
+/// metadata address. [Http2Client] rejects a non-`https` URL outright, so
+/// those requests need a transport of their own.
+@internal
+class Http2WithHttp1FallbackClient extends BaseClient {
+  Http2WithHttp1FallbackClient({Http2Client? http2, Client? http1})
+    : _http2 = http2 ?? Http2Client(),
+      _http1 = http1;
+
+  final Http2Client _http2;
+
+  Client? _http1;
+
+  @override
+  Future<StreamedResponse> send(BaseRequest request) =>
+      request.url.scheme == 'https'
+      ? _http2.send(request)
+      : (_http1 ??= Client()).send(request);
+
+  @override
+  void close() {
+    _http2.close();
+    _http1?.close();
+  }
+}
+
 /// HTTP client wrapper for Firestore API operations.
 ///
 /// Provides authenticated API access with automatic project ID discovery.
@@ -129,12 +167,13 @@ class FirestoreHttpClient {
 
   String? get cachedProjectId => _cachedProjectId;
 
-  /// Synchronously resolves the project ID from environment variables or the
-  /// credentials file, without any network I/O.
+  /// Synchronously resolves the project ID from settings, credentials,
+  /// environment variables, or the credentials file, without any network I/O.
   ///
   /// Checks (in order): [cachedProjectId], Zone env ([envSymbol]),
-  /// [Settings.environmentOverride], real environment variables, then the
-  /// credentials file at `GOOGLE_APPLICATION_CREDENTIALS`.
+  /// [Settings.environmentOverride], [Settings.projectId],
+  /// [Credential.serviceAccountCredentials], real environment variables, then
+  /// the credentials file at `GOOGLE_APPLICATION_CREDENTIALS`.
   ///
   /// Returns `null` when only async strategies (gcloud CLI, metadata server)
   /// could succeed; those are handled by [_run] and cached in [cachedProjectId].
@@ -147,7 +186,7 @@ class FirestoreHttpClient {
     if (zoneEnv != null) {
       for (final envKey in google_cloud.projectIdEnvironmentVariableOptions) {
         final value = zoneEnv[envKey];
-        if (value != null) {
+        if (value != null && value.isNotEmpty) {
           discovered = value;
           break;
         }
@@ -157,16 +196,23 @@ class FirestoreHttpClient {
       if (envOverride != null) {
         for (final envKey in google_cloud.projectIdEnvironmentVariableOptions) {
           final value = envOverride[envKey];
-          if (value != null) {
+          if (value != null && value.isNotEmpty) {
             discovered = value;
             break;
           }
         }
-      } else {
-        discovered =
-            google_cloud.projectIdFromEnvironmentVariables() ??
-            google_cloud.projectIdFromCredentialsFile();
       }
+    }
+
+    discovered ??=
+        _settings.projectId ?? credential.serviceAccountCredentials?.projectId;
+
+    if (discovered == null &&
+        zoneEnv == null &&
+        _settings.environmentOverride == null) {
+      discovered =
+          google_cloud.projectIdFromEnvironmentVariables() ??
+          google_cloud.projectIdFromCredentialsFile();
     }
 
     return discovered != null ? (_cachedProjectId = discovered) : null;
@@ -200,6 +246,9 @@ class FirestoreHttpClient {
   /// Lazy-initialized HTTP client that's cached for reuse.
   late final Future<googleapis_auth.AuthClient> _client = _createClient();
 
+  // googleapis_auth never closes a caller-supplied baseClient.
+  Http2WithHttp1FallbackClient? _transport;
+
   /// Creates the appropriate HTTP client based on emulator configuration.
   Future<googleapis_auth.AuthClient> _createClient() async {
     final client = await _createBaseClient();
@@ -212,21 +261,23 @@ class FirestoreHttpClient {
 
   Future<googleapis_auth.AuthClient> _createBaseClient() async {
     if (_isUsingEmulator) {
-      // Emulator: Create unauthenticated client.
+      // Plain HTTP/1.1, matching nodejs-firestore's REST mode for the emulator.
       return EmulatorClient(Client());
     }
 
-    // Production: Create authenticated client.
+    final transport = Http2WithHttp1FallbackClient();
+    _transport = transport;
+
     final serviceAccountCreds = credential.serviceAccountCredentials;
     if (serviceAccountCreds != null) {
       return googleapis_auth.clientViaServiceAccount(serviceAccountCreds, [
         'https://www.googleapis.com/auth/cloud-platform',
-      ]);
+      ], baseClient: transport);
     }
 
-    // Fall back to Application Default Credentials
     return googleapis_auth.clientViaApplicationDefaultCredentials(
       scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+      baseClient: transport,
     );
   }
 
@@ -235,10 +286,7 @@ class FirestoreHttpClient {
   ) async {
     final client = await _client;
 
-    final projectId =
-        getProjectId() ??
-        _settings.projectId ??
-        await google_cloud.computeProjectId();
+    final projectId = getProjectId() ?? await google_cloud.computeProjectId();
 
     _cachedProjectId = projectId;
 
@@ -256,8 +304,13 @@ class FirestoreHttpClient {
   );
 
   /// Closes the HTTP client and releases resources.
+  ///
+  /// [Http2Client.close] rejects new requests immediately and drains the
+  /// in-flight ones in the background, so pooled connections may outlive
+  /// this call by as long as their last response takes to finish.
   Future<void> close() async {
     final client = await _client;
     client.close();
+    _transport?.close();
   }
 }

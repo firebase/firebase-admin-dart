@@ -343,3 +343,7 @@ jobs:
         working-directory: .
 
       - run: dart pub publish --dry-run
+        working-directory: packages/google_cloud_firestore
+
+      - run: dart pub publish --dry-run
+        working-directory: packages/firebase_admin_sdk
