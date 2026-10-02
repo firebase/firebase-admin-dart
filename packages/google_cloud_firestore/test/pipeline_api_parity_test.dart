@@ -168,8 +168,6 @@ const _knownDifferences = <String, String>{
       'requires an argument.',
   'PipelineExpression.arrayConcat#arity':
       'Takes a single array; the variadic form is arrayConcatMultiple.',
-  'PipelineExpression.arrayContainsAll#values':
-      'Takes an Iterable; an array expression goes to arrayContainsAllFrom.',
   'PipelineSource.collection#collectionPath':
       'Takes a path; a CollectionReference goes to collectionReference(), '
       'since Dart has no overloads.',
@@ -211,20 +209,10 @@ const _pendingFixes = <String, String>{
       'Node add(second, ...others) is variadic; Dart add(other) takes one.',
   'PipelineExpression.multiply#arity':
       'Node multiply(second, ...others) is variadic; Dart takes one.',
-  'PipelineFunctions.arraySlice#arity':
-      'Node arraySlice(array, offset, length?) makes length optional, like '
-      'PipelineExpression.arraySlice; the static requires it.',
-  'PipelineFunctions.arrayTransform#arity':
-      'Takes a 4th optional indexVariableName after the transform; Node has '
-      'arrayTransform(array, elementAlias, transform) and a separate '
-      'arrayTransformWithIndex(array, elementAlias, indexAlias, transform).',
   'PipelineFunctions.map#keyValues':
       'Takes an Iterable of alternating keys and values; Node '
       'map(elements: Record<string, unknown>) takes a map, which Dart '
       'callers cannot pass.',
-  'PipelineExpression.arrayContainsAny#values':
-      'Only takes an Iterable; Node also takes an array expression and Dart '
-      'has no arrayContainsAnyFrom, unlike arrayContainsAll.',
   'field#fieldPath':
       'Only takes a String; Node field() also takes a FieldPath.',
   'Expression.field#fieldPath':
@@ -260,8 +248,6 @@ const _pendingFixes = <String, String>{
       'Node has no referenceSlice; check the backend supports '
       '`reference_slice`, or drop.',
   // Node APIs Dart does not implement yet.
-  'PipelineFunctions.arrayTransformWithIndex':
-      'Missing static; only PipelineExpression.arrayTransformWithIndex exists.',
   'PipelineFunctions.subcollection':
       'Missing: Node subcollection(path | options) starts a subcollection '
       'Pipeline for use inside another stage.',

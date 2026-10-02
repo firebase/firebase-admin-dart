@@ -85,9 +85,6 @@ const _pendingFixes = <String, String>{
       'select() leaves special-character field paths unquoted; Node quotes '
       'them, and keys a PipelineField by its quoted path ("`last name`").',
   // Ordering helpers.
-  'stages/sort/top-level-field-name':
-      "ascending('rating') / descending('title') sort by the string "
-      'constant (stringValue) instead of the field (fieldReferenceValue).',
   // Query to Pipeline conversion.
   'queries/where/not-equal':
       "createFrom(query) leaves '!=' fields out of the implicit sort; "
@@ -2438,12 +2435,21 @@ void _registerArrays(_Registry r) {
   PipelineExpression indexed() => variable('tag').stringConcat([variable('i')]);
   r.expr(
     'functions/arrayTransformWithIndex/static-field-name',
-    () => PipelineFunctions.arrayTransform('tags', 'tag', indexed(), 'i'),
+    () => PipelineFunctions.arrayTransformWithIndex(
+      'tags',
+      'tag',
+      'i',
+      indexed(),
+    ),
   );
   r.expr(
     'functions/arrayTransformWithIndex/static-expression',
-    () =>
-        PipelineFunctions.arrayTransform(field('tags'), 'tag', indexed(), 'i'),
+    () => PipelineFunctions.arrayTransformWithIndex(
+      field('tags'),
+      'tag',
+      'i',
+      indexed(),
+    ),
   );
   r.expr(
     'functions/arrayTransformWithIndex/method',
