@@ -545,9 +545,10 @@ void main() {
             ),
           );
 
+      // The backend rejects index_mode ("Unsupported option: index_mode"), so
+      // the deprecated indexMode is not sent.
       final options = capturedRequest!.structuredPipeline!.options;
-      expect(options.keys, unorderedEquals(['index_mode', 'explain_options']));
-      expect(options['index_mode']!.stringValue, 'recommended');
+      expect(options.keys, ['explain_options']);
 
       final explain = options['explain_options']!.mapValue!.fields;
       expect(explain['mode']!.stringValue, 'analyze');
@@ -741,9 +742,10 @@ void main() {
       final request = requests.single;
 
       // Pipeline options and the transaction live on different parts of the
-      // request, so neither clobbers the other.
+      // request, so neither clobbers the other. The deprecated indexMode is
+      // not sent, as on Pipeline.execute.
       final options = request.structuredPipeline!.options;
-      expect(options['index_mode']!.stringValue, 'recommended');
+      expect(options.keys, ['explain_options']);
       expect(
         options['explain_options']!.mapValue!.fields['mode']!.stringValue,
         'analyze',
