@@ -105,6 +105,39 @@ void main() {
       expect(valueOf('last name'), 'Lovelace');
     });
 
+    test('sort and select take FieldPaths with a dotted segment', () async {
+      // `dotted.key` is a single field of `nested`, 'dot' in every book, so
+      // the categories decide the order: sdk, draft, admin.
+      final snapshot = await ctx
+          .runPipeline()
+          .sort([
+            ascending(FieldPath(const ['nested', 'dotted.key'])),
+            descending(FieldPath(const ['metadata', 'category'])),
+          ])
+          .select([
+            'title',
+            FieldPath(const ['nested', 'dotted.key']),
+          ])
+          .execute();
+
+      expect(
+        [for (final result in snapshot.results) result.get('title')],
+        ['Dart Pipelines', 'Inactive Draft', 'Firestore Admin'],
+      );
+      // The selection is keyed by its quoted path, nested.`dotted.key`.
+      // Whether the value comes back nested under `nested` or under a single
+      // key is not pinned down yet, so any of them is accepted.
+      for (final result in snapshot.results) {
+        final data = result.data();
+        expect(
+          result.get(FieldPath(const ['nested', 'dotted.key'])) ??
+              data['nested.`dotted.key`'] ??
+              data['nested.dotted.key'],
+          'dot',
+        );
+      }
+    });
+
     test('an alias names the field its expression lands on', () async {
       final aliased = Expression.field('price').as('cost');
 
@@ -137,21 +170,29 @@ void main() {
       expect(single.results.single.get('upper'), 'DART PIPELINES');
     });
 
-    test('removeFields drops fields named by string or field', () async {
-      final data = await _dataOf(
-        ctx.book1Pipeline().removeFields([Expression.field('price'), 'rating']),
-      );
+    test(
+      'removeFields drops fields named by string, FieldPath or field',
+      () async {
+        final data = await _dataOf(
+          ctx.book1Pipeline().removeFields([
+            Expression.field('price'),
+            'rating',
+            FieldPath(const ['first-name']),
+          ]),
+        );
 
-      expect(data, hasLength(1));
-      // Every other seeded field is still there.
-      expect(
-        data.single.keys,
-        unorderedEquals(
-          ctx.seed[0].keys.where((key) => key != 'price' && key != 'rating'),
-        ),
-      );
-      expect(data.single['title'], 'Dart Pipelines');
-    });
+        expect(data, hasLength(1));
+        // Every other seeded field is still there.
+        const removed = {'price', 'rating', 'first-name'};
+        expect(
+          data.single.keys,
+          unorderedEquals(
+            ctx.seed[0].keys.where((key) => !removed.contains(key)),
+          ),
+        );
+        expect(data.single['title'], 'Dart Pipelines');
+      },
+    );
 
     test('sort applies its orderings in sequence', () async {
       // active descending puts the two active books first (false sorts before
@@ -247,6 +288,22 @@ void main() {
           {'active': true, 'lang': 'dart'},
         ],
       );
+
+      // A FieldPath names a group as a String does.
+      expect(
+        await _dataOf(
+          ctx
+              .runPipeline()
+              .distinct([
+                FieldPath(const ['active']),
+              ])
+              .sort([ascending('active')]),
+        ),
+        [
+          {'active': false},
+          {'active': true},
+        ],
+      );
     });
 
     test('unnest by field name replaces the array with each element', () async {
@@ -255,6 +312,22 @@ void main() {
           ctx.book1Pipeline().unnest('tags').select(['title', 'tags']).sort([
             ascending('tags'),
           ]),
+        ),
+        [
+          {'title': 'Dart Pipelines', 'tags': 'dart'},
+          {'title': 'Dart Pipelines', 'tags': 'firebase'},
+        ],
+      );
+    });
+
+    test('unnest by FieldPath replaces the array with each element', () async {
+      expect(
+        await _dataOf(
+          ctx
+              .book1Pipeline()
+              .unnest(FieldPath(const ['tags']))
+              .select(['title', 'tags'])
+              .sort([ascending('tags')]),
         ),
         [
           {'title': 'Dart Pipelines', 'tags': 'dart'},
@@ -336,6 +409,18 @@ void main() {
       expect(await _dataOf(ctx.book1Pipeline().replaceWith('metadata')), [
         {'lang': 'dart', 'category': 'sdk'},
       ]);
+      expect(
+        await _dataOf(
+          ctx.book1Pipeline().replaceWith(
+            FieldPath(const ['nested', 'level1']),
+          ),
+        ),
+        [
+          {
+            'level2': {'value': 42},
+          },
+        ],
+      );
     });
 
     test('replaceWith an expression uses the map it evaluates to', () async {
@@ -484,15 +569,15 @@ void main() {
       );
     });
 
-    test('findNearest by cosine distance', () async {
+    test('findNearest by cosine distance, with FieldPath fields', () async {
       final snapshot = await ctx
           .runPipeline()
           .findNearest(
-            vectorField: 'embedding',
+            vectorField: FieldPath(const ['embedding']),
             queryVector: const [3.0, 2.0, 1.0],
             distanceMeasure: DistanceMeasure.cosine,
             limit: 3,
-            distanceResultField: 'distance',
+            distanceResultField: FieldPath(const ['distance']),
           )
           .execute();
 

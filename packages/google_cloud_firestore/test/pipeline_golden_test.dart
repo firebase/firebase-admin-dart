@@ -733,7 +733,9 @@ final class _Registry {
     String area = 'functions',
   }) {
     final register = area == 'aggregates' ? aggregate : expr;
-    register('$area/$name/static-field-name', () => static(target));
+    register('$area/$name/static-field-name', () => static(target), [
+      () => static(_fieldPathOf(target)),
+    ]);
     register('$area/$name/static-expression', () => static(field(target)));
     register('$area/$name/method', () => method(field(target)));
   }
@@ -758,6 +760,9 @@ final class _Registry {
     ) {
       expr('functions/$name/static-$variant', () => static(target(), op()), [
         for (final s in statics.skip(1)) () => s(target(), op()),
+        // A FieldPath names the target field as its String does.
+        if (target() case final String name)
+          for (final s in statics) () => s(_fieldPathOf(name), op()),
       ]);
     }
 
@@ -778,6 +783,9 @@ final class _Registry {
 }
 
 Pipeline _books(Firestore db) => db.pipeline().collection('books');
+
+/// The [FieldPath] naming the same field as the dotted String [name].
+FieldPath _fieldPathOf(String name) => FieldPath(name.split('.'));
 
 Pipeline _wrap(Firestore db, PipelineExpression expression) {
   return switch (expression) {
@@ -1363,10 +1371,22 @@ void _registerStages(_Registry r) {
   stage(
     'select/nested-field-path',
     (db) => _books(db).select(['metadata.lang', field('awards.hugo')]),
+    [
+      (db) => _books(db).select([
+        FieldPath(const ['metadata', 'lang']),
+        field('awards.hugo'),
+      ]),
+    ],
   );
   stage(
     'select/special-characters',
     (db) => _books(db).select(['first-name', field('last name')]),
+    [
+      (db) => _books(db).select([
+        FieldPath(const ['first-name']),
+        FieldPath(const ['last name']),
+      ]),
+    ],
   );
   stage(
     'select/options-object',
@@ -1413,6 +1433,11 @@ void _registerStages(_Registry r) {
   stage(
     'remove-fields/nested',
     (db) => _books(db).removeFields(['metadata.lang']),
+    [
+      (db) => _books(db).removeFields([
+        FieldPath(const ['metadata', 'lang']),
+      ]),
+    ],
   );
   stage(
     'remove-fields/raw-options',
@@ -1422,6 +1447,12 @@ void _registerStages(_Registry r) {
   stage(
     'remove-fields/special-characters',
     (db) => _books(db).removeFields(['first-name', field('last name')]),
+    [
+      (db) => _books(db).removeFields([
+        FieldPath(const ['first-name']),
+        FieldPath(const ['last name']),
+      ]),
+    ],
   );
 
   stage(
@@ -1464,6 +1495,12 @@ void _registerStages(_Registry r) {
     (db) => _books(
       db,
     ).sort([ascending('first-name'), field('last name').descending()]),
+    [
+      (db) => _books(db).sort([
+        ascending(FieldPath(const ['first-name'])),
+        descending(FieldPath(const ['last name'])),
+      ]),
+    ],
   );
 
   stage('offset/plain', (db) => _books(db).offset(10));
@@ -1495,6 +1532,12 @@ void _registerStages(_Registry r) {
   stage(
     'distinct/special-characters',
     (db) => _books(db).distinct(['first-name', field('last name')]),
+    [
+      (db) => _books(db).distinct([
+        FieldPath(const ['first-name']),
+        FieldPath(const ['last name']),
+      ]),
+    ],
   );
 
   stage(
@@ -1542,6 +1585,15 @@ void _registerStages(_Registry r) {
       [PipelineFunctions.countAll().as('total')],
       groups: ['first-name', field('last name')],
     ),
+    [
+      (db) => _books(db).aggregate(
+        [PipelineFunctions.countAll().as('total')],
+        groups: [
+          FieldPath(const ['first-name']),
+          FieldPath(const ['last name']),
+        ],
+      ),
+    ],
   );
 
   Pipeline findNearest(
@@ -1550,7 +1602,7 @@ void _registerStages(_Registry r) {
     Object queryVector = const [0.1, 0.2, 0.3],
     DistanceMeasure distanceMeasure = DistanceMeasure.euclidean,
     int? limit,
-    String? distanceResultField,
+    Object? distanceResultField,
     Map<String, Object?> rawOptions = const {},
   }) {
     return _books(db).findNearest(
@@ -1609,9 +1661,18 @@ void _registerStages(_Registry r) {
       vectorField: 'my embedding',
       distanceResultField: 'my distance',
     ),
+    [
+      (db) => findNearest(
+        db,
+        vectorField: FieldPath(const ['my embedding']),
+        distanceResultField: FieldPath(const ['my distance']),
+      ),
+    ],
   );
 
-  stage('replace-with/field-name', (db) => _books(db).replaceWith('metadata'));
+  stage('replace-with/field-name', (db) => _books(db).replaceWith('metadata'), [
+    (db) => _books(db).replaceWith(FieldPath(const ['metadata'])),
+  ]);
   stage(
     'replace-with/field',
     (db) => _books(db).replaceWith(field('metadata')),
@@ -1700,7 +1761,10 @@ void _registerStages(_Registry r) {
   stage(
     'unnest/field-special-characters',
     (db) => _books(db).unnest(field('my tags')),
-    [(db) => _books(db).unnest('my tags')],
+    [
+      (db) => _books(db).unnest('my tags'),
+      (db) => _books(db).unnest(FieldPath(const ['my tags'])),
+    ],
   );
 
   stage(

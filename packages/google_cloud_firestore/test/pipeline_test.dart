@@ -2075,6 +2075,120 @@ void main() {
           );
         });
 
+        // A FieldPath is a field name wherever a String is, as in field().
+        group('a FieldPath names a field', () {
+          final dotted = FieldPath(const ['a.b', 'c']);
+          final dottedRef = ref('`a.b`.c');
+
+          test('in a function target', () async {
+            await run(
+              base().select([
+                PipelineFunctions.toUpper(dotted).as('upper'),
+                PipelineFunctions.add(dotted, 1, [2]).as('sum'),
+                PipelineFunctions.equalAny(dotted, [1, 2]).as('any'),
+                PipelineFunctions.count(dotted).as('count'),
+              ]),
+            );
+
+            final fields = stages[1].args.single.mapValue!.fields;
+            Object? target(String alias) =>
+                json(fields[alias]!.functionValue!.args.first);
+            expect(target('upper'), dottedRef);
+            expect(target('any'), dottedRef);
+            expect(target('count'), dottedRef);
+            // add nests its further operands; the field is the innermost one.
+            final inner = fields['sum']!.functionValue!.args.first;
+            expect(json(inner.functionValue!.args.first), dottedRef);
+          });
+
+          test('in ascending and descending', () async {
+            await run(base().sort([ascending(dotted), descending(dotted)]));
+
+            expect(
+              stages[1].args.map(
+                (ordering) => json(ordering.mapValue!.fields['expression']!),
+              ),
+              [dottedRef, dottedRef],
+            );
+            expect(ascending(dotted).expr, isA<PipelineField>());
+          });
+
+          test('in select, distinct and aggregate groups', () async {
+            await run(
+              base()
+                  .select([
+                    dotted,
+                    FieldPath(const ['title']),
+                  ])
+                  .distinct([dotted])
+                  .aggregate(
+                    [PipelineFunctions.countAll().as('n')],
+                    groups: [dotted],
+                  ),
+            );
+
+            Map<String, Object?> projection(firestore_v1.Value value) {
+              return value.mapValue!.fields.map(
+                (key, value) => MapEntry(key, json(value)),
+              );
+            }
+
+            expect(projection(stages[1].args.single), {
+              '`a.b`.c': dottedRef,
+              'title': ref('title'),
+            });
+            expect(projection(stages[2].args.single), {'`a.b`.c': dottedRef});
+            expect(projection(stages[3].args[1]), {'`a.b`.c': dottedRef});
+          });
+
+          test('as the same key as its String and field forms', () {
+            expect(
+              () => base().select([
+                'first-name',
+                FieldPath(const ['first-name']),
+              ]),
+              throwsA(
+                isA<ArgumentError>().having(
+                  (e) => e.message,
+                  'message',
+                  contains("'`first-name`'"),
+                ),
+              ),
+            );
+          });
+
+          test('in removeFields, unnest and replaceWith', () async {
+            await run(
+              base().removeFields([dotted]).unnest(dotted).replaceWith(dotted),
+            );
+
+            expect(stages[1].args.map(json), [dottedRef]);
+            expect(stages[2].args.map(json), [dottedRef, dottedRef]);
+            expect(json(stages[3].args.first), dottedRef);
+          });
+
+          test('in findNearest', () async {
+            await run(
+              base().findNearest(
+                vectorField: dotted,
+                queryVector: const [1.0, 2.0],
+                distanceMeasure: DistanceMeasure.euclidean,
+                distanceResultField: FieldPath(const ['my.distance']),
+                distanceThreshold: 0.5,
+              ),
+            );
+
+            final [_, nearest, where] = stages;
+            expect(json(nearest.args[0]), dottedRef);
+            expect(
+              json(nearest.options['distance_field']!),
+              ref('`my.distance`'),
+            );
+            final condition = where.args.single.functionValue!;
+            expect(json(condition.args[0]), ref('`my.distance`'));
+          });
+        });
+
         group('createFrom', () {
           test('quotes FieldPath filters and orderings once', () async {
             await run(

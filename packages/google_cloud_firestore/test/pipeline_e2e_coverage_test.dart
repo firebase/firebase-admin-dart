@@ -343,8 +343,9 @@ enum _Shape {
   /// The argument is a `String` literal containing a dot.
   dottedPath("a dotted String literal such as 'a.b'"),
 
-  /// The argument's static type is `FieldPath`.
-  fieldPath('a FieldPath');
+  /// The argument's static type is `FieldPath`, or it is a list or set
+  /// literal holding one.
+  fieldPath('a FieldPath, or a list literal holding one');
 
   const _Shape(this.description);
 
@@ -424,6 +425,17 @@ const _requiredShapes = <String, List<_Shape>>{
   // Field paths.
   'field(fieldPath)': [_Shape.dottedPath, _Shape.fieldPath],
   'Expression.field(fieldPath)': [_Shape.fieldPath],
+  // Field names, which take a FieldPath wherever they take a String.
+  'ascending(expression)': [_Shape.fieldPath],
+  'descending(expression)': [_Shape.fieldPath],
+  'Pipeline.select(selections)': [_Shape.fieldPath],
+  'Pipeline.distinct(groups)': [_Shape.fieldPath],
+  'Pipeline.aggregate(groups)': [_Shape.fieldPath],
+  'Pipeline.removeFields(fields)': [_Shape.fieldPath],
+  'Pipeline.unnest(selectable)': [_Shape.fieldPath],
+  'Pipeline.replaceWith(expression)': [_Shape.fieldPath],
+  'Pipeline.findNearest(vectorField)': [_Shape.fieldPath],
+  'Pipeline.findNearest(distanceResultField)': [_Shape.fieldPath],
   // Result paths.
   'PipelineResult.get(field)': [_Shape.dottedPath, _Shape.fieldPath],
 };
@@ -500,6 +512,9 @@ const _notValuePositions = <String, String>{
       'in its values (see the nestedCollectionWithExpression shape)',
   'PipelineResult.get(field)':
       'takes a String or a FieldPath; see the dottedPath and fieldPath shapes',
+  'Pipeline.findNearest(distanceResultField)':
+      'takes a String or a FieldPath naming the field the distance is written '
+      'to; see the fieldPath shape',
   'PipelineSource.createFrom(query)': 'takes a Query or a VectorQuery',
   'PipelineSource.documents(documents)':
       'takes DocumentReferences and document path Strings',
@@ -1032,7 +1047,11 @@ final class _Analysis {
         return value is StringLiteral &&
             (value.stringValue?.contains('.') ?? false);
       case _Shape.fieldPath:
-        return _isSubtypeOf(value, _fieldPathType);
+        return _isSubtypeOf(value, _fieldPathType) ||
+            (_isListOrSetLiteral(value) &&
+                _leaves(
+                  value,
+                ).any((leaf) => _isSubtypeOf(leaf, _fieldPathType)));
     }
   }
 
