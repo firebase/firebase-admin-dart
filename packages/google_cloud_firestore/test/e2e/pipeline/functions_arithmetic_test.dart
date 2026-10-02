@@ -80,7 +80,8 @@ void main() {
         ),
         isInt(12),
       ),
-      // Every further operand is sent in the same add call: 10 + 1 + 2 + 3.
+      // Further operands are sent as nested two-operand add calls, since the
+      // backend's add takes exactly two: ((10 + 1) + 2) + 3.
       FunctionCase(
         'static, further literal operands',
         PipelineFunctions.add('price', 1, [2, 3]),
@@ -163,7 +164,8 @@ void main() {
         ),
         isInt(70),
       ),
-      // Every further operand is sent in the same multiply call: 5 * 2 * 3.
+      // Further operands are sent as nested two-operand multiply calls, since
+      // the backend's multiply takes exactly two: (5 * 2) * 3.
       FunctionCase(
         'static, further literal operands',
         PipelineFunctions.multiply('rating', 2, [3]),

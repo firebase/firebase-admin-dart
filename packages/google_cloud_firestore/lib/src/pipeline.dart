@@ -430,6 +430,23 @@ abstract final class PipelineFunctions {
     return _PipelineBooleanExpression(name, [...args.map(_valueToDefaultExpr)]);
   }
 
+  /// Folds [first], [second] and [others] into left-nested calls of the
+  /// two-operand function [name], as in `name(name(first, second), others[0])`.
+  ///
+  /// With no [others], this is the single call `name(first, second)`.
+  static PipelineExpression _leftNested(
+    String name,
+    Object? first,
+    Object? second,
+    Iterable<Object?> others,
+  ) {
+    var result = _expr(name, [_fieldOrExpression(first), second]);
+    for (final operand in others) {
+      result = _expr(name, [result, operand]);
+    }
+    return result;
+  }
+
   /// Tests [target] against the values in [searchSpace].
   ///
   /// Like the Node SDK, a list of plain values is sent as a literal array
@@ -547,13 +564,15 @@ abstract final class PipelineFunctions {
 
   /// ADD arithmetic function.
   ///
-  /// Adds [first], [second] and any [others], sent as a single `add` call.
+  /// Adds [first], [second] and any [others]. The backend's `add` takes
+  /// exactly two operands, so further operands are sent as nested
+  /// two-operand calls: `add(a, b, [c, d])` sends `add(add(add(a, b), c), d)`.
   static PipelineExpression add(
     Object? first,
     Object? second, [
     Iterable<Object?> others = const [],
   ]) {
-    return _expr('add', [_fieldOrExpression(first), second, ...others]);
+    return _leftNested('add', first, second, others);
   }
 
   /// SUBTRACT arithmetic function.
@@ -563,14 +582,16 @@ abstract final class PipelineFunctions {
 
   /// MULTIPLY arithmetic function.
   ///
-  /// Multiplies [first], [second] and any [others], sent as a single
-  /// `multiply` call.
+  /// Multiplies [first], [second] and any [others]. The backend's `multiply`
+  /// takes exactly two operands, so further operands are sent as nested
+  /// two-operand calls: `multiply(a, b, [c])` sends
+  /// `multiply(multiply(a, b), c)`.
   static PipelineExpression multiply(
     Object? first,
     Object? second, [
     Iterable<Object?> others = const [],
   ]) {
-    return _expr('multiply', [_fieldOrExpression(first), second, ...others]);
+    return _leftNested('multiply', first, second, others);
   }
 
   /// DIVIDE arithmetic function.
@@ -2675,6 +2696,9 @@ sealed class PipelineExpression {
   }
 
   /// Adds [second] and any [others] to this expression.
+  ///
+  /// Further operands are sent as nested two-operand `add` calls; see
+  /// [PipelineFunctions.add].
   PipelineExpression add(
     Object? second, [
     Iterable<Object?> others = const [],
@@ -2688,6 +2712,9 @@ sealed class PipelineExpression {
   }
 
   /// Multiplies this expression by [second] and any [others].
+  ///
+  /// Further operands are sent as nested two-operand `multiply` calls; see
+  /// [PipelineFunctions.multiply].
   PipelineExpression multiply(
     Object? second, [
     Iterable<Object?> others = const [],
