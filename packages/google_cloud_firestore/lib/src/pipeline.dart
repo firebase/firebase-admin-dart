@@ -2221,8 +2221,9 @@ extension _QueryToPipeline<T> on Query<T> {
 
     // Inequality fields are skipped here because `_toPipelineBooleanExpression`
     // has already emitted their existence checks.
+    final orderedFields = _createImplicitOrderBy(ignoreInequalityFields: true);
     final existsConditions = [
-      for (final fieldOrder in _implicitOrderBy(ignoreInequalityFields: true))
+      for (final fieldOrder in orderedFields)
         field(fieldOrder.fieldPath).exists(),
     ];
     pipeline = pipeline.where(
@@ -2232,7 +2233,7 @@ extension _QueryToPipeline<T> on Query<T> {
     );
 
     final orderings = [
-      for (final fieldOrder in _implicitOrderBy())
+      for (final fieldOrder in _createImplicitOrderBy())
         PipelineOrdering._(
           fieldOrder.direction == _Direction.ascending
               ? 'ascending'
@@ -2270,53 +2271,6 @@ extension _QueryToPipeline<T> on Query<T> {
     if (offset != null && offset > 0) pipeline = pipeline.offset(offset);
 
     return pipeline;
-  }
-
-  /// Mirrors the backend's implicit ordering rules for this query.
-  List<_FieldOrder> _implicitOrderBy({bool ignoreInequalityFields = false}) {
-    final fieldOrders = _queryOptions.fieldOrders.toList();
-    final seen = {for (final fieldOrder in fieldOrders) fieldOrder.fieldPath};
-
-    // The implicit ordering always follows the last explicit order by.
-    final lastDirection = fieldOrders.isEmpty
-        ? _Direction.ascending
-        : fieldOrders.last.direction;
-
-    if (!ignoreInequalityFields) {
-      // Inequality fields that are not explicitly ordered are ordered
-      // lexicographically, with the document key sorted last.
-      for (final inequalityField in _inequalityFilterFields()) {
-        // The document key is always appended last, below.
-        if (seen.contains(inequalityField) ||
-            inequalityField == FieldPath.documentId) {
-          continue;
-        }
-        seen.add(inequalityField);
-        fieldOrders.add(
-          _FieldOrder(fieldPath: inequalityField, direction: lastDirection),
-        );
-      }
-    }
-
-    if (!seen.contains(FieldPath.documentId)) {
-      fieldOrders.add(
-        _FieldOrder(fieldPath: FieldPath.documentId, direction: lastDirection),
-      );
-    }
-
-    return fieldOrders;
-  }
-
-  /// The inequality filter fields of this query, sorted lexicographically.
-  List<FieldPath> _inequalityFilterFields() {
-    final fields = <FieldPath>{
-      for (final filter in _queryOptions.filters)
-        for (final subFilter in filter.flattenedFilters)
-          if (subFilter.isInequalityFilter) subFilter.field,
-    };
-
-    return fields.toList()
-      ..sort((a, b) => a._formattedName.compareTo(b._formattedName));
   }
 
   PipelineBooleanExpression _toPipelineBooleanExpression(

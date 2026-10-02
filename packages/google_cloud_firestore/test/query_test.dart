@@ -168,6 +168,112 @@ void main() {
     });
   });
 
+  group('DocumentSnapshot cursors (unit)', () {
+    late MockFirestoreHttpClient mockClient;
+    late Firestore firestore;
+    late List<firestore_v1.RunQueryRequest> requests;
+
+    setUp(() {
+      mockClient = MockFirestoreHttpClient();
+      firestore = Firestore.internal(
+        settings: const Settings(projectId: mockProjectId),
+        client: mockClient,
+      );
+      requests = [];
+
+      when(() => mockClient.cachedProjectId).thenReturn(mockProjectId);
+      when(
+        () => mockClient.v1<Stream<firestore_v1.RunQueryResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.RunQueryResponse>> Function(
+                  firestore_v1.Firestore api,
+                  String projectId,
+                );
+        final api = FakeFirestore(
+          runQuery: (request) {
+            requests.add(request);
+            return Stream.value(
+              _documentResponse(
+                documentPath: 'books/book1',
+                fields: {'genre': 'Fantasy', 'rating': 5, 'title': 'Dune'},
+                firestore: firestore,
+              ),
+            );
+          },
+        );
+        return callback(api, mockProjectId);
+      });
+    });
+
+    /// Runs `query.startAfterDocument(...)` and returns the orderings and the
+    /// cursor values it sends.
+    Future<(List<String>, List<firestore_v1.Value>)> startAfterDocument(
+      Query<DocumentData> query,
+    ) async {
+      final snapshot = (await query.get()).docs.single;
+      await query.startAfterDocument(snapshot).get();
+
+      final structuredQuery = requests.last.structuredQuery!;
+      final orderings = [
+        for (final order in structuredQuery.orderBy)
+          '${order.field!.fieldPath} ${order.direction.value}',
+      ];
+      expect(structuredQuery.startAt!.before, isFalse);
+      return (orderings, structuredQuery.startAt!.values);
+    }
+
+    test('orders by a != field before the document key', () async {
+      // Regression: '!=' was not an inequality, so the cursor ordered by the
+      // document key alone instead of the order the backend uses.
+      final (orderings, values) = await startAfterDocument(
+        firestore
+            .collection('books')
+            .where('genre', WhereFilter.notEqual, 'Horror'),
+      );
+
+      expect(orderings, ['genre ASCENDING', '__name__ ASCENDING']);
+      expect(values.first.stringValue, 'Fantasy');
+      expect(values.last.referenceValue, endsWith('/documents/books/book1'));
+    });
+
+    test('orders by every inequality field, in field path order', () async {
+      final (orderings, values) = await startAfterDocument(
+        firestore
+            .collection('books')
+            .where('rating', WhereFilter.greaterThan, 4)
+            .where('genre', WhereFilter.notIn, ['Horror']),
+      );
+
+      expect(orderings, [
+        'genre ASCENDING',
+        'rating ASCENDING',
+        '__name__ ASCENDING',
+      ]);
+      expect(values.map((value) => value.stringValue ?? value.integerValue), [
+        'Fantasy',
+        5,
+        null,
+      ]);
+    });
+
+    test('appends inequality fields after the explicit orderBy', () async {
+      final (orderings, _) = await startAfterDocument(
+        firestore
+            .collection('books')
+            .where('rating', WhereFilter.greaterThan, 4)
+            .orderBy('title', descending: true),
+      );
+
+      expect(orderings, [
+        'title DESCENDING',
+        'rating DESCENDING',
+        '__name__ DESCENDING',
+      ]);
+    });
+  });
+
   group('query interface', () {
     late Firestore firestore;
 

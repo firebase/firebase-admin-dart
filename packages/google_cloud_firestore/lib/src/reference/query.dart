@@ -132,7 +132,11 @@ interface class Query<T> {
       );
     }
 
-    final fieldOrders = _createImplicitOrderBy(snapshot);
+    // A DocumentSnapshot cursor takes its values from the snapshot for every
+    // field the backend orders by, including the implicit orderings.
+    final fieldOrders = snapshot == null
+        ? _queryOptions.fieldOrders
+        : _createImplicitOrderBy();
     final cursor = _createCursor(
       fieldOrders,
       fieldValues: fieldValues,
@@ -142,43 +146,52 @@ interface class Query<T> {
     return (cursor, fieldOrders);
   }
 
-  /// Computes the backend ordering semantics for DocumentSnapshot cursors.
-  List<_FieldOrder> _createImplicitOrderBy(
-    DocumentSnapshot<Object?>? snapshot,
-  ) {
-    // Add an implicit orderBy if the only cursor value is a DocumentSnapshot
-    // or a DocumentReference.
-    if (snapshot == null) return _queryOptions.fieldOrders;
-
+  /// The orderings the backend applies to this query: the explicit orderBy
+  /// clauses, then every other inequality field, then the document key.
+  ///
+  /// Mirrors the Node SDK's `createImplicitOrderBy`. The implicit orderings
+  /// take the direction of the last explicit orderBy, or ascending without
+  /// one. [ignoreInequalityFields] leaves out the inequality fields.
+  List<_FieldOrder> _createImplicitOrderBy({
+    bool ignoreInequalityFields = false,
+  }) {
     final fieldOrders = _queryOptions.fieldOrders.toList();
+    final seen = {for (final fieldOrder in fieldOrders) fieldOrder.fieldPath};
 
-    // If no explicit ordering is specified, use the first inequality to
-    // define an implicit order.
-    if (fieldOrders.isEmpty) {
-      for (final filter in _queryOptions.filters) {
-        final fieldReference = filter.firstInequalityField;
-        if (fieldReference != null) {
-          fieldOrders.add(_FieldOrder(fieldPath: fieldReference));
-          break;
+    final lastDirection = fieldOrders.isEmpty
+        ? _Direction.ascending
+        : fieldOrders.last.direction;
+
+    if (!ignoreInequalityFields) {
+      for (final inequalityField in _inequalityFilterFields()) {
+        // The document key is always ordered last, below.
+        if (inequalityField == FieldPath.documentId) continue;
+        if (seen.add(inequalityField)) {
+          fieldOrders.add(
+            _FieldOrder(fieldPath: inequalityField, direction: lastDirection),
+          );
         }
       }
     }
 
-    final hasDocumentId = fieldOrders.any(
-      (fieldOrder) => fieldOrder.fieldPath == FieldPath.documentId,
-    );
-    if (!hasDocumentId) {
-      // Add implicit sorting by name, using the last specified direction.
-      final lastDirection = fieldOrders.isEmpty
-          ? _Direction.ascending
-          : fieldOrders.last.direction;
-
+    if (!seen.contains(FieldPath.documentId)) {
       fieldOrders.add(
         _FieldOrder(fieldPath: FieldPath.documentId, direction: lastDirection),
       );
     }
 
     return fieldOrders;
+  }
+
+  /// The fields of this query's inequality filters (`<`, `<=`, `>`, `>=`,
+  /// `!=` and `not-in`), in field path order.
+  List<FieldPath> _inequalityFilterFields() {
+    final fields = <FieldPath>{
+      for (final filter in _queryOptions.filters)
+        for (final subFilter in filter.flattenedFilters)
+          if (subFilter.isInequalityFilter) subFilter.field,
+    };
+    return fields.toList()..sort(_compareFieldPaths);
   }
 
   /// Creates and returns a new [Query] that starts at the provided
@@ -1225,4 +1238,17 @@ interface class Query<T> {
 
     return VectorQuery<T>._(query: this, options: options);
   }
+}
+
+/// Orders field paths segment by segment, comparing segments by their UTF-8
+/// encoding, as the Node SDK's `FieldPath.compareTo` does.
+///
+/// This differs from comparing formatted paths: `a.c` sorts before `` `a-b` ``.
+int _compareFieldPaths(FieldPath left, FieldPath right) {
+  final length = math.min(left.segments.length, right.segments.length);
+  for (var i = 0; i < length; i++) {
+    final comparison = _compareUtf8Strings(left.segments[i], right.segments[i]);
+    if (comparison != 0) return comparison;
+  }
+  return left.segments.length.compareTo(right.segments.length);
 }
