@@ -162,8 +162,13 @@ enum PipelineValueType {
 }
 
 /// How the backend should choose indexes when executing a Pipeline.
+///
+/// Deprecated: the backend rejects the `index_mode` option this selects
+/// ("Unsupported option: index_mode"), and [recommended], letting the backend
+/// choose, is already its default. `indexMode` is no longer sent.
+@Deprecated(_indexModeDeprecation)
 enum PipelineIndexMode {
-  /// Let the backend pick the indexes it recommends.
+  /// Let the backend pick the indexes it recommends, which it does by default.
   recommended('recommended');
 
   const PipelineIndexMode(this.value);
@@ -171,6 +176,12 @@ enum PipelineIndexMode {
   /// The value sent to the backend.
   final String value;
 }
+
+/// Why [PipelineIndexMode] and the `indexMode` parameters are deprecated.
+const _indexModeDeprecation =
+    'The backend rejects the index_mode option ("Unsupported option: '
+    'index_mode"), and recommended is already its default, so indexMode is '
+    'ignored. Omit it.';
 
 /// Whether the backend should return planning stats alongside the results.
 enum PipelineExplainMode {
@@ -2102,6 +2113,10 @@ final class Pipeline {
   /// Pass [readTime] to read the database as it was at a past timestamp. To
   /// read inside a transaction, use [Transaction.executePipeline] instead.
   ///
+  /// [indexMode] is deprecated and ignored: the backend rejects the
+  /// `index_mode` option it used to send, and picks the indexes it recommends
+  /// by default.
+  ///
   /// Pass [explain] to ask the backend for planning stats, then read
   /// [PipelineSnapshot.explainStats]. [rawOptions] sets options this SDK does
   /// not wrap yet, keyed by the names the backend expects, and takes
@@ -2128,32 +2143,27 @@ final class Pipeline {
   /// ```
   Future<PipelineSnapshot> execute({
     Timestamp? readTime,
-    PipelineIndexMode? indexMode,
+    @Deprecated(_indexModeDeprecation) PipelineIndexMode? indexMode,
     PipelineExplainOptions? explain,
     Map<String, Object?> rawOptions = const {},
   }) async {
     final result = await _execute(
       readTime: readTime,
-      options: _executeOptions(
-        indexMode: indexMode,
-        explain: explain,
-        rawOptions: rawOptions,
-      ),
+      options: _executeOptions(explain: explain, rawOptions: rawOptions),
     );
     return result.result;
   }
 
   /// Builds the StructuredPipeline options, with [rawOptions] winning.
+  ///
+  /// There is no `index_mode`: the backend rejects it ("Unsupported option:
+  /// index_mode"), so the deprecated `indexMode` parameters are ignored.
   static _PipelineOptions _executeOptions({
-    required PipelineIndexMode? indexMode,
     required PipelineExplainOptions? explain,
     required Map<String, Object?> rawOptions,
   }) {
     return _PipelineOptions(
-      known: _compactOptions({
-        'index_mode': indexMode?.value,
-        'explain_options': explain?._encoded,
-      }),
+      known: _compactOptions({'explain_options': explain?._encoded}),
       raw: rawOptions,
     );
   }

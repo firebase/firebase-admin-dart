@@ -117,6 +117,8 @@ void main() {
     });
 
     test('executes with the recommended index mode', () async {
+      // indexMode is deprecated and not sent: the backend rejects the
+      // index_mode option ("Unsupported option: index_mode").
       final snapshot = await sortedBooks().execute(
         indexMode: PipelineIndexMode.recommended,
       );
@@ -196,6 +198,7 @@ void main() {
       final snapshot = await pipeline.firestore.runTransaction(
         (transaction) => transaction.executePipeline(
           pipeline,
+          // Deprecated and not sent, as on Pipeline.execute.
           indexMode: PipelineIndexMode.recommended,
           // rawOptions win over the typed explain options, so this runs in
           // the default `execute` mode and returns no stats.

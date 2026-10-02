@@ -104,6 +104,17 @@ final _knownDivergences = <String, _Divergence>{
       (request) =>
           _cursorComparisons(request).join(',') == comparisons.join(','),
     ),
+  'options/index-mode/recommended': const _Divergence(
+    _indexModeReason,
+    _sendsNoIndexMode,
+  ),
+  'options/combined/index-mode-and-explain': _Divergence(
+    _indexModeReason,
+    (request) =>
+        _sendsNoIndexMode(request) &&
+        _path(request, ['structuredPipeline', 'options', 'explain_options']) !=
+            null,
+  ),
   'queries/vector/distance-result-field': _Divergence(
     _distanceResultFieldReason,
     (request) => _findNearestDistanceField(request) == 'distance',
@@ -144,6 +155,11 @@ final _knownDivergences = <String, _Divergence>{
         ),
   ),
 };
+
+const _indexModeReason =
+    'The deprecated indexMode is not sent: the backend rejects the '
+    'index_mode option Node sends ("Unsupported option: index_mode"), and '
+    "recommended, its only value, is the backend's default.";
 
 const _distanceResultFieldReason =
     "createFrom(vectorQuery) keeps distanceResultField as find_nearest's "
@@ -456,6 +472,13 @@ final class _Divergence {
 
   /// Whether the canonical Dart request has the intended shape.
   final bool Function(Object? request) check;
+}
+
+/// Whether the request sends no `index_mode` execute option.
+bool _sendsNoIndexMode(Object? request) {
+  final options = _path(request, ['structuredPipeline', 'options']);
+  return options == null ||
+      (options is Map && !options.containsKey('index_mode'));
 }
 
 /// Whether the `unnest` stage writes each element back to the quoted

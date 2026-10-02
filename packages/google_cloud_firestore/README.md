@@ -339,7 +339,6 @@ dotted keys merge into the typed options, so `explain` plus
 
 ```dart
 .execute(
-  indexMode: PipelineIndexMode.recommended,
   explain: const PipelineExplainOptions(
     mode: PipelineExplainMode.analyze,
     outputFormat: PipelineExplainOutputFormat.text,
