@@ -167,6 +167,34 @@
         }
       }
     },
+    "stages/aggregate/groups-special-characters": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"total": {"functionValue": {"name": "count"}}}
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "`last name`": {"fieldReferenceValue": "`last name`"},
+                      "first-name": {"fieldReferenceValue": "`first-name`"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
     "stages/aggregate/multiple": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -362,6 +390,29 @@
                 }
               ],
               "options": {"foo": {"stringValue": "bar"}}
+            }
+          ]
+        }
+      }
+    },
+    "stages/distinct/special-characters": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "distinct",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "`last name`": {"fieldReferenceValue": "`last name`"},
+                      "first-name": {"fieldReferenceValue": "`first-name`"}
+                    }
+                  }
+                }
+              ]
             }
           ]
         }
@@ -671,6 +722,42 @@
                   "mapValue": {"fields": {"flag": {"booleanValue": true}}}
                 },
                 "limit": {"integerValue": "20"}
+              }
+            }
+          ]
+        }
+      }
+    },
+    "stages/find-nearest/special-characters": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "find_nearest",
+              "args": [
+                {"fieldReferenceValue": "`my embedding`"},
+                {
+                  "mapValue": {
+                    "fields": {
+                      "__type__": {"stringValue": "__vector__"},
+                      "value": {
+                        "arrayValue": {
+                          "values": [
+                            {"doubleValue": 0.1},
+                            {"doubleValue": 0.2},
+                            {"doubleValue": 0.3}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"stringValue": "euclidean"}
+              ],
+              "options": {
+                "distance_field": {"fieldReferenceValue": "`my distance`"}
               }
             }
           ]
@@ -1536,6 +1623,23 @@
         }
       }
     },
+    "stages/remove-fields/special-characters": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "remove_fields",
+              "args": [
+                {"fieldReferenceValue": "`first-name`"},
+                {"fieldReferenceValue": "`last name`"}
+              ]
+            }
+          ]
+        }
+      }
+    },
     "stages/replace-with/field": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -2211,6 +2315,37 @@
         }
       }
     },
+    "stages/sort/special-characters": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "`first-name`"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "`last name`"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
     "stages/sort/top-level-expression": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -2513,6 +2648,23 @@
         }
       }
     },
+    "stages/unnest/field-special-characters": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "unnest",
+              "args": [
+                {"fieldReferenceValue": "`my tags`"},
+                {"fieldReferenceValue": "`\\`my tags\\``"}
+              ]
+            }
+          ]
+        }
+      }
+    },
     "stages/unnest/index-field": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -2565,6 +2717,24 @@
                 "foo": {"stringValue": "bar"},
                 "index_field": {"fieldReferenceValue": "position"}
               }
+            }
+          ]
+        }
+      }
+    },
+    "stages/unnest/special-characters": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "unnest",
+              "args": [
+                {"fieldReferenceValue": "tags"},
+                {"fieldReferenceValue": "`my tag`"}
+              ],
+              "options": {"index_field": {"fieldReferenceValue": "`tag index`"}}
             }
           ]
         }

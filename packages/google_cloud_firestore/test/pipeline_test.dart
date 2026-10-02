@@ -1700,6 +1700,296 @@ void main() {
       });
     });
 
+    // Mirrors the Node SDK's `field()`, which sends
+    // `FieldPath.fromArgument(path).formattedName`.
+    group('field paths', () {
+      group('field() canonicalizes the path', () {
+        void expectPath(Object fieldPath, String expected) {
+          expect(field(fieldPath).path, expected, reason: '$fieldPath');
+          expect(Expression.field(fieldPath).path, expected);
+        }
+
+        test('keeps simple identifiers as they are', () {
+          expectPath('title', 'title');
+          expectPath('_private', '_private');
+          expectPath('isbn13', 'isbn13');
+          expectPath('__name__', '__name__');
+        });
+
+        test('quotes segments that are not simple identifiers', () {
+          expectPath('first-name', '`first-name`');
+          expectPath('last name', '`last name`');
+          expectPath('naïve', '`naïve`');
+          expectPath('1st', '`1st`');
+          expectPath('a/b', '`a/b`');
+        });
+
+        test('escapes backticks and backslashes inside a segment', () {
+          expectPath('a`b', r'`a\`b`');
+          expectPath(r'a\b', r'`a\\b`');
+        });
+
+        test('reads a dotted String as nested segments', () {
+          expectPath('metadata.lang', 'metadata.lang');
+          expectPath('author.first-name', 'author.`first-name`');
+          expectPath('my map.key', '`my map`.key');
+        });
+
+        test('keeps each FieldPath segment whole, dots included', () {
+          expectPath(FieldPath(const ['a.b']), '`a.b`');
+          expectPath(FieldPath(const ['a.b', 'c']), '`a.b`.c');
+          expectPath(FieldPath(const ['metadata', 'lang']), 'metadata.lang');
+          expectPath(FieldPath(const ['first-name']), '`first-name`');
+          expectPath(FieldPath.documentId, '__name__');
+        });
+
+        test('rejects other types and empty segments', () {
+          for (final invalid in <Object>[42, '', 'a..b', '.a', 'a.']) {
+            expect(
+              () => field(invalid),
+              throwsArgumentError,
+              reason: '$invalid',
+            );
+            expect(() => Expression.field(invalid), throwsArgumentError);
+          }
+        });
+      });
+
+      group('on the wire', () {
+        late List<firestore_v1.Pipeline_Stage> stages;
+
+        Future<void> run(Object pipelineOrQuery) async {
+          firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+          when(
+            () => mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(
+              any(),
+            ),
+          ).thenAnswer((invocation) async {
+            final callback =
+                invocation.positionalArguments.single
+                    as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                    Function(firestore_v1.Firestore api, String projectId);
+
+            final api = FakeFirestore(
+              executePipeline: (firestore_v1.ExecutePipelineRequest request) {
+                capturedRequest = request;
+                return const Stream<
+                  firestore_v1.ExecutePipelineResponse
+                >.empty();
+              },
+            );
+
+            return callback(api, _projectId);
+          });
+
+          final pipeline = pipelineOrQuery is Pipeline
+              ? pipelineOrQuery
+              : firestore.pipeline().createFrom(pipelineOrQuery);
+          await pipeline.execute();
+          stages = capturedRequest!.structuredPipeline!.pipeline!.stages;
+        }
+
+        Pipeline base() => firestore.pipeline().collection('books');
+        Map<String, Object?> ref(String path) => {'fieldReferenceValue': path};
+        Object? json(firestore_v1.Value value) => value.toJson();
+
+        test(
+          'field() and String field arguments send the quoted path',
+          () async {
+            await run(
+              base().where(PipelineFunctions.equal('first-name', 'Ada')).select(
+                [
+                  field(FieldPath(const ['a.b'])).as('result'),
+                ],
+              ),
+            );
+
+            final equal = stages[1].args.single.functionValue!;
+            expect(json(equal.args[0]), ref('`first-name`'));
+            // The value position keeps the string as a literal.
+            expect(equal.args[1].stringValue, 'Ada');
+
+            final select = stages[2].args.single.mapValue!.fields;
+            expect(json(select['result']!), ref('`a.b`'));
+          },
+        );
+
+        test(
+          'select keys a String by itself and a PipelineField by its path',
+          () async {
+            await run(
+              base().select([
+                'first-name',
+                field('last name'),
+                'metadata.lang',
+                field(FieldPath(const ['a.b'])),
+              ]),
+            );
+
+            final fields = stages[1].args.single.mapValue!.fields;
+            expect(fields.map((key, value) => MapEntry(key, json(value))), {
+              'first-name': ref('`first-name`'),
+              '`last name`': ref('`last name`'),
+              'metadata.lang': ref('metadata.lang'),
+              '`a.b`': ref('`a.b`'),
+            });
+          },
+        );
+
+        test('distinct and aggregate groups are keyed like select', () async {
+          await run(
+            base()
+                .distinct(['first-name', field('last name')])
+                .aggregate(
+                  [PipelineFunctions.countAll().as('total')],
+                  groups: ['first-name', field('last name')],
+                ),
+          );
+
+          final expected = {
+            'first-name': ref('`first-name`'),
+            '`last name`': ref('`last name`'),
+          };
+          final distinct = stages[1].args.single.mapValue!.fields;
+          expect(
+            distinct.map((key, value) => MapEntry(key, json(value))),
+            expected,
+          );
+          final groups = stages[2].args[1].mapValue!.fields;
+          expect(
+            groups.map((key, value) => MapEntry(key, json(value))),
+            expected,
+          );
+        });
+
+        test('removeFields and sort send quoted paths', () async {
+          await run(
+            base().removeFields(['first-name', field('last name')]).sort([
+              ascending('first-name'),
+              field('last name').descending(),
+            ]),
+          );
+
+          expect(stages[1].args.map(json), [
+            ref('`first-name`'),
+            ref('`last name`'),
+          ]);
+          expect(
+            stages[2].args.map(
+              (ordering) => json(ordering.mapValue!.fields['expression']!),
+            ),
+            [ref('`first-name`'), ref('`last name`')],
+          );
+        });
+
+        test('unnest quotes its target and index field once', () async {
+          await run(base().unnest(field('my tags')));
+          // Node quotes this target twice; see the golden corpus.
+          expect(stages[1].args.map(json), [
+            ref('`my tags`'),
+            ref('`my tags`'),
+          ]);
+
+          await run(
+            base().unnest(field('tags').as('my tag'), indexField: 'tag index'),
+          );
+          expect(stages[1].args.map(json), [ref('tags'), ref('`my tag`')]);
+          expect(json(stages[1].options['index_field']!), ref('`tag index`'));
+        });
+
+        test('findNearest quotes the vector and distance fields', () async {
+          await run(
+            base().findNearest(
+              vectorField: 'my embedding',
+              queryVector: const [1.0, 2.0],
+              distanceMeasure: DistanceMeasure.euclidean,
+              distanceResultField: 'my distance',
+            ),
+          );
+
+          expect(json(stages[1].args[0]), ref('`my embedding`'));
+          expect(
+            json(stages[1].options['distance_field']!),
+            ref('`my distance`'),
+          );
+        });
+
+        group('createFrom', () {
+          test('quotes FieldPath filters and orderings once', () async {
+            await run(
+              firestore
+                  .collection('books')
+                  .where(FieldPath(const ['a.b']), WhereFilter.equal, 1)
+                  .where('a`b', WhereFilter.equal, 2)
+                  .orderBy(FieldPath(const ['c.d'])),
+            );
+
+            final dotted = stages[1].args.single.functionValue!;
+            expect(
+              json(dotted.args[0].functionValue!.args.single),
+              ref('`a.b`'),
+            );
+            final backtick = stages[2].args.single.functionValue!;
+            expect(
+              json(backtick.args[0].functionValue!.args.single),
+              ref(r'`a\`b`'),
+            );
+            final sort = stages.singleWhere((stage) => stage.name == 'sort');
+            expect(
+              json(sort.args.first.mapValue!.fields['expression']!),
+              ref('`c.d`'),
+            );
+          });
+
+          test('keeps the projection paths quoted once', () async {
+            await run(
+              firestore.collection('books').select([
+                FieldPath(const ['first-name']),
+                FieldPath(const ['a.b']),
+                FieldPath(const ['metadata', 'lang']),
+              ]),
+            );
+
+            final select = stages.singleWhere(
+              (stage) => stage.name == 'select',
+            );
+            final fields = select.args.single.mapValue!.fields;
+            // Node quotes these twice; see the golden corpus.
+            expect(fields.map((key, value) => MapEntry(key, json(value))), {
+              '`first-name`': ref('`first-name`'),
+              '`a.b`': ref('`a.b`'),
+              'metadata.lang': ref('metadata.lang'),
+            });
+          });
+
+          test('reads FieldPath vector and distance fields', () async {
+            await run(
+              firestore
+                  .collection('books')
+                  .findNearest(
+                    vectorField: FieldPath(const ['a.b']),
+                    queryVector: const [1.0, 2.0],
+                    limit: 3,
+                    distanceMeasure: DistanceMeasure.euclidean,
+                    distanceResultField: FieldPath(const ['my distance']),
+                  ),
+            );
+
+            final nearest = stages.last;
+            expect(nearest.name, 'find_nearest');
+            expect(json(nearest.args[0]), ref('`a.b`'));
+            expect(
+              json(nearest.options['distance_field']!),
+              ref('`my distance`'),
+            );
+            final exists = stages[stages.length - 2].args.single.functionValue!;
+            expect(json(exists.args.single), ref('`a.b`'));
+          });
+        });
+      });
+    });
+
     // Mirrors the Node SDK's `selectablesToObject` / `aliasedAggregateToMap`,
     // which throw rather than let a later entry overwrite an earlier one.
     group('duplicate aliases or fields', () {

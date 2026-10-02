@@ -365,6 +365,19 @@ PipelineFunctions.toUpper('title');
 for the top-level `field` / `constant` / `variable`, for callers who prefer a
 namespaced entry point.
 
+**Field paths.** `field` takes a `String` or a `FieldPath`. A `String` is a
+dot-separated path, so `field('address.city')` reads `city` inside the
+`address` map; use a `FieldPath` for a field whose name contains a dot. Names
+that are not simple identifiers need no escaping: they are sent
+backtick-quoted, as the Node.js SDK sends them. The same rules apply to every
+`String` field name a stage or function takes.
+
+```dart
+field('first-name');        // sent as `first-name`
+field('author.last name');  // sent as author.`last name`
+field(FieldPath(['a.b']));  // a single field named "a.b", sent as `a.b`
+```
+
 `variable` references a name bound by the enclosing expression, such as the
 element alias of `arrayFilter` / `arrayTransform`:
 

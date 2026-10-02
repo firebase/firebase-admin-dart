@@ -1335,6 +1335,61 @@
         }
       }
     },
+    "queries/order-by/field-path-object": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "`a.b`"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "`a.b`"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
     "queries/order-by/implicit-from-inequalities": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -1723,6 +1778,57 @@
         }
       }
     },
+    "queries/select/special-characters": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "`\\`first-name\\``": {
+                        "fieldReferenceValue": "`\\`first-name\\``"
+                      },
+                      "`\\`last name\\``": {
+                        "fieldReferenceValue": "`\\`last name\\``"
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
     "queries/vector/cosine": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -2044,6 +2150,144 @@
               "name": "find_nearest",
               "args": [
                 {"fieldReferenceValue": "embedding"},
+                {
+                  "mapValue": {
+                    "fields": {
+                      "__type__": {"stringValue": "__vector__"},
+                      "value": {
+                        "arrayValue": {
+                          "values": [
+                            {"doubleValue": 0.1},
+                            {"doubleValue": 0.2},
+                            {"doubleValue": 0.3}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"stringValue": "euclidean"}
+              ],
+              "options": {"limit": {"integerValue": "5"}}
+            }
+          ]
+        }
+      }
+    },
+    "queries/vector/field-path-object": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "`a.b`"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "find_nearest",
+              "args": [
+                {"fieldReferenceValue": "`a.b`"},
+                {
+                  "mapValue": {
+                    "fields": {
+                      "__type__": {"stringValue": "__vector__"},
+                      "value": {
+                        "arrayValue": {
+                          "values": [
+                            {"doubleValue": 0.1},
+                            {"doubleValue": 0.2},
+                            {"doubleValue": 0.3}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"stringValue": "euclidean"}
+              ],
+              "options": {"limit": {"integerValue": "5"}}
+            }
+          ]
+        }
+      }
+    },
+    "queries/vector/special-characters": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "`my embedding`"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "find_nearest",
+              "args": [
+                {"fieldReferenceValue": "`my embedding`"},
                 {
                   "mapValue": {
                     "fields": {
@@ -2974,6 +3218,67 @@
                           "args": [
                             {"fieldReferenceValue": "genre"},
                             {"nullValue": null}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/field-path-object": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "`a.b`"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "`a.b`"},
+                            {"integerValue": "1"}
                           ]
                         }
                       }

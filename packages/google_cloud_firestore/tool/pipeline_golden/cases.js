@@ -225,6 +225,9 @@ module.exports = function buildCases(sdk, db) {
   query('where/special-characters', () =>
     col().where('first-name', '==', 'Ada'),
   );
+  query('where/field-path-object', () =>
+    col().where(new FieldPath('a.b'), '==', 1),
+  );
   query('where/document-id', () =>
     col().where(FieldPath.documentId(), '==', 'book1'),
   );
@@ -266,6 +269,9 @@ module.exports = function buildCases(sdk, db) {
   );
   query('order-by/document-id', () => col().orderBy(FieldPath.documentId()));
   query('order-by/special-characters', () => col().orderBy('first-name'));
+  query('order-by/field-path-object', () =>
+    col().orderBy(new FieldPath('a.b')),
+  );
   query('order-by/implicit-from-inequality', () =>
     col().where('rating', '>', 4),
   );
@@ -298,6 +304,9 @@ module.exports = function buildCases(sdk, db) {
 
   query('select/fields', () => col().select('title', 'author'));
   query('select/empty', () => col().select());
+  query('select/special-characters', () =>
+    col().select('first-name', 'last name'),
+  );
 
   const vectorQuery = (id, makeQuery) => query(`vector/${id}`, makeQuery);
   const nearest = (options, base = col()) =>
@@ -319,6 +328,12 @@ module.exports = function buildCases(sdk, db) {
     nearest({distanceResultField: 'distance'}),
   );
   vectorQuery('distance-threshold', () => nearest({distanceThreshold: 0.5}));
+  vectorQuery('special-characters', () =>
+    nearest({vectorField: 'my embedding'}),
+  );
+  vectorQuery('field-path-object', () =>
+    nearest({vectorField: new FieldPath('a.b')}),
+  );
 
   // ---------------------------------------------------------------------------
   // Stages
@@ -394,6 +409,9 @@ module.exports = function buildCases(sdk, db) {
   stage('remove-fields/raw-options', () =>
     books().removeFields({fields: ['title'], rawOptions: {foo: 'bar'}}),
   );
+  stage('remove-fields/special-characters', () =>
+    books().removeFields('first-name', field('last name')),
+  );
 
   stage('sort/ascending-method', () => books().sort(field('rating').ascending()));
   stage('sort/descending-method', () =>
@@ -420,6 +438,9 @@ module.exports = function buildCases(sdk, db) {
       rawOptions: {foo: 'bar'},
     }),
   );
+  stage('sort/special-characters', () =>
+    books().sort(P.ascending('first-name'), field('last name').descending()),
+  );
 
   stage('offset/plain', () => books().offset(10));
   stage('offset/raw-options', () =>
@@ -438,6 +459,9 @@ module.exports = function buildCases(sdk, db) {
   );
   stage('distinct/raw-options', () =>
     books().distinct({groups: ['genre'], rawOptions: {foo: 'bar'}}),
+  );
+  stage('distinct/special-characters', () =>
+    books().distinct('first-name', field('last name')),
   );
 
   stage('aggregate/single', () => books().aggregate(P.countAll().as('total')));
@@ -473,6 +497,12 @@ module.exports = function buildCases(sdk, db) {
       rawOptions: {foo: 'bar'},
     }),
   );
+  stage('aggregate/groups-special-characters', () =>
+    books().aggregate({
+      accumulators: [P.countAll().as('total')],
+      groups: ['first-name', field('last name')],
+    }),
+  );
 
   const findNearest = options =>
     books().findNearest({
@@ -505,6 +535,9 @@ module.exports = function buildCases(sdk, db) {
       distanceField: 'distance',
       rawOptions: {limit: 20, 'extra.flag': true},
     }),
+  );
+  stage('find-nearest/special-characters', () =>
+    findNearest({field: 'my embedding', distanceField: 'my distance'}),
   );
 
   stage('replace-with/field-name', () => books().replaceWith('metadata'));
@@ -563,6 +596,12 @@ module.exports = function buildCases(sdk, db) {
       indexField: 'idx',
       rawOptions: {index_field: field('position'), foo: 'bar'},
     }),
+  );
+  stage('unnest/special-characters', () =>
+    books().unnest(field('tags').as('my tag'), 'tag index'),
+  );
+  stage('unnest/field-special-characters', () =>
+    books().unnest(field('my tags')),
   );
 
   stage('raw-stage/expression-params', () =>
@@ -818,8 +857,14 @@ module.exports = function buildCases(sdk, db) {
   selectField('special-characters', 'first-name');
   selectField('space', 'last name');
   selectField('non-ascii', 'naïve');
+  selectField('backtick', 'a`b');
+  selectField('backslash', 'a\\b');
+  selectField('reserved-characters', 'a/b');
   add('values/field/field-path-object', () =>
     books().select(field(new FieldPath('a.b', 'c')).as('result')),
+  );
+  add('values/field/field-name-argument', () =>
+    books().where(P.equal('first-name', 'Ada')),
   );
 
   add('values/variable/plain', () =>

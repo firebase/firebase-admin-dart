@@ -420,6 +420,9 @@ const _requiredShapes = <String, List<_Shape>>{
   'PipelineExpression.dotProduct(other)': [_Shape.numericList],
   'PipelineExpression.euclideanDistance(other)': [_Shape.numericList],
   'Pipeline.findNearest(queryVector)': [_Shape.numericList],
+  // Field paths.
+  'field(fieldPath)': [_Shape.dottedPath, _Shape.fieldPath],
+  'Expression.field(fieldPath)': [_Shape.fieldPath],
   // Result paths.
   'PipelineResult.get(field)': [_Shape.dottedPath, _Shape.fieldPath],
 };
@@ -455,10 +458,14 @@ const _notExecutable = <String, String>{
 const _notValuePositions = <String, String>{
   'Expression.constant(value)':
       'wraps a literal value; an expression is not a constant',
+  'Expression.field(fieldPath)':
+      'takes a String or a FieldPath; see the fieldPath shape',
   'PipelineResult.get(field)':
       'takes a String or a FieldPath; see the dottedPath and fieldPath shapes',
   'PipelineSource.createFrom(query)': 'takes a Query or a VectorQuery',
   'constant(value)': 'wraps a literal value; an expression is not a constant',
+  'field(fieldPath)':
+      'takes a String or a FieldPath; see the dottedPath and fieldPath shapes',
 };
 
 /// The imports an E2E file may use besides `dart:` libraries.

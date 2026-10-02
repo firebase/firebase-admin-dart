@@ -65,25 +65,25 @@ final _knownDivergences = <String, _Divergence>{
         'supported: FIELD_REFERENCE_VALUE").',
         _searchSpaceIsArrayFunction,
       ),
+  'stages/unnest/field-special-characters': const _Divergence(
+    "unnest(field('my tags')) writes each element back to `my tags`. Node "
+    'rebuilds the target with field(Field._alias), quoting the already '
+    r'quoted name a second time ("`\`my tags\``").',
+    _unnestTargetIsQuotedOnce,
+  ),
+  'queries/select/special-characters': const _Divergence(
+    "createFrom(query.select(['first-name', 'last name'])) selects "
+    "`first-name` and `last name`. Node passes the projection's quoted "
+    'paths back through field(), which quotes them again '
+    r'("`\`first-name\``").',
+    _projectionIsQuotedOnce,
+  ),
 };
 
 /// Differences from the Node SDK that are not intended, awaiting a fix.
 ///
 /// Each entry must still differ from its fixture; remove it once fixed.
 const _pendingFixes = <String, String>{
-  // field() sends the path verbatim; Node formats it like FieldPath, quoting
-  // segments that are not simple identifiers.
-  'values/field/special-characters':
-      "field('first-name') sends `first-name` unquoted; Node sends "
-      '"`first-name`".',
-  'values/field/space':
-      "field('last name') sends `last name` unquoted; Node sends "
-      '"`last name`".',
-  'values/field/non-ascii':
-      "field('naïve') sends `naïve` unquoted; Node sends \"`naïve`\".",
-  'stages/select/special-characters':
-      'select() leaves special-character field paths unquoted; Node quotes '
-      'them, and keys a PipelineField by its quoted path ("`last name`").',
   // Ordering helpers.
   // Query to Pipeline conversion.
   'queries/where/not-equal':
@@ -127,7 +127,6 @@ const _dartApiGaps = <String, String>{
   'stages/delete/plain': 'No Pipeline.delete stage.',
   'stages/update/plain': 'No Pipeline.update stage.',
   'stages/to-scalar-expression/plain': 'No Pipeline.toScalarExpression().',
-  'values/field/field-path-object': 'field() takes a String, not a FieldPath.',
   'functions/add/method-variadic':
       'PipelineExpression.add takes a single operand.',
   'functions/multiply/method-variadic':
@@ -403,6 +402,33 @@ final class _Divergence {
   /// Whether the canonical Dart request has the intended shape.
   final bool Function(Object? request) check;
 }
+
+/// Whether the `unnest` stage writes each element back to the quoted
+/// `` `my tags` `` field it reads.
+bool _unnestTargetIsQuotedOnce(Object? request) {
+  final stages = _path(request, ['structuredPipeline', 'pipeline', 'stages']);
+  if (stages is! List || stages.length != 2) return false;
+  const target = {'fieldReferenceValue': '`my tags`'};
+  return _path(stages[1], ['name']) == 'unnest' &&
+      _jsonEquals(_path(stages[1], ['args']), [target, target]);
+}
+
+/// Whether the `select` stage keys `` `first-name` `` and `` `last name` ``
+/// by their singly quoted paths.
+bool _projectionIsQuotedOnce(Object? request) {
+  final stages = _path(request, ['structuredPipeline', 'pipeline', 'stages']);
+  if (stages is! List) return false;
+  final select = stages.cast<Object?>().firstWhere(
+    (stage) => _path(stage, ['name']) == 'select',
+    orElse: () => null,
+  );
+  return _jsonEquals(_path(select, ['args', 0, 'mapValue', 'fields']), {
+    for (final path in ['`first-name`', '`last name`'])
+      path: {'fieldReferenceValue': path},
+  });
+}
+
+bool _jsonEquals(Object? a, Object? b) => equals(b).matches(a, {});
 
 /// Whether the `where` stage's function receives its search space as an
 /// `array(...)` function.
@@ -757,6 +783,10 @@ void _registerQueries(_Registry r) {
     (db) => col(db).where('first-name', WhereFilter.equal, 'Ada'),
   );
   query(
+    'where/field-path-object',
+    (db) => col(db).where(FieldPath(const ['a.b']), WhereFilter.equal, 1),
+  );
+  query(
     'where/document-id',
     // Node also accepts the bare ID 'book1'; Dart's Query.where requires the
     // reference it resolves to.
@@ -812,6 +842,10 @@ void _registerQueries(_Registry r) {
   );
   query('order-by/document-id', (db) => col(db).orderBy(FieldPath.documentId));
   query('order-by/special-characters', (db) => col(db).orderBy('first-name'));
+  query(
+    'order-by/field-path-object',
+    (db) => col(db).orderBy(FieldPath(const ['a.b'])),
+  );
   query(
     'order-by/implicit-from-inequality',
     (db) => col(db).where('rating', WhereFilter.greaterThan, 4),
@@ -870,16 +904,24 @@ void _registerQueries(_Registry r) {
     ]),
   );
   query('select/empty', (db) => col(db).select());
+  query(
+    'select/special-characters',
+    (db) => col(db).select([
+      FieldPath(const ['first-name']),
+      FieldPath(const ['last name']),
+    ]),
+  );
 
   VectorQuery<DocumentData> nearest(
     Query<DocumentData> base, {
+    Object vectorField = 'embedding',
     Object queryVector = const [0.1, 0.2, 0.3],
     DistanceMeasure distanceMeasure = DistanceMeasure.euclidean,
     String? distanceResultField,
     double? distanceThreshold,
   }) {
     return base.findNearest(
-      vectorField: 'embedding',
+      vectorField: vectorField,
       queryVector: queryVector,
       limit: 5,
       distanceMeasure: distanceMeasure,
@@ -909,6 +951,14 @@ void _registerQueries(_Registry r) {
   query(
     'vector/distance-threshold',
     (db) => nearest(col(db), distanceThreshold: 0.5),
+  );
+  query(
+    'vector/special-characters',
+    (db) => nearest(col(db), vectorField: 'my embedding'),
+  );
+  query(
+    'vector/field-path-object',
+    (db) => nearest(col(db), vectorField: FieldPath(const ['a.b'])),
   );
 }
 
@@ -1016,6 +1066,10 @@ void _registerStages(_Registry r) {
     (db) =>
         _books(db).removeFields(['title'], rawOptions: const {'foo': 'bar'}),
   );
+  stage(
+    'remove-fields/special-characters',
+    (db) => _books(db).removeFields(['first-name', field('last name')]),
+  );
 
   stage(
     'sort/ascending-method',
@@ -1052,6 +1106,12 @@ void _registerStages(_Registry r) {
       db,
     ).sort([field('rating').descending()], rawOptions: const {'foo': 'bar'}),
   );
+  stage(
+    'sort/special-characters',
+    (db) => _books(
+      db,
+    ).sort([ascending('first-name'), field('last name').descending()]),
+  );
 
   stage('offset/plain', (db) => _books(db).offset(10));
   stage(
@@ -1078,6 +1138,10 @@ void _registerStages(_Registry r) {
   stage(
     'distinct/raw-options',
     (db) => _books(db).distinct(['genre'], rawOptions: const {'foo': 'bar'}),
+  );
+  stage(
+    'distinct/special-characters',
+    (db) => _books(db).distinct(['first-name', field('last name')]),
   );
 
   stage(
@@ -1117,6 +1181,13 @@ void _registerStages(_Registry r) {
       [PipelineFunctions.countAll().as('total')],
       groups: ['genre'],
       rawOptions: const {'foo': 'bar'},
+    ),
+  );
+  stage(
+    'aggregate/groups-special-characters',
+    (db) => _books(db).aggregate(
+      [PipelineFunctions.countAll().as('total')],
+      groups: ['first-name', field('last name')],
     ),
   );
 
@@ -1176,6 +1247,14 @@ void _registerStages(_Registry r) {
       limit: 10,
       distanceResultField: 'distance',
       rawOptions: const {'limit': 20, 'extra.flag': true},
+    ),
+  );
+  stage(
+    'find-nearest/special-characters',
+    (db) => findNearest(
+      db,
+      vectorField: 'my embedding',
+      distanceResultField: 'my distance',
     ),
   );
 
@@ -1261,6 +1340,16 @@ void _registerStages(_Registry r) {
       indexField: 'idx',
       rawOptions: {'index_field': field('position'), 'foo': 'bar'},
     ),
+  );
+  stage(
+    'unnest/special-characters',
+    (db) =>
+        _books(db).unnest(field('tags').as('my tag'), indexField: 'tag index'),
+  );
+  stage(
+    'unnest/field-special-characters',
+    (db) => _books(db).unnest(field('my tags')),
+    [(db) => _books(db).unnest('my tags')],
   );
 
   stage(
@@ -1652,7 +1741,7 @@ void _registerValues(_Registry r) {
     },
   });
 
-  void selectField(String id, String name) {
+  void selectField(String id, Object name) {
     r.expr('values/field/$id', () => field(name), [
       () => Expression.field(name),
     ]);
@@ -1664,6 +1753,13 @@ void _registerValues(_Registry r) {
   selectField('special-characters', 'first-name');
   selectField('space', 'last name');
   selectField('non-ascii', 'naïve');
+  selectField('backtick', 'a`b');
+  selectField('backslash', r'a\b');
+  selectField('reserved-characters', 'a/b');
+  selectField('field-path-object', FieldPath(const ['a.b', 'c']));
+  r.expr('values/field/field-name-argument', () => equal('first-name', 'Ada'), [
+    () => PipelineFunctions.equal('first-name', 'Ada'),
+  ]);
 
   r.expr('values/variable/plain', () => variable('x'), [
     () => Expression.variable('x'),

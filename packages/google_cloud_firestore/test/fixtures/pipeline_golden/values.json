@@ -845,6 +845,46 @@
         }
       }
     },
+    "values/field/backslash": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"fieldReferenceValue": "`a\\\\b`"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/field/backtick": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"fieldReferenceValue": "`a\\`b`"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
     "values/field/document-id": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -857,6 +897,30 @@
                 {
                   "mapValue": {
                     "fields": {"result": {"fieldReferenceValue": "__name__"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/field/field-name-argument": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "`first-name`"},
+                      {"stringValue": "Ada"}
+                    ]
                   }
                 }
               ]
@@ -919,6 +983,26 @@
                 {
                   "mapValue": {
                     "fields": {"result": {"fieldReferenceValue": "`naïve`"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/field/reserved-characters": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"fieldReferenceValue": "`a/b`"}}
                   }
                 }
               ]
