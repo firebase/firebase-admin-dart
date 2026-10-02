@@ -1,0 +1,181 @@
+{
+  "generator": "tool/pipeline_golden (npm run generate)",
+  "sdk": "@google-cloud/firestore@9.3.1",
+  "cases": {
+    "sources/collection-group/force-index": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "collection_group",
+              "args": [{"referenceValue": ""}, {"stringValue": "reviews"}],
+              "options": {"force_index": {"stringValue": "my_index"}}
+            }
+          ]
+        }
+      }
+    },
+    "sources/collection-group/id": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "collection_group",
+              "args": [{"referenceValue": ""}, {"stringValue": "reviews"}]
+            }
+          ]
+        }
+      }
+    },
+    "sources/collection/force-index": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "collection",
+              "args": [{"referenceValue": "/books"}],
+              "options": {"force_index": {"stringValue": "my_index"}}
+            }
+          ]
+        }
+      }
+    },
+    "sources/collection/nested-path": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "collection",
+              "args": [{"referenceValue": "/authors/author1/books"}]
+            }
+          ]
+        }
+      }
+    },
+    "sources/collection/path": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "sources/collection/reference": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "sources/database/plain": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {"pipeline": {"stages": [{"name": "database"}]}}
+    },
+    "sources/documents/nested": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "documents",
+              "args": [{"referenceValue": "/authors/author1/books/book1"}]
+            }
+          ]
+        }
+      }
+    },
+    "sources/documents/paths": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "documents",
+              "args": [
+                {"referenceValue": "/books/book1"},
+                {"referenceValue": "/books/book2"}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "sources/documents/references": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "documents",
+              "args": [
+                {"referenceValue": "/books/book1"},
+                {"referenceValue": "/books/book2"}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "sources/subcollection/as-array-expression": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "add_fields",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "reviews": {
+                        "functionValue": {
+                          "name": "array",
+                          "args": [
+                            {
+                              "pipelineValue": {
+                                "stages": [
+                                  {
+                                    "name": "subcollection",
+                                    "args": [{"stringValue": "reviews"}]
+                                  },
+                                  {
+                                    "name": "select",
+                                    "args": [
+                                      {
+                                        "mapValue": {
+                                          "fields": {
+                                            "rating": {
+                                              "fieldReferenceValue": "rating"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,209 @@
+{
+  "generator": "tool/pipeline_golden (npm run generate)",
+  "sdk": "@google-cloud/firestore@9.3.1",
+  "cases": {
+    "options/combined/index-mode-and-explain": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "explain_options": {
+            "mapValue": {
+              "fields": {
+                "mode": {"stringValue": "analyze"},
+                "output_format": {"stringValue": "text"}
+              }
+            }
+          },
+          "index_mode": {"stringValue": "recommended"}
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/explain/empty": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {"explain_options": {"mapValue": {}}},
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/explain/mode-analyze": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "explain_options": {
+            "mapValue": {"fields": {"mode": {"stringValue": "analyze"}}}
+          }
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/explain/mode-and-output-format": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "explain_options": {
+            "mapValue": {
+              "fields": {
+                "mode": {"stringValue": "analyze"},
+                "output_format": {"stringValue": "text"}
+              }
+            }
+          }
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/explain/mode-execute": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "explain_options": {
+            "mapValue": {"fields": {"mode": {"stringValue": "execute"}}}
+          }
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/explain/output-format-text": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "explain_options": {
+            "mapValue": {"fields": {"output_format": {"stringValue": "text"}}}
+          }
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/index-mode/recommended": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {"index_mode": {"stringValue": "recommended"}},
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/none/empty-object": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/none/plain": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/raw-options/dot-notation": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "explain_options": {
+            "mapValue": {"fields": {"mode": {"stringValue": "analyze"}}}
+          }
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/raw-options/flat": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "count": {"integerValue": "3"},
+          "foo": {"stringValue": "bar"}
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/raw-options/merge-into-explain": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "explain_options": {
+            "mapValue": {
+              "fields": {
+                "mode": {"stringValue": "analyze"},
+                "output_format": {"stringValue": "text"}
+              }
+            }
+          }
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/raw-options/nested-object": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "explain_options": {
+            "mapValue": {"fields": {"mode": {"stringValue": "analyze"}}}
+          }
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/raw-options/override-known": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {"index_mode": {"stringValue": "custom"}},
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    }
+  }
+}
