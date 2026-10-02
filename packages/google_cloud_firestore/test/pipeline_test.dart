@@ -4149,6 +4149,23 @@ void main() {
           () => firestore.pipeline().documents([other.doc('books/book-1')]),
           throwsA(_crossDatabaseError),
         );
+        // Every reference is checked, not only the first; paths resolve
+        // against this Pipeline's database.
+        expect(
+          () => firestore.pipeline().documents([
+            'books/book-1',
+            firestore.doc('books/book-2'),
+            other.doc('books/book-3'),
+          ]),
+          throwsA(_crossDatabaseError),
+        );
+        expect(
+          () => firestore.pipeline().documents([
+            'books/book-1',
+            firestore.doc('books/book-2'),
+          ]),
+          returnsNormally,
+        );
       });
 
       test('rejects a union with a different database', () {
