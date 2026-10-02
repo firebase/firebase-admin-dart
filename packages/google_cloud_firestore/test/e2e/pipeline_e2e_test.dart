@@ -174,6 +174,15 @@ void main() {
       expect(metadataSnapshot.results.single.createTime, isNotNull);
       expect(metadataSnapshot.results.single.updateTime, isNotNull);
       expect(metadataSnapshot.results.single.ref, isNotNull);
+      // get resolves nested dot-paths and FieldPaths, as in Node.
+      expect(metadataSnapshot.results.single.get('metadata.lang'), 'dart');
+      expect(
+        metadataSnapshot.results.single.get(
+          FieldPath(const ['metadata', 'category']),
+        ),
+        'sdk',
+      );
+      expect(metadataSnapshot.results.single.get('metadata.missing'), isNull);
     });
 
     test('executes aggregate pipeline stages', () async {
@@ -192,6 +201,45 @@ void main() {
       expect(aggregateSnapshot.results.single.get('totalPrice'), 30);
       expect(aggregateSnapshot.results.single.get('averageRating'), 4.5);
       expect(aggregateSnapshot.results.single.get('bookCount'), 2);
+    });
+
+    test('executes an addFields stage', () async {
+      final snapshot = await firestore
+          .pipeline()
+          .collection(_collectionPath)
+          .where(
+            _runFilter(
+              runId,
+              Expression.field('title').equal('Dart Pipelines'),
+            ),
+          )
+          .addFields([
+            Expression.field('rating').as('copiedRating'),
+            Expression.constant(true).as('annotated'),
+          ])
+          .execute();
+
+      expect(snapshot.results, hasLength(1));
+      final result = snapshot.results.single;
+      expect(result.get('copiedRating'), 5);
+      expect(result.get('annotated'), true);
+      // Existing fields are kept alongside the added ones.
+      expect(result.get('title'), 'Dart Pipelines');
+
+      // A single field must still be sent as a map, not an alias function.
+      final single = await firestore
+          .pipeline()
+          .collection(_collectionPath)
+          .where(
+            _runFilter(
+              runId,
+              Expression.field('title').equal('Dart Pipelines'),
+            ),
+          )
+          .addFields([Expression.field('title').toUpperCase().as('upper')])
+          .execute();
+
+      expect(single.results.single.get('upper'), 'DART PIPELINES');
     });
 
     test('requests explain stats via typed options', () async {
@@ -240,6 +288,66 @@ void main() {
       expect(snapshot.results.map((result) => result.get('title')), [
         'Dart Pipelines',
         'Inactive Draft',
+      ]);
+    });
+
+    test('filters with a search space holding expressions', () async {
+      // Regression: the list was sent as a literal array value, which the
+      // backend rejected with "Value type is not supported:
+      // FIELD_REFERENCE_VALUE".
+      final snapshot = await firestore
+          .pipeline()
+          .collection(_collectionPath)
+          .where(
+            _runFilter(
+              runId,
+              PipelineFunctions.equalAny('discount', [
+                Expression.field('flags'),
+                2,
+              ]),
+            ),
+          )
+          .sort([Expression.field('price').ascending()])
+          .select([Expression.field('title')])
+          .execute();
+
+      // Book 1 matches the literal 2, book 2 its own `flags` (3).
+      expect(snapshot.results.map((result) => result.get('title')), [
+        'Dart Pipelines',
+        'Firestore Admin',
+      ]);
+    });
+
+    test('executes a collection group source stage', () async {
+      final snapshot = await firestore
+          .pipeline()
+          .collectionGroup(_collectionPath)
+          .where(_runFilter(runId, Expression.field('active').equal(true)))
+          .sort([Expression.field('price').ascending()])
+          .select([Expression.field('title')])
+          .execute();
+
+      expect(snapshot.results.map((result) => result.get('title')), [
+        'Dart Pipelines',
+        'Firestore Admin',
+      ]);
+    });
+
+    test('executes a pipeline created from a collection group query', () async {
+      final snapshot = await firestore
+          .pipeline()
+          .createFrom(
+            firestore
+                .collectionGroup(_collectionPath)
+                .where('runId', WhereFilter.equal, runId)
+                .where('active', WhereFilter.equal, true)
+                .orderBy('price'),
+          )
+          .execute();
+
+      expect(snapshot.results.map((result) => result.get('title')), [
+        'Dart Pipelines',
+        'Firestore Admin',
       ]);
     });
 
@@ -318,6 +426,24 @@ void main() {
       expect(vectorSnapshot.results, hasLength(1));
       expect(vectorSnapshot.results.single.get('title'), 'Dart Pipelines');
       expect(vectorSnapshot.results.single.get('distance'), isNotNull);
+    });
+
+    test('executes vector nearest-neighbor stage with a list', () async {
+      final vectorSnapshot = await firestore
+          .pipeline()
+          .collection(_collectionPath)
+          .where(Expression.field('runId').equal(runId))
+          .findNearest(
+            vectorField: 'embedding',
+            queryVector: const [1.0, 0.0, 0.0],
+            distanceMeasure: DistanceMeasure.cosine,
+            limit: 1,
+            distanceResultField: 'distance',
+          )
+          .execute();
+
+      expect(vectorSnapshot.results, hasLength(1));
+      expect(vectorSnapshot.results.single.get('title'), 'Dart Pipelines');
     });
   });
 }
@@ -399,6 +525,16 @@ final _functionScenarios = <_FunctionScenario>[
     _FunctionExpectation('floor', Expression.constant(12.8).floor(), 12),
     _FunctionExpectation('round', Expression.constant(12.6).round(), 13),
     _FunctionExpectation('trunc', Expression.constant(12.8).trunc(), 12),
+    _FunctionExpectation(
+      'roundDecimalPlaces',
+      Expression.constant(12.68).round(1),
+      closeTo(12.7, 0.0001),
+    ),
+    _FunctionExpectation(
+      'truncDecimalPlaces',
+      Expression.constant(12.89).trunc(1),
+      closeTo(12.8, 0.0001),
+    ),
     _FunctionExpectation('pow', PipelineFunctions.pow(2, 3), 8),
     _FunctionExpectation('sqrt', Expression.constant(9).sqrt(), 3),
     _FunctionExpectation(
@@ -538,19 +674,62 @@ final _functionScenarios = <_FunctionScenario>[
       [3, 2, 4, 6],
     ),
     _FunctionExpectation(
+      'arrayMaximum',
+      Expression.field('numbers').arrayMaximum(),
+      3,
+    ),
+    _FunctionExpectation(
       'maximumN',
       Expression.field('numbers').arrayMaximumN(2),
       [3, 3],
+    ),
+    _FunctionExpectation(
+      'arrayMinimum',
+      Expression.field('numbers').arrayMinimum(),
+      1,
     ),
     _FunctionExpectation(
       'minimumN',
       Expression.field('numbers').arrayMinimumN(2),
       [1, 2],
     ),
+    _FunctionExpectation('arraySum', Expression.field('numbers').arraySum(), 9),
+    // The static helpers must emit the same backend names as the fluent
+    // forms (`maximum`, not `array_maximum`).
+    _FunctionExpectation(
+      'staticArrayMaximum',
+      PipelineFunctions.arrayMaximum('numbers'),
+      3,
+    ),
+    _FunctionExpectation(
+      'staticArrayMaximumN',
+      PipelineFunctions.arrayMaximumN('numbers', 2),
+      [3, 3],
+    ),
+    _FunctionExpectation(
+      'staticArrayMinimum',
+      PipelineFunctions.arrayMinimum('numbers'),
+      1,
+    ),
+    _FunctionExpectation(
+      'staticArrayMinimumN',
+      PipelineFunctions.arrayMinimumN('numbers', 2),
+      [1, 2],
+    ),
+    _FunctionExpectation(
+      'staticArraySum',
+      PipelineFunctions.arraySum('numbers'),
+      9,
+    ),
     _FunctionExpectation(
       'join',
       Expression.field('words').joinLiteral('-'),
       'dart-firebase',
+    ),
+    _FunctionExpectation(
+      'joinStatic',
+      PipelineFunctions.join('words', ', '),
+      'dart, firebase',
     ),
   ]),
   _FunctionScenario('comparison functions', [
@@ -689,8 +868,18 @@ final _functionScenarios = <_FunctionScenario>[
     ),
     _FunctionExpectation(
       'mapRemove',
-      Expression.field('metadata').mapRemove(['lang']),
+      Expression.field('metadata').mapRemove('lang'),
       isNot(contains('lang')),
+    ),
+    _FunctionExpectation(
+      'mapRemoveExpressionKey',
+      Expression.field('metadata').mapRemove(Expression.constant('lang')),
+      isNot(contains('lang')),
+    ),
+    _FunctionExpectation(
+      'mapRemoveChained',
+      Expression.field('metadata').mapRemove('lang').mapRemove('category'),
+      isEmpty,
     ),
     _FunctionExpectation(
       'mapMerge',
@@ -718,6 +907,83 @@ final _functionScenarios = <_FunctionScenario>[
       'mapEntries',
       Expression.field('metadata').mapEntries(),
       isA<List<Object?>>(),
+    ),
+  ]),
+  // Collections that hold expressions must be built with array(...) /
+  // map(...); the backend rejects them inside a literal array or map value.
+  _FunctionScenario('collections holding expressions', [
+    _FunctionExpectation(
+      'equalAny',
+      PipelineFunctions.equalAny('rating', [Expression.field('score'), 5]),
+      true,
+    ),
+    _FunctionExpectation(
+      'equalAnyMatchesExpression',
+      Expression.field(
+        'price',
+      ).equalAny([Expression.field('rating').multiply(2), 3]),
+      true,
+    ),
+    _FunctionExpectation(
+      'notEqualAny',
+      PipelineFunctions.notEqualAny('rating', [Expression.field('price'), 4]),
+      true,
+    ),
+    _FunctionExpectation(
+      'arrayContainsAll',
+      PipelineFunctions.arrayContainsAll('tags', [
+        Expression.field('metadata').mapGetLiteral('lang'),
+        'firebase',
+      ]),
+      true,
+    ),
+    _FunctionExpectation(
+      'arrayContainsAny',
+      Expression.field('tags').arrayContainsAny([
+        Expression.field('metadata').mapGetLiteral('lang'),
+        'missing',
+      ]),
+      true,
+    ),
+    _FunctionExpectation(
+      'arrayConcat',
+      Expression.field('tags').arrayConcat([Expression.field('title')]),
+      ['dart', 'firebase', 'Dart Pipelines'],
+    ),
+    _FunctionExpectation(
+      'mapMerge',
+      Expression.field('metadata').mapMerge([
+        {'title': Expression.field('title')},
+      ]),
+      containsPair('title', 'Dart Pipelines'),
+    ),
+    _FunctionExpectation(
+      'equal',
+      Expression.field(
+        'tags',
+      ).equal([Expression.field('metadata').mapGetLiteral('lang'), 'firebase']),
+      true,
+    ),
+    _FunctionExpectation(
+      'nestedArray',
+      Expression.array([
+        1,
+        [Expression.field('price')],
+      ]),
+      [
+        1,
+        [10],
+      ],
+    ),
+    _FunctionExpectation(
+      'nestedMap',
+      PipelineFunctions.map([
+        'nested',
+        {'price': Expression.field('price')},
+      ]),
+      {
+        'nested': {'price': 10},
+      },
     ),
   ]),
   _FunctionScenario('string functions', [
@@ -788,6 +1054,17 @@ final _functionScenarios = <_FunctionScenario>[
       Expression.field('title').substringLiteral(0, 4),
       'Dart',
     ),
+    // The second argument is a length, not an end index.
+    _FunctionExpectation(
+      'substringLength',
+      Expression.field('title').substring(5, 3),
+      'Pip',
+    ),
+    _FunctionExpectation(
+      'substringToEnd',
+      Expression.field('title').substring(5),
+      'Pipelines',
+    ),
     _FunctionExpectation(
       'stringReverse',
       PipelineFunctions.stringReverse(Expression.constant('Dart')),
@@ -812,6 +1089,11 @@ final _functionScenarios = <_FunctionScenario>[
     _FunctionExpectation('ltrim', Expression.field('spaced').ltrim(), 'Dart  '),
     _FunctionExpectation('rtrim', Expression.field('spaced').rtrim(), '  Dart'),
     _FunctionExpectation('split', Expression.field('csv').splitLiteral(','), [
+      'dart',
+      'firebase',
+      'admin',
+    ]),
+    _FunctionExpectation('splitStatic', PipelineFunctions.split('csv', ','), [
       'dart',
       'firebase',
       'admin',
@@ -892,6 +1174,21 @@ final _functionScenarios = <_FunctionScenario>[
       Expression.field('price').isType(PipelineValueType.number),
       true,
     ),
+    _FunctionExpectation(
+      'isTypeInt64',
+      Expression.field('price').isType(PipelineValueType.int64),
+      true,
+    ),
+    _FunctionExpectation(
+      'isTypeFloat64',
+      Expression.field('score').isType(PipelineValueType.double),
+      true,
+    ),
+    _FunctionExpectation(
+      'isTypeNotFloat64',
+      Expression.field('price').isType(PipelineValueType.double),
+      false,
+    ),
   ]),
   _FunctionScenario('vector functions', [
     _FunctionExpectation(
@@ -917,6 +1214,24 @@ final _functionScenarios = <_FunctionScenario>[
       'vectorLength',
       Expression.field('embedding').vectorLength(),
       3,
+    ),
+  ]),
+  // A plain list of numbers must reach the backend as a vector, not an array.
+  _FunctionScenario('vector functions with list arguments', [
+    _FunctionExpectation(
+      'cosineDistance',
+      Expression.field('embedding').cosineDistance(const [1.0, 0.0, 0.0]),
+      closeTo(0, 0.0001),
+    ),
+    _FunctionExpectation(
+      'dotProduct',
+      PipelineFunctions.dotProduct('embedding', const [1, 0, 0]),
+      closeTo(1, 0.0001),
+    ),
+    _FunctionExpectation(
+      'euclideanDistance',
+      Expression.field('embedding').euclideanDistance(const [1.0, 0.0, 0.0]),
+      closeTo(0, 0.0001),
     ),
   ]),
 ];

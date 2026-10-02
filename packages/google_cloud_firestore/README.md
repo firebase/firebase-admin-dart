@@ -307,6 +307,10 @@ proportion between 0 and 1. Exactly one of the two must be given.
 )
 ```
 
+`queryVector` takes a `VectorValue`, a plain list of numbers, or an
+expression. So does the second argument of `cosineDistance`, `dotProduct` and
+`euclideanDistance`; either way it is sent as a vector.
+
 **`rawStage`** — escape hatch for preview stages this SDK does not yet wrap.
 `search` is a thin wrapper over the same mechanism.
 
@@ -343,8 +347,16 @@ field('title').toUpperCase();
 PipelineFunctions.toUpper('title');
 ```
 
-`Expression.field` / `Expression.constant` are aliases for the top-level
-`field` / `constant`, for callers who prefer a namespaced entry point.
+`Expression.field` / `Expression.constant` / `Expression.variable` are aliases
+for the top-level `field` / `constant` / `variable`, for callers who prefer a
+namespaced entry point.
+
+`variable` references a name bound by the enclosing expression, such as the
+element alias of `arrayFilter` / `arrayTransform`:
+
+```dart
+field('tags').arrayFilter('tag', variable('tag').notEqual('draft'));
+```
 
 **Field arguments vs value arguments.** A `String` in a *field* position means a
 field reference; in a *value* position it stays a string literal. The field
@@ -356,6 +368,15 @@ PipelineFunctions.startsWith('title', 'Harry');
 
 // Compare two fields by wrapping the value position explicitly:
 PipelineFunctions.startsWith('title', field('prefix'));
+```
+
+A `List` or `Map` argument may mix literals and expressions. It is sent as an
+`array(...)` / `map(...)` function so the backend evaluates the expressions
+inside it; wrap it in `constant` to send a literal value instead:
+
+```dart
+PipelineFunctions.equalAny('rating', [field('score'), 5]);
+field('metadata').mapMerge([{'reviewer': field('editor')}]);
 ```
 
 Selected expressions must be aliased with `as` (or `alias`):
@@ -375,7 +396,7 @@ available on `PipelineFunctions`; most also exist as a fluent method.
 | Logical | `and`, `or`, `xor`, `nor`, `not`, `conditional`, `ifNull`, `coalesce`, `switchOn`, `equalAny`, `notEqualAny` | `and`, `or`, `xor`, `nor`, `not`, `conditional`, `if_null`, `coalesce`, `switch_on`, `equal_any`, `not_equal_any` |
 | Aggregate | `count`, `countAll`, `countIf`, `countDistinct`, `sum`, `average`, `minimum`, `maximum`, `first`, `last`, `arrayAgg`, `arrayAggDistinct` | `count`, `count_if`, `count_distinct`, `sum`, `average`, `minimum`, `maximum`, `first`, `last`, `array_agg`, `array_agg_distinct` |
 | Arithmetic | `add`, `subtract`, `multiply`, `divide`, `mod`, `abs`, `ceil`, `floor`, `round`, `trunc`, `sqrt`, `pow`, `exp`, `ln`, `log`, `log10`, `rand`, `logicalMinimum`, `logicalMaximum` | `add`, `subtract`, `multiply`, `divide`, `mod`, `abs`, `ceil`, `floor`, `round`, `trunc`, `sqrt`, `pow`, `exp`, `ln`, `log`, `log10`, `rand`, `minimum`, `maximum` |
-| Array | `array`, `arrayConcat`, `arrayContains`, `arrayContainsAll`, `arrayContainsAny`, `arrayFilter`, `arrayGet`, `arrayLength`, `arrayReverse`, `arrayFirst`, `arrayFirstN`, `arrayLast`, `arrayLastN`, `arrayIndexOf`, `arrayIndexOfAll`, `arrayLastIndexOf`, `arraySlice`, `arrayTransform`, `arrayMaximum`, `arrayMaximumN`, `arrayMinimum`, `arrayMinimumN`, `arraySum`, `maximumN`, `minimumN`, `join` | `array`, `array_concat`, `array_contains`, `array_contains_all`, `array_contains_any`, `array_filter`, `array_get`, `array_length`, `array_reverse`, `array_first`, `array_first_n`, `array_last`, `array_last_n`, `array_index_of`, `array_index_of_all`, `array_index_of`, `array_slice`, `array_transform`, `array_maximum`, `array_maximum_n`, `array_minimum`, `array_minimum_n`, `array_sum`, `maximum_n`, `minimum_n`, `join` |
+| Array | `array`, `arrayConcat`, `arrayContains`, `arrayContainsAll`, `arrayContainsAny`, `arrayFilter`, `arrayGet`, `arrayLength`, `arrayReverse`, `arrayFirst`, `arrayFirstN`, `arrayLast`, `arrayLastN`, `arrayIndexOf`, `arrayIndexOfAll`, `arrayLastIndexOf`, `arraySlice`, `arrayTransform`, `arrayMaximum`, `arrayMaximumN`, `arrayMinimum`, `arrayMinimumN`, `arraySum`, `maximumN`, `minimumN`, `join` | `array`, `array_concat`, `array_contains`, `array_contains_all`, `array_contains_any`, `array_filter`, `array_get`, `array_length`, `array_reverse`, `array_first`, `array_first_n`, `array_last`, `array_last_n`, `array_index_of`, `array_index_of_all`, `array_index_of`, `array_slice`, `array_transform`, `maximum`, `maximum_n`, `minimum`, `minimum_n`, `sum`, `maximum_n`, `minimum_n`, `join` |
 | String | `byteLength`, `charLength`, `startsWith`, `endsWith`, `like`, `regexContains`, `regexMatch`, `regexFind`, `regexFindAll`, `stringConcat`, `stringContains`, `stringIndexOf`, `toUpper`, `toLower`, `substring`, `stringReverse`, `stringRepeat`, `stringReplaceAll`, `stringReplaceOne`, `trim`, `ltrim`, `rtrim`, `split` | `byte_length`, `char_length`, `starts_with`, `ends_with`, `like`, `regex_contains`, `regex_match`, `regex_find`, `regex_find_all`, `string_concat`, `string_contains`, `string_index_of`, `to_upper`, `to_lower`, `substring`, `string_reverse`, `string_repeat`, `string_replace_all`, `string_replace_one`, `trim`, `ltrim`, `rtrim`, `split` |
 | Generic | `length`, `reverse`, `concat` | `length`, `reverse`, `concat` |
 | Map | `map`, `mapGet`, `getField`, `mapSet`, `mapRemove`, `mapMerge`, `mapKeys`, `mapValues`, `mapEntries` | `map`, `map_get`, `get_field`, `map_set`, `map_remove`, `map_merge`, `map_keys`, `map_values`, `map_entries` |
@@ -393,7 +414,8 @@ maps; `charLength`/`stringReverse`/`stringConcat` and
 `logicalMaximum` to compare several operands element-wise.
 
 Anything not yet wrapped is reachable via `PipelineFunctions.raw` or
-`pipelineFunction`:
+`pipelineFunction`. Their arguments are sent as-is, so build a collection that
+holds expressions with `PipelineFunctions.array` / `PipelineFunctions.map`:
 
 ```dart
 PipelineFunctions.raw('some_new_function', [field('x'), 42]);
@@ -457,10 +479,11 @@ metadata, its identity:
 
 ```dart
 for (final result in snapshot.results) {
-  print(result.data());       // all decoded fields
-  print(result.get('title')); // a single field
-  print(result.ref?.path);    // null when a projection dropped metadata
-  print(result.id);           // the document ID, or null
+  print(result.data());               // all decoded fields
+  print(result.get('title'));         // a single field
+  print(result.get('metadata.lang')); // a nested field (or pass a FieldPath)
+  print(result.ref?.path);            // null when a projection dropped metadata
+  print(result.id);                   // the document ID, or null
   print(result.createTime);
   print(result.updateTime);
 }

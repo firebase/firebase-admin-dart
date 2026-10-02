@@ -72,6 +72,10 @@ typedef Selectable = PipelineExpression;
 typedef PipelineAggregateFunction = PipelineExpression;
 
 /// Firestore Pipeline backend value types used with [PipelineExpression.isType].
+///
+/// Each member encodes as the type name the backend expects, matching the
+/// Node.js SDK's `Type` union. [PipelineExpression.isType] also accepts a raw
+/// type name string for backend types not listed here.
 enum PipelineValueType {
   /// Null values.
   nullValue('null'),
@@ -82,11 +86,17 @@ enum PipelineValueType {
   /// Any numeric value.
   number('number'),
 
-  /// Integer numeric values.
+  /// 32-bit integer values.
+  int32('int32'),
+
+  /// 64-bit integer values.
   int64('int64'),
 
-  /// Double numeric values.
-  double('double'),
+  /// 64-bit floating point values, sent to the backend as `float64`.
+  double('float64'),
+
+  /// 128-bit decimal values.
+  decimal128('decimal128'),
 
   /// Timestamp values.
   timestamp('timestamp'),
@@ -110,7 +120,19 @@ enum PipelineValueType {
   map('map'),
 
   /// Vector values.
-  vector('vector');
+  vector('vector'),
+
+  /// Max key values.
+  maxKey('max_key'),
+
+  /// Min key values.
+  minKey('min_key'),
+
+  /// Object ID values.
+  objectId('object_id'),
+
+  /// Regular expression values.
+  regex('regex');
 
   const PipelineValueType(this.value);
 
@@ -179,6 +201,10 @@ final class PipelineExplainOptions {
 }
 
 /// Creates a raw Pipeline function expression.
+///
+/// [args] are sent as-is: a [List] or [Map] is a literal value, which cannot
+/// hold expressions. Build those with [PipelineFunctions.array] or
+/// [PipelineFunctions.map].
 PipelineExpression pipelineFunction(
   String name,
   Iterable<Object?> args, {
@@ -222,7 +248,7 @@ PipelineBooleanExpression _comparison(
   Object? left,
   Object? right,
 ) {
-  return _PipelineBooleanExpression(name, [_fieldOrExpression(left), right]);
+  return PipelineFunctions._bool(name, [_fieldOrExpression(left), right]);
 }
 
 /// Interprets a [String] in a field position as a field reference.
@@ -244,6 +270,61 @@ List<Object?> _fieldOrExpressionFirst(Iterable<Object?> values) {
     list[0] = _fieldOrExpression(list[0]);
   }
   return list;
+}
+
+/// Interprets a list of numbers in a vector position as a [VectorValue].
+///
+/// Mirrors the Node SDK's `vectorToExpr`: the vector distance functions and
+/// the `find_nearest` stage take a [VectorValue], an expression, or a plain
+/// list of numbers. Left to [_encodePipelineValue], a list would encode as an
+/// `ARRAY`, which the backend rejects where it expects a `Vector`.
+Object? _vectorOrExpression(Object? value, String name) {
+  if (value is! Iterable<Object?>) return value;
+  return FieldValue.vector([
+    for (final element in value)
+      switch (element) {
+        num() => element.toDouble(),
+        _ => throw ArgumentError.value(
+          value,
+          name,
+          'Expected a VectorValue, a list of numbers, or an expression.',
+        ),
+      },
+  ]);
+}
+
+/// Converts a Dart collection in a value position to the function that builds
+/// it.
+///
+/// Mirrors the Node SDK's `valueToDefaultExpr`: an [Iterable] becomes an
+/// `array(...)` function and a [Map] a `map(...)` function, with their entries
+/// converted the same way. The backend rejects expressions nested inside a
+/// literal array or map value, so this is what lets a collection such as
+/// `[field('a'), 1]` hold expressions. Other values are returned unchanged;
+/// wrap a collection in [constant] to send it as a literal value instead.
+Object? _valueToDefaultExpr(Object? value) {
+  return switch (value) {
+    Uint8List() => value,
+    Iterable() => PipelineFunctions.array(value),
+    Map() => PipelineFunctions.map([
+      for (final entry in value.entries) ...[entry.key.toString(), entry.value],
+    ]),
+    _ => value,
+  };
+}
+
+/// Whether [value] is, or holds, an expression the backend has to evaluate.
+///
+/// Constants already encode to plain values, so they don't count.
+bool _containsExpression(Object? value) {
+  return switch (value) {
+    _PipelineConstant() || _PipelineProtoValue() => false,
+    PipelineExpression() || Pipeline() => true,
+    Uint8List() => false,
+    Iterable() => value.any(_containsExpression),
+    Map() => value.values.any(_containsExpression),
+    _ => false,
+  };
 }
 
 /// Creates a logical AND expression.
@@ -277,18 +358,46 @@ PipelineBooleanExpression documentMatches(Object? rquery) {
 /// These helpers encode to the backend function names documented in the
 /// Firestore Pipeline functions reference. String arguments are encoded as
 /// string literals; use [field] when you want to reference a document field.
+///
+/// A [List] or [Map] argument may hold expressions, as in `[field('a'), 1]`:
+/// it is sent as an [array] or [map] function so the backend evaluates them.
+/// Wrap a collection in [constant] to send it as a literal value instead.
 abstract final class PipelineFunctions {
   static PipelineExpression _expr(String name, Iterable<Object?> args) {
-    return pipelineFunction(name, args);
+    return pipelineFunction(name, args.map(_valueToDefaultExpr));
   }
 
   static PipelineBooleanExpression _bool(String name, Iterable<Object?> args) {
-    return _PipelineBooleanExpression(name, args.toList());
+    return _PipelineBooleanExpression(name, [...args.map(_valueToDefaultExpr)]);
+  }
+
+  /// Tests [target] against the values in [searchSpace].
+  ///
+  /// Like the Node SDK, a list of plain values is sent as a literal array
+  /// value. A list holding expressions is built with [array] instead, since the
+  /// backend rejects expressions nested inside a literal array value.
+  static PipelineBooleanExpression _searchSpaceFunction(
+    String name,
+    Object? target,
+    Object? searchSpace,
+  ) {
+    final values = switch (searchSpace) {
+      Iterable() when !_containsExpression(searchSpace) => searchSpace.toList(),
+      _ => _valueToDefaultExpr(searchSpace),
+    };
+    return _PipelineBooleanExpression(name, [
+      _valueToDefaultExpr(_fieldOrExpression(target)),
+      values,
+    ]);
   }
 
   /// Creates a raw Pipeline function expression.
+  ///
+  /// Unlike the other helpers, [args] are sent as-is: a [List] or [Map] is a
+  /// literal value, which cannot hold expressions. Build those with [array]
+  /// or [map].
   static PipelineExpression raw(String name, Iterable<Object?> args) {
-    return _expr(name, args);
+    return pipelineFunction(name, args);
   }
 
   /// COUNT aggregate function.
@@ -409,6 +518,9 @@ abstract final class PipelineFunctions {
   }
 
   /// ROUND arithmetic function.
+  ///
+  /// Rounds to [decimalPlaces] decimal places when given, otherwise to the
+  /// nearest integer.
   static PipelineExpression round(Object? fieldName, [Object? decimalPlaces]) {
     return _expr('round', [
       _fieldOrExpression(fieldName),
@@ -417,6 +529,9 @@ abstract final class PipelineFunctions {
   }
 
   /// TRUNC arithmetic function.
+  ///
+  /// Truncates to [decimalPlaces] decimal places when given, otherwise to an
+  /// integer.
   static PipelineExpression trunc(Object? fieldName, [Object? decimalPlaces]) {
     return _expr('trunc', [
       _fieldOrExpression(fieldName),
@@ -458,6 +573,8 @@ abstract final class PipelineFunctions {
   static PipelineExpression rand() => _expr('rand', const []);
 
   /// ARRAY construction function.
+  ///
+  /// [values] may mix literals and expressions, as in `[field('a'), 1]`.
   static PipelineExpression array(Iterable<Object?> values) {
     return _expr('array', values);
   }
@@ -473,25 +590,23 @@ abstract final class PipelineFunctions {
   }
 
   /// ARRAY_CONTAINS_ALL function.
+  ///
+  /// [searchValues] is a list of values or an array expression.
   static PipelineBooleanExpression arrayContainsAll(
     Object? array,
     Object? searchValues,
   ) {
-    return _bool('array_contains_all', [
-      _fieldOrExpression(array),
-      searchValues,
-    ]);
+    return _searchSpaceFunction('array_contains_all', array, searchValues);
   }
 
   /// ARRAY_CONTAINS_ANY function.
+  ///
+  /// [searchValues] is a list of values or an array expression.
   static PipelineBooleanExpression arrayContainsAny(
     Object? array,
     Object? searchValues,
   ) {
-    return _bool('array_contains_any', [
-      _fieldOrExpression(array),
-      searchValues,
-    ]);
+    return _searchSpaceFunction('array_contains_any', array, searchValues);
   }
 
   /// ARRAY_FILTER function.
@@ -532,30 +647,30 @@ abstract final class PipelineFunctions {
     return _expr('array_first_n', [_fieldOrExpression(array), n]);
   }
 
-  /// ARRAY_MAXIMUM function.
-  static PipelineExpression arrayMaximum(Object? array) {
-    return _expr('array_maximum', [_fieldOrExpression(array)]);
-  }
+  /// MAXIMUM function over the elements of [array].
+  ///
+  /// The backend has no `array_maximum`; this emits `maximum`, like [maximum].
+  static PipelineExpression arrayMaximum(Object? array) => maximum(array);
 
-  /// ARRAY_MAXIMUM_N function.
+  /// MAXIMUM_N function over the elements of [array]; same as [maximumN].
   static PipelineExpression arrayMaximumN(Object? array, Object? n) {
-    return _expr('array_maximum_n', [_fieldOrExpression(array), n]);
+    return maximumN(array, n);
   }
 
-  /// ARRAY_MINIMUM function.
-  static PipelineExpression arrayMinimum(Object? array) {
-    return _expr('array_minimum', [_fieldOrExpression(array)]);
-  }
+  /// MINIMUM function over the elements of [array].
+  ///
+  /// The backend has no `array_minimum`; this emits `minimum`, like [minimum].
+  static PipelineExpression arrayMinimum(Object? array) => minimum(array);
 
-  /// ARRAY_MINIMUM_N function.
+  /// MINIMUM_N function over the elements of [array]; same as [minimumN].
   static PipelineExpression arrayMinimumN(Object? array, Object? n) {
-    return _expr('array_minimum_n', [_fieldOrExpression(array), n]);
+    return minimumN(array, n);
   }
 
-  /// ARRAY_SUM function.
-  static PipelineExpression arraySum(Object? array) {
-    return _expr('array_sum', [_fieldOrExpression(array)]);
-  }
+  /// SUM function over the elements of [array].
+  ///
+  /// The backend has no `array_sum`; this emits `sum`, like [sum].
+  static PipelineExpression arraySum(Object? array) => sum(array);
 
   /// COUNT function over every input, without inspecting a field.
   static PipelineAggregateFunction countAll() => _expr('count', const []);
@@ -622,12 +737,10 @@ abstract final class PipelineFunctions {
     return _expr('minimum_n', [_fieldOrExpression(array), n]);
   }
 
-  /// JOIN function.
-  static PipelineExpression join(Object? array, [Object? separator]) {
-    return _expr('join', [
-      _fieldOrExpression(array),
-      ..._optionalArg(separator),
-    ]);
+  /// JOIN function: joins the elements of [array] into a string separated by
+  /// [delimiter].
+  static PipelineExpression join(Object? array, Object? delimiter) {
+    return _expr('join', [_fieldOrExpression(array), delimiter]);
   }
 
   /// EQUAL comparison function.
@@ -784,22 +897,28 @@ abstract final class PipelineFunctions {
   }
 
   /// EQUAL_ANY logical function.
+  ///
+  /// [searchSpace] is a list of values or an array expression.
   static PipelineBooleanExpression equalAny(
     Object? fieldName,
     Object? searchSpace,
   ) {
-    return _bool('equal_any', [_fieldOrExpression(fieldName), searchSpace]);
+    return _searchSpaceFunction('equal_any', fieldName, searchSpace);
   }
 
   /// NOT_EQUAL_ANY logical function.
+  ///
+  /// [searchSpace] is a list of values or an array expression.
   static PipelineBooleanExpression notEqualAny(
     Object? fieldName,
     Object? searchSpace,
   ) {
-    return _bool('not_equal_any', [_fieldOrExpression(fieldName), searchSpace]);
+    return _searchSpaceFunction('not_equal_any', fieldName, searchSpace);
   }
 
   /// MAP construction function.
+  ///
+  /// [keyValues] alternates keys and values; values may be expressions.
   static PipelineExpression map(Iterable<Object?> keyValues) {
     return _expr('map', keyValues);
   }
@@ -822,8 +941,22 @@ abstract final class PipelineFunctions {
   }
 
   /// MAP_REMOVE function.
-  static PipelineExpression mapRemove(Object? map, Iterable<Object?> keys) {
-    return _expr('map_remove', [_fieldOrExpression(map), ...keys]);
+  ///
+  /// Removes [key] from [map]. A [String] [map] names a field; [key] is the
+  /// key itself (a [String] literal) or an expression producing it. Each call
+  /// removes exactly one key, so chain calls to remove several:
+  /// `mapRemove(mapRemove('address', 'city'), 'zip')`.
+  ///
+  /// Throws an [ArgumentError] when [key] is an [Iterable].
+  static PipelineExpression mapRemove(Object? map, Object? key) {
+    if (key is Iterable) {
+      throw ArgumentError.value(
+        key,
+        'key',
+        'Must be a single key. Chain mapRemove calls to remove several keys.',
+      );
+    }
+    return _expr('map_remove', [_fieldOrExpression(map), key]);
   }
 
   /// MAP_MERGE function.
@@ -967,14 +1100,18 @@ abstract final class PipelineFunctions {
   }
 
   /// SUBSTRING string function.
+  ///
+  /// Returns [length] characters (or bytes, for a bytes value) of [fieldName]
+  /// starting at index [position]. [length] is a count, not an end index; when
+  /// omitted the substring runs to the end of the input.
   static PipelineExpression substring(
     Object? fieldName,
-    Object? offset, [
+    Object? position, [
     Object? length,
   ]) {
     return _expr('substring', [
       _fieldOrExpression(fieldName),
-      offset,
+      position,
       ..._optionalArg(length),
     ]);
   }
@@ -1040,11 +1177,11 @@ abstract final class PipelineFunctions {
   }
 
   /// SPLIT string function.
-  static PipelineExpression split(Object? fieldName, [Object? delimiter]) {
-    return _expr('split', [
-      _fieldOrExpression(fieldName),
-      ..._optionalArg(delimiter),
-    ]);
+  ///
+  /// Splits [fieldName] on [delimiter]. The delimiter is required, as in the
+  /// Node SDK; a string [delimiter] is sent as a literal, not a field.
+  static PipelineExpression split(Object? fieldName, Object? delimiter) {
+    return _expr('split', [_fieldOrExpression(fieldName), delimiter]);
   }
 
   /// CURRENT_TIMESTAMP function.
@@ -1158,18 +1295,33 @@ abstract final class PipelineFunctions {
   }
 
   /// COSINE_DISTANCE vector function.
+  ///
+  /// [right] is a [VectorValue], a list of numbers, or an expression.
   static PipelineExpression cosineDistance(Object? left, Object? right) {
-    return _expr('cosine_distance', [_fieldOrExpression(left), right]);
+    return _expr('cosine_distance', [
+      _fieldOrExpression(left),
+      _vectorOrExpression(right, 'right'),
+    ]);
   }
 
   /// DOT_PRODUCT vector function.
+  ///
+  /// [right] is a [VectorValue], a list of numbers, or an expression.
   static PipelineExpression dotProduct(Object? left, Object? right) {
-    return _expr('dot_product', [_fieldOrExpression(left), right]);
+    return _expr('dot_product', [
+      _fieldOrExpression(left),
+      _vectorOrExpression(right, 'right'),
+    ]);
   }
 
   /// EUCLIDEAN_DISTANCE vector function.
+  ///
+  /// [right] is a [VectorValue], a list of numbers, or an expression.
   static PipelineExpression euclideanDistance(Object? left, Object? right) {
-    return _expr('euclidean_distance', [_fieldOrExpression(left), right]);
+    return _expr('euclidean_distance', [
+      _fieldOrExpression(left),
+      _vectorOrExpression(right, 'right'),
+    ]);
   }
 
   /// VECTOR_LENGTH vector function.
@@ -1228,7 +1380,13 @@ final class PipelineSource {
         'Invalid collectionId "$collectionId". Collection IDs must not contain "/".',
       );
     }
-    return _start('collection_group', [collectionId]);
+    // The backend stage is `collection_group(ancestor, collection_id)`. An
+    // empty reference names the database root as the ancestor, matching the
+    // Node SDK's `CollectionGroupSource`.
+    return _start('collection_group', [
+      _PipelineProtoValue(firestore_v1.Value(referenceValue: '')),
+      collectionId,
+    ]);
   }
 
   /// Starts a Pipeline over every document in the database.
@@ -1334,16 +1492,30 @@ final class Pipeline {
   ///
   /// Entries may be [String] field names, [PipelineField] references,
   /// [PipelineExpression] instances, or [PipelineAliasedExpression] values.
+  ///
+  /// Throws an [ArgumentError] when two [selections] land on the same field
+  /// name or alias.
   Pipeline select(Iterable<Object> selections) {
     return rawStage('select', [_projectionMap(selections)]);
   }
 
   /// Adds or overwrites fields on the inputs.
+  ///
+  /// Each expression is written to the field named by its alias, replacing
+  /// any existing value. Like [select], the fields are sent to the backend as
+  /// a single map keyed by alias.
+  ///
+  /// Throws an [ArgumentError] when two [fields] share an alias.
   Pipeline addFields(Iterable<PipelineAliasedExpression> fields) {
-    return rawStage('add_fields', fields);
+    return rawStage('add_fields', [
+      _projectionMap(fields, argumentName: 'fields'),
+    ]);
   }
 
   /// Aggregates inputs using aliased aggregate expressions.
+  ///
+  /// Throws an [ArgumentError] when two [accumulators], or two [groups], land
+  /// on the same field name or alias.
   Pipeline aggregate(
     Iterable<PipelineAliasedExpression> accumulators, {
     Iterable<Object> groups = const [],
@@ -1357,8 +1529,8 @@ final class Pipeline {
       );
     }
     return rawStage('aggregate', [
-      _projectionMap(values),
-      _projectionMap(groups),
+      _projectionMap(values, argumentName: 'accumulators'),
+      _projectionMap(groups, argumentName: 'groups'),
     ]);
   }
 
@@ -1366,12 +1538,17 @@ final class Pipeline {
   ///
   /// Entries may be [String] field names, [PipelineField] references, or
   /// [PipelineAliasedExpression] values.
+  ///
+  /// Throws an [ArgumentError] when two [groups] land on the same field name
+  /// or alias.
   Pipeline distinct(Iterable<Object> groups) {
     final values = groups.toList();
     if (values.isEmpty) {
       throw ArgumentError.value(groups, 'groups', 'Must not be empty.');
     }
-    return rawStage('distinct', [_projectionMap(values)]);
+    return rawStage('distinct', [
+      _projectionMap(values, argumentName: 'groups'),
+    ]);
   }
 
   /// Removes fields from the inputs.
@@ -1475,6 +1652,8 @@ final class Pipeline {
   }
 
   /// Performs vector nearest-neighbor search.
+  ///
+  /// [queryVector] is a [VectorValue], a list of numbers, or an expression.
   Pipeline findNearest({
     required Object vectorField,
     required Object queryVector,
@@ -1487,7 +1666,7 @@ final class Pipeline {
       'find_nearest',
       [
         if (vectorField is String) field(vectorField) else vectorField,
-        queryVector,
+        _vectorOrExpression(queryVector, 'queryVector'),
         distanceMeasure.value.toLowerCase(),
       ],
       options: _compactOptions({
@@ -1993,8 +2172,21 @@ final class PipelineResult {
   /// in which case this is empty rather than `null`.
   DocumentData data() => _data;
 
-  /// Returns the decoded value at [fieldName], or `null` when absent.
-  Object? get(String fieldName) => _data[fieldName];
+  /// Returns the decoded value at [field], or `null` when absent.
+  ///
+  /// [field] is a [String] or a [FieldPath], validated as in
+  /// [DocumentSnapshot.get]. A dot-separated string such as `'metadata.lang'`
+  /// reads a nested map field; use a [FieldPath] when a segment itself
+  /// contains a dot. Returns `null` when any segment is missing or traverses
+  /// a non-map value.
+  Object? get(Object field) {
+    Object? value = _data;
+    for (final segment in FieldPath.from(field).segments) {
+      if (value is! Map) return null;
+      value = value[segment];
+    }
+    return value;
+  }
 
   /// Whether [other] refers to the same document with the same fields.
   ///
@@ -2096,52 +2288,52 @@ sealed class PipelineExpression {
 
   /// Creates an equality expression.
   PipelineBooleanExpression equal(Object? other) {
-    return _PipelineBooleanExpression('equal', [this, other]);
+    return PipelineFunctions.equal(this, other);
   }
 
   /// Creates a not-equal expression.
   PipelineBooleanExpression notEqual(Object? other) {
-    return _PipelineBooleanExpression('not_equal', [this, other]);
+    return PipelineFunctions.notEqual(this, other);
   }
 
   /// Creates a less-than expression.
   PipelineBooleanExpression lessThan(Object? other) {
-    return _PipelineBooleanExpression('less_than', [this, other]);
+    return PipelineFunctions.lessThan(this, other);
   }
 
   /// Creates a less-than-or-equal expression.
   PipelineBooleanExpression lessThanOrEqual(Object? other) {
-    return _PipelineBooleanExpression('less_than_or_equal', [this, other]);
+    return PipelineFunctions.lessThanOrEqual(this, other);
   }
 
   /// Creates a greater-than expression.
   PipelineBooleanExpression greaterThan(Object? other) {
-    return _PipelineBooleanExpression('greater_than', [this, other]);
+    return PipelineFunctions.greaterThan(this, other);
   }
 
   /// Creates a greater-than-or-equal expression.
   PipelineBooleanExpression greaterThanOrEqual(Object? other) {
-    return _PipelineBooleanExpression('greater_than_or_equal', [this, other]);
+    return PipelineFunctions.greaterThanOrEqual(this, other);
   }
 
   /// Creates an addition expression.
   PipelineExpression add(Object? other) {
-    return _PipelineFunctionExpression('add', [this, other], const {});
+    return PipelineFunctions.add(this, other);
   }
 
   /// Creates a subtraction expression.
   PipelineExpression subtract(Object? other) {
-    return _PipelineFunctionExpression('subtract', [this, other], const {});
+    return PipelineFunctions.subtract(this, other);
   }
 
   /// Creates a multiplication expression.
   PipelineExpression multiply(Object? other) {
-    return _PipelineFunctionExpression('multiply', [this, other], const {});
+    return PipelineFunctions.multiply(this, other);
   }
 
   /// Creates a division expression.
   PipelineExpression divide(Object? other) {
-    return _PipelineFunctionExpression('divide', [this, other], const {});
+    return PipelineFunctions.divide(this, other);
   }
 
   /// Returns the absolute value of this expression.
@@ -2156,14 +2348,20 @@ sealed class PipelineExpression {
   /// Returns the floor of this expression.
   PipelineExpression floor() => PipelineFunctions.floor(this);
 
-  /// Returns the rounded value of this expression.
-  PipelineExpression round() => PipelineFunctions.round(this);
+  /// Rounds this expression to [decimalPlaces] decimal places, or to the
+  /// nearest integer when [decimalPlaces] is omitted.
+  ///
+  /// [decimalPlaces] may be a number or an expression.
+  PipelineExpression round([Object? decimalPlaces]) {
+    return PipelineFunctions.round(this, decimalPlaces);
+  }
 
-  /// Truncates this expression.
-  PipelineExpression trunc([Object? decimals]) {
-    return decimals == null
-        ? PipelineFunctions.trunc(this)
-        : PipelineFunctions.raw('trunc', [this, decimals]);
+  /// Truncates this expression to [decimalPlaces] decimal places, or to an
+  /// integer when [decimalPlaces] is omitted.
+  ///
+  /// [decimalPlaces] may be a number or an expression.
+  PipelineExpression trunc([Object? decimalPlaces]) {
+    return PipelineFunctions.trunc(this, decimalPlaces);
   }
 
   /// Returns the square root of this expression.
@@ -2253,10 +2451,7 @@ sealed class PipelineExpression {
 
   /// Checks if this array contains all [values].
   PipelineBooleanExpression arrayContainsAll(Iterable<Object?> values) {
-    return PipelineFunctions.arrayContainsAll(
-      this,
-      PipelineFunctions.array(values),
-    );
+    return PipelineFunctions.arrayContainsAll(this, values);
   }
 
   /// Checks if this array contains all values from [arrayExpression].
@@ -2266,10 +2461,7 @@ sealed class PipelineExpression {
 
   /// Checks if this array contains any [values].
   PipelineBooleanExpression arrayContainsAny(Iterable<Object?> values) {
-    return PipelineFunctions.arrayContainsAny(
-      this,
-      PipelineFunctions.array(values),
-    );
+    return PipelineFunctions.arrayContainsAny(this, values);
   }
 
   /// Filters this array expression.
@@ -2318,18 +2510,18 @@ sealed class PipelineExpression {
   }
 
   /// Returns the maximum element of this array expression.
-  PipelineExpression arrayMaximum() => PipelineFunctions.maximum(this);
+  PipelineExpression arrayMaximum() => PipelineFunctions.arrayMaximum(this);
 
   /// Returns the largest [n] elements of this array expression.
   PipelineExpression arrayMaximumN(Object? n) =>
-      PipelineFunctions.maximumN(this, n);
+      PipelineFunctions.arrayMaximumN(this, n);
 
   /// Returns the minimum element of this array expression.
-  PipelineExpression arrayMinimum() => PipelineFunctions.minimum(this);
+  PipelineExpression arrayMinimum() => PipelineFunctions.arrayMinimum(this);
 
   /// Returns the smallest [n] elements of this array expression.
   PipelineExpression arrayMinimumN(Object? n) =>
-      PipelineFunctions.minimumN(this, n);
+      PipelineFunctions.arrayMinimumN(this, n);
 
   /// Reverses this array expression.
   PipelineExpression arrayReverse() => PipelineFunctions.arrayReverse(this);
@@ -2342,7 +2534,7 @@ sealed class PipelineExpression {
   }
 
   /// Returns the sum of numeric elements in this array expression.
-  PipelineExpression arraySum() => PipelineFunctions.sum(this);
+  PipelineExpression arraySum() => PipelineFunctions.arraySum(this);
 
   /// Transforms this array expression.
   PipelineExpression arrayTransform(String elementAlias, Object? transform) {
@@ -2443,9 +2635,15 @@ sealed class PipelineExpression {
   /// Returns this map expression's entries.
   PipelineExpression mapEntries() => PipelineFunctions.mapEntries(this);
 
-  /// Removes [keys] from this map expression.
-  PipelineExpression mapRemove(Iterable<Object?> keys) {
-    return PipelineFunctions.mapRemove(this, keys);
+  /// Removes [key] from this map expression.
+  ///
+  /// [key] is the key itself (a [String] literal) or an expression producing
+  /// it. Each call removes exactly one key, so chain calls to remove several:
+  /// `field('address').mapRemove('city').mapRemove('zip')`.
+  ///
+  /// Throws an [ArgumentError] when [key] is an [Iterable].
+  PipelineExpression mapRemove(Object? key) {
+    return PipelineFunctions.mapRemove(this, key);
   }
 
   /// Merges this map expression with [maps].
@@ -2562,14 +2760,23 @@ sealed class PipelineExpression {
     return stringReplaceOne(find, replacement);
   }
 
-  /// Extracts a substring from this string expression.
-  PipelineExpression substring(Object? start, Object? end) {
-    return PipelineFunctions.substring(this, start, end);
+  /// Extracts [length] characters of this string (or bytes) expression,
+  /// starting at index [position].
+  ///
+  /// Unlike [String.substring], the second argument is a length, not an end
+  /// index: `substring(2, 3)` returns three characters starting at index 2.
+  /// When [length] is omitted the substring runs to the end of the input.
+  PipelineExpression substring(Object? position, [Object? length]) {
+    return PipelineFunctions.substring(this, position, length);
   }
 
-  /// Extracts a substring from this string expression.
-  PipelineExpression substringLiteral(int start, int end) {
-    return substring(start, end);
+  /// Extracts [length] characters of this string (or bytes) expression,
+  /// starting at literal index [position].
+  ///
+  /// See [substring]: [length] is a count, not an end index, and when omitted
+  /// the substring runs to the end of the input.
+  PipelineExpression substringLiteral(int position, [int? length]) {
+    return substring(position, length);
   }
 
   /// Checks if this string expression starts with [prefix].
@@ -2678,16 +2885,22 @@ sealed class PipelineExpression {
   }
 
   /// Computes cosine distance between this vector and [other].
+  ///
+  /// [other] is a [VectorValue], a list of numbers, or an expression.
   PipelineExpression cosineDistance(Object? other) {
     return PipelineFunctions.cosineDistance(this, other);
   }
 
   /// Computes dot product between this vector and [other].
+  ///
+  /// [other] is a [VectorValue], a list of numbers, or an expression.
   PipelineExpression dotProduct(Object? other) {
     return PipelineFunctions.dotProduct(this, other);
   }
 
   /// Computes Euclidean distance between this vector and [other].
+  ///
+  /// [other] is a [VectorValue], a list of numbers, or an expression.
   PipelineExpression euclideanDistance(Object? other) {
     return PipelineFunctions.euclideanDistance(this, other);
   }
@@ -3000,8 +3213,24 @@ Map<String, Object?> _compactOptions(Map<String, Object?> options) {
   return Map.fromEntries(options.entries.where((entry) => entry.value != null));
 }
 
-Map<String, Object?> _projectionMap(Iterable<Object> selections) {
-  return Map.fromEntries(selections.map(_projectionEntry));
+/// Keys each selection's expression by the field name or alias it lands on.
+///
+/// Throws an [ArgumentError] on a repeated key instead of silently keeping the
+/// last entry. A [String] or [PipelineField] lands on its own path, so it
+/// collides with an alias of the same name, matching the Node SDK.
+Map<String, Object?> _projectionMap(
+  Iterable<Object> selections, {
+  String argumentName = 'selections',
+}) {
+  final result = <String, Object?>{};
+  for (final selection in selections) {
+    final MapEntry(:key, :value) = _projectionEntry(selection);
+    if (result.containsKey(key)) {
+      throw ArgumentError("Duplicate alias or field '$key'.", argumentName);
+    }
+    result[key] = value;
+  }
+  return result;
 }
 
 /// Splits a selectable into the expression it computes and the alias it lands
