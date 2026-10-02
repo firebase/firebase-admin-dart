@@ -80,6 +80,37 @@ void main() {
         ),
         isInt(12),
       ),
+      // Every further operand is sent in the same add call: 10 + 1 + 2 + 3.
+      FunctionCase(
+        'static, further literal operands',
+        PipelineFunctions.add('price', 1, [2, 3]),
+        isInt(16),
+      ),
+      // 10 + 5 + 2.
+      FunctionCase(
+        'static, further expression operands',
+        PipelineFunctions.add(
+          Expression.field('price'),
+          Expression.field('rating'),
+          [Expression.field('discount')],
+        ),
+        isInt(17),
+      ),
+      // 10 + 1 + 2.
+      FunctionCase(
+        'fluent, further literal operands',
+        Expression.field('price').add(1, [2]),
+        isInt(13),
+      ),
+      // 10 + 2 + 5 + 7.
+      FunctionCase(
+        'fluent, further expression operands',
+        Expression.field('price').add(Expression.field('discount'), [
+          Expression.field('rating'),
+          Expression.field('quantity'),
+        ]),
+        isInt(24),
+      ),
     ]);
 
     ctx.functionCases('subtract', [
@@ -131,6 +162,36 @@ void main() {
           Expression.field('quantity'),
         ),
         isInt(70),
+      ),
+      // Every further operand is sent in the same multiply call: 5 * 2 * 3.
+      FunctionCase(
+        'static, further literal operands',
+        PipelineFunctions.multiply('rating', 2, [3]),
+        isInt(30),
+      ),
+      // 10 * 5 * 2.
+      FunctionCase(
+        'static, further expression operands',
+        PipelineFunctions.multiply(
+          Expression.field('price'),
+          Expression.field('rating'),
+          [Expression.field('discount')],
+        ),
+        isInt(100),
+      ),
+      // 10 * 2 * 3.
+      FunctionCase(
+        'fluent, further literal operands',
+        Expression.field('price').multiply(2, [3]),
+        isInt(60),
+      ),
+      // 5 * 2 * 6.
+      FunctionCase(
+        'fluent, further expression operands',
+        Expression.field(
+          'rating',
+        ).multiply(Expression.field('discount'), [Expression.field('flags')]),
+        isInt(60),
       ),
     ]);
 
