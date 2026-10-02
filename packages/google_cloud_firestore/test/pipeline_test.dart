@@ -1665,6 +1665,92 @@ void main() {
       expect(fields['rows']!.functionValue!.args, isEmpty);
     });
 
+    test('round and trunc forward optional decimal places', () async {
+      firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+      when(
+        () =>
+            mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                Function(firestore_v1.Firestore api, String projectId);
+
+        final api = FakeFirestore(
+          executePipeline: (request) {
+            capturedRequest = request;
+            return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+          },
+        );
+
+        return callback(api, _projectId);
+      });
+
+      await firestore.pipeline().collection('books').select([
+        field('price').round().as('round'),
+        // Regression: the fluent form used to take no argument at all.
+        field('price').round(2).as('round2'),
+        field('price').round(field('places')).as('roundExpr'),
+        field('price').trunc().as('trunc'),
+        field('price').trunc(2).as('trunc2'),
+        field('price').trunc(field('places')).as('truncExpr'),
+        PipelineFunctions.round('price').as('staticRound'),
+        PipelineFunctions.round('price', 2).as('staticRound2'),
+        PipelineFunctions.round(
+          'price',
+          Expression.constant(2),
+        ).as('staticRoundExpr'),
+        PipelineFunctions.trunc('price').as('staticTrunc'),
+        PipelineFunctions.trunc('price', 2).as('staticTrunc2'),
+      ]).execute();
+
+      final fields = capturedRequest!
+          .structuredPipeline!
+          .pipeline!
+          .stages[1]
+          .args
+          .single
+          .mapValue!
+          .fields;
+
+      for (final MapEntry(key: alias, value: value) in fields.entries) {
+        final function = value.functionValue!;
+        expect(
+          function.name,
+          alias.toLowerCase().contains('round') ? 'round' : 'trunc',
+          reason: alias,
+        );
+        expect(function.args[0].fieldReferenceValue, 'price', reason: alias);
+      }
+
+      // Without decimal places only the operand is sent, matching Node.
+      for (final alias in ['round', 'trunc', 'staticRound', 'staticTrunc']) {
+        expect(fields[alias]!.functionValue!.args, hasLength(1), reason: alias);
+      }
+
+      for (final alias in [
+        'round2',
+        'trunc2',
+        'staticRound2',
+        'staticTrunc2',
+      ]) {
+        final args = fields[alias]!.functionValue!.args;
+        expect(args, hasLength(2), reason: alias);
+        expect(args[1].integerValue, 2, reason: alias);
+      }
+
+      for (final alias in ['roundExpr', 'truncExpr']) {
+        final args = fields[alias]!.functionValue!.args;
+        expect(args, hasLength(2), reason: alias);
+        expect(args[1].fieldReferenceValue, 'places', reason: alias);
+      }
+
+      final staticRoundExpr = fields['staticRoundExpr']!.functionValue!.args;
+      expect(staticRoundExpr, hasLength(2));
+      expect(staticRoundExpr[1].integerValue, 2);
+    });
+
     test('array aggregation helpers encode like their fluent forms', () async {
       firestore_v1.ExecutePipelineRequest? capturedRequest;
 

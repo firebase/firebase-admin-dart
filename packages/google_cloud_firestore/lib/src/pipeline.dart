@@ -431,6 +431,9 @@ abstract final class PipelineFunctions {
   }
 
   /// ROUND arithmetic function.
+  ///
+  /// Rounds to [decimalPlaces] decimal places when given, otherwise to the
+  /// nearest integer.
   static PipelineExpression round(Object? fieldName, [Object? decimalPlaces]) {
     return _expr('round', [
       _fieldOrExpression(fieldName),
@@ -439,6 +442,9 @@ abstract final class PipelineFunctions {
   }
 
   /// TRUNC arithmetic function.
+  ///
+  /// Truncates to [decimalPlaces] decimal places when given, otherwise to an
+  /// integer.
   static PipelineExpression trunc(Object? fieldName, [Object? decimalPlaces]) {
     return _expr('trunc', [
       _fieldOrExpression(fieldName),
@@ -2214,14 +2220,20 @@ sealed class PipelineExpression {
   /// Returns the floor of this expression.
   PipelineExpression floor() => PipelineFunctions.floor(this);
 
-  /// Returns the rounded value of this expression.
-  PipelineExpression round() => PipelineFunctions.round(this);
+  /// Rounds this expression to [decimalPlaces] decimal places, or to the
+  /// nearest integer when [decimalPlaces] is omitted.
+  ///
+  /// [decimalPlaces] may be a number or an expression.
+  PipelineExpression round([Object? decimalPlaces]) {
+    return PipelineFunctions.round(this, decimalPlaces);
+  }
 
-  /// Truncates this expression.
-  PipelineExpression trunc([Object? decimals]) {
-    return decimals == null
-        ? PipelineFunctions.trunc(this)
-        : PipelineFunctions.raw('trunc', [this, decimals]);
+  /// Truncates this expression to [decimalPlaces] decimal places, or to an
+  /// integer when [decimalPlaces] is omitted.
+  ///
+  /// [decimalPlaces] may be a number or an expression.
+  PipelineExpression trunc([Object? decimalPlaces]) {
+    return PipelineFunctions.trunc(this, decimalPlaces);
   }
 
   /// Returns the square root of this expression.

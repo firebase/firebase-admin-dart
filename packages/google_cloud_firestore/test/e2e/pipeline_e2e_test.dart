@@ -480,6 +480,16 @@ final _functionScenarios = <_FunctionScenario>[
     _FunctionExpectation('floor', Expression.constant(12.8).floor(), 12),
     _FunctionExpectation('round', Expression.constant(12.6).round(), 13),
     _FunctionExpectation('trunc', Expression.constant(12.8).trunc(), 12),
+    _FunctionExpectation(
+      'roundDecimalPlaces',
+      Expression.constant(12.68).round(1),
+      closeTo(12.7, 0.0001),
+    ),
+    _FunctionExpectation(
+      'truncDecimalPlaces',
+      Expression.constant(12.89).trunc(1),
+      closeTo(12.8, 0.0001),
+    ),
     _FunctionExpectation('pow', PipelineFunctions.pow(2, 3), 8),
     _FunctionExpectation('sqrt', Expression.constant(9).sqrt(), 3),
     _FunctionExpectation(
