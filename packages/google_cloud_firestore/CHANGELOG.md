@@ -16,6 +16,10 @@
 - `PipelineExpression.substring` and `substringLiteral` now take `(position, [length])` like `PipelineFunctions.substring`: the second argument is a length, not an end index, and can be omitted.
 - `PipelineExpression.round` now accepts the optional `decimalPlaces` argument.
 - Exported the top-level `variable()` Pipeline helper.
+- Every Pipeline function now has a single implementation shared by all of its forms. The fluent `PipelineExpression` method, the top-level helper (`equal`, `and`, `not`, ...) and the `Expression` alias forward to the `PipelineFunctions` function (and `field`, `constant` and `variable` to `Expression`), so every form sends the same request.
+- `PipelineFunctions.arraySlice` now takes an optional `length`, like `PipelineExpression.arraySlice` and the Node Admin SDK.
+- `PipelineFunctions.raw` now accepts `options`, like `Expression.raw`.
+- `PipelineExpression.arrayContainsAll` and `arrayContainsAny` now also accept an array expression, like their `PipelineFunctions` forms and the Node Admin SDK.
 
 ## 0.5.5
 

@@ -15,16 +15,20 @@
 part of 'firestore.dart';
 
 /// Creates a field reference expression for Firestore Pipeline operations.
-PipelineField field(String fieldPath) => PipelineField._(fieldPath);
+PipelineField field(String fieldPath) => Expression.field(fieldPath);
 
 /// Creates a constant expression for Firestore Pipeline operations.
-PipelineExpression constant(Object? value) => _PipelineConstant(value);
+PipelineExpression constant(Object? value) => Expression.constant(value);
 
 /// Creates a variable reference expression for Firestore Pipeline operations.
-PipelineExpression variable(String name) => _PipelineVariable(name);
+PipelineExpression variable(String name) => Expression.variable(name);
 
 /// FlutterFire-style entry points for building Pipeline expressions.
 abstract final class Expression {
+  // The top-level field, constant and variable helpers forward to these. The
+  // forwarding cannot go the other way: in here, a bare `field` names
+  // Expression.field itself.
+
   /// Creates a field reference expression.
   static PipelineField field(String fieldPath) => PipelineField._(fieldPath);
 
@@ -47,12 +51,14 @@ abstract final class Expression {
   }
 
   /// Creates a raw backend function expression.
+  ///
+  /// See [PipelineFunctions.raw].
   static PipelineExpression raw(
     String name,
     Iterable<Object?> args, {
     Map<String, Object?> options = const {},
   }) {
-    return pipelineFunction(name, args, options: options);
+    return PipelineFunctions.raw(name, args, options: options);
   }
 }
 
@@ -213,42 +219,36 @@ PipelineExpression pipelineFunction(
   return _PipelineFunctionExpression(name, args.toList(), options);
 }
 
-/// Creates an equality expression.
+/// Creates an equality expression; same as [PipelineFunctions.equal].
 PipelineBooleanExpression equal(Object? left, Object? right) {
-  return _comparison('equal', left, right);
+  return PipelineFunctions.equal(left, right);
 }
 
-/// Creates a not-equal expression.
+/// Creates a not-equal expression; same as [PipelineFunctions.notEqual].
 PipelineBooleanExpression notEqual(Object? left, Object? right) {
-  return _comparison('not_equal', left, right);
+  return PipelineFunctions.notEqual(left, right);
 }
 
-/// Creates a less-than expression.
+/// Creates a less-than expression; same as [PipelineFunctions.lessThan].
 PipelineBooleanExpression lessThan(Object? left, Object? right) {
-  return _comparison('less_than', left, right);
+  return PipelineFunctions.lessThan(left, right);
 }
 
-/// Creates a less-than-or-equal expression.
+/// Creates a less-than-or-equal expression; same as
+/// [PipelineFunctions.lessThanOrEqual].
 PipelineBooleanExpression lessThanOrEqual(Object? left, Object? right) {
-  return _comparison('less_than_or_equal', left, right);
+  return PipelineFunctions.lessThanOrEqual(left, right);
 }
 
-/// Creates a greater-than expression.
+/// Creates a greater-than expression; same as [PipelineFunctions.greaterThan].
 PipelineBooleanExpression greaterThan(Object? left, Object? right) {
-  return _comparison('greater_than', left, right);
+  return PipelineFunctions.greaterThan(left, right);
 }
 
-/// Creates a greater-than-or-equal expression.
+/// Creates a greater-than-or-equal expression; same as
+/// [PipelineFunctions.greaterThanOrEqual].
 PipelineBooleanExpression greaterThanOrEqual(Object? left, Object? right) {
-  return _comparison('greater_than_or_equal', left, right);
-}
-
-PipelineBooleanExpression _comparison(
-  String name,
-  Object? left,
-  Object? right,
-) {
-  return PipelineFunctions._bool(name, [_fieldOrExpression(left), right]);
+  return PipelineFunctions.greaterThanOrEqual(left, right);
 }
 
 /// Interprets a [String] in a field position as a field reference.
@@ -327,19 +327,19 @@ bool _containsExpression(Object? value) {
   };
 }
 
-/// Creates a logical AND expression.
+/// Creates a logical AND expression; same as [PipelineFunctions.and].
 PipelineBooleanExpression and(Iterable<PipelineBooleanExpression> expressions) {
-  return _PipelineBooleanExpression('and', expressions.toList());
+  return PipelineFunctions.and(expressions);
 }
 
-/// Creates a logical OR expression.
+/// Creates a logical OR expression; same as [PipelineFunctions.or].
 PipelineBooleanExpression or(Iterable<PipelineBooleanExpression> expressions) {
-  return _PipelineBooleanExpression('or', expressions.toList());
+  return PipelineFunctions.or(expressions);
 }
 
-/// Creates a logical NOT expression.
+/// Creates a logical NOT expression; same as [PipelineFunctions.not].
 PipelineBooleanExpression not(PipelineBooleanExpression expression) {
-  return _PipelineBooleanExpression('not', [expression]);
+  return PipelineFunctions.not(expression);
 }
 
 /// Returns the current document as a Pipeline expression.
@@ -362,6 +362,10 @@ PipelineBooleanExpression documentMatches(Object? rquery) {
 /// A [List] or [Map] argument may hold expressions, as in `[field('a'), 1]`:
 /// it is sent as an [array] or [map] function so the backend evaluates them.
 /// Wrap a collection in [constant] to send it as a literal value instead.
+///
+/// The fluent [PipelineExpression] method of the same name, and any top-level
+/// or [Expression] helper, forward to the function here, so every form of a
+/// function builds the same expression.
 abstract final class PipelineFunctions {
   static PipelineExpression _expr(String name, Iterable<Object?> args) {
     return pipelineFunction(name, args.map(_valueToDefaultExpr));
@@ -395,9 +399,13 @@ abstract final class PipelineFunctions {
   ///
   /// Unlike the other helpers, [args] are sent as-is: a [List] or [Map] is a
   /// literal value, which cannot hold expressions. Build those with [array]
-  /// or [map].
-  static PipelineExpression raw(String name, Iterable<Object?> args) {
-    return pipelineFunction(name, args);
+  /// or [map]. [options] are sent as the function's options.
+  static PipelineExpression raw(
+    String name,
+    Iterable<Object?> args, {
+    Map<String, Object?> options = const {},
+  }) {
+    return pipelineFunction(name, args, options: options);
   }
 
   /// COUNT aggregate function.
@@ -701,12 +709,19 @@ abstract final class PipelineFunctions {
   }
 
   /// ARRAY_SLICE function.
+  ///
+  /// Returns [length] elements of [array] starting at index [offset]; when
+  /// [length] is omitted the slice runs to the end of the array.
   static PipelineExpression arraySlice(
     Object? array,
-    Object? offset,
+    Object? offset, [
     Object? length,
-  ) {
-    return _expr('array_slice', [_fieldOrExpression(array), offset, length]);
+  ]) {
+    return _expr('array_slice', [
+      _fieldOrExpression(array),
+      offset,
+      ..._optionalArg(length),
+    ]);
   }
 
   /// ARRAY_TRANSFORM function.
@@ -2052,12 +2067,8 @@ PipelineBooleanExpression _cursorCondition(
 
   PipelineBooleanExpression compare(Object? expression, Object? value) {
     return before
-        ? _comparison('less_than', expression, value)
-        : _comparison('greater_than', expression, value);
-  }
-
-  PipelineBooleanExpression equals(Object? expression, Object? value) {
-    return _comparison('equal', expression, value);
+        ? lessThan(expression, value)
+        : greaterThan(expression, value);
   }
 
   var expression = orderings[size - 1]._expression;
@@ -2066,7 +2077,7 @@ PipelineBooleanExpression _cursorCondition(
   var condition = compare(expression, value);
   // An inclusive bound also matches the cursor value itself.
   if (before != cursor.before) {
-    condition = or([condition, equals(expression, value)]);
+    condition = or([condition, equal(expression, value)]);
   }
 
   for (var i = size - 2; i >= 0; i--) {
@@ -2074,7 +2085,7 @@ PipelineBooleanExpression _cursorCondition(
     value = _PipelineProtoValue(cursor.values[i]);
     condition = or([
       compare(expression, value),
-      and([equals(expression, value), condition]),
+      and([equal(expression, value), condition]),
     ]);
   }
 
@@ -2450,7 +2461,9 @@ sealed class PipelineExpression {
   }
 
   /// Checks if this array contains all [values].
-  PipelineBooleanExpression arrayContainsAll(Iterable<Object?> values) {
+  ///
+  /// [values] is a list of values or an array expression.
+  PipelineBooleanExpression arrayContainsAll(Object? values) {
     return PipelineFunctions.arrayContainsAll(this, values);
   }
 
@@ -2460,7 +2473,9 @@ sealed class PipelineExpression {
   }
 
   /// Checks if this array contains any [values].
-  PipelineBooleanExpression arrayContainsAny(Iterable<Object?> values) {
+  ///
+  /// [values] is a list of values or an array expression.
+  PipelineBooleanExpression arrayContainsAny(Object? values) {
     return PipelineFunctions.arrayContainsAny(this, values);
   }
 
@@ -2526,11 +2541,10 @@ sealed class PipelineExpression {
   /// Reverses this array expression.
   PipelineExpression arrayReverse() => PipelineFunctions.arrayReverse(this);
 
-  /// Returns a slice of this array expression.
+  /// Returns [length] elements of this array expression starting at index
+  /// [offset]; when [length] is omitted the slice runs to the end.
   PipelineExpression arraySlice(Object? offset, [Object? length]) {
-    return length == null
-        ? PipelineFunctions.raw('array_slice', [this, offset])
-        : PipelineFunctions.arraySlice(this, offset, length);
+    return PipelineFunctions.arraySlice(this, offset, length);
   }
 
   /// Returns the sum of numeric elements in this array expression.
@@ -2947,14 +2961,6 @@ final class PipelineField extends PipelineExpression {
 
   /// The field path referenced by this expression.
   final String path;
-
-  /// Creates an ascending ordering for this field.
-  @override
-  PipelineOrdering ascending() => PipelineOrdering._('ascending', this);
-
-  /// Creates a descending ordering for this field.
-  @override
-  PipelineOrdering descending() => PipelineOrdering._('descending', this);
 
   @override
   firestore_v1.Value _toValue(Firestore firestore) {
