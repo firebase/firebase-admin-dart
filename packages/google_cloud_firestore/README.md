@@ -312,15 +312,29 @@ expression. So does the second argument of `cosineDistance`, `dotProduct` and
 `euclideanDistance`; either way it is sent as a vector.
 
 **`rawStage`** — escape hatch for preview stages this SDK does not yet wrap.
-`search` is a thin wrapper over the same mechanism.
+`search` is a thin wrapper over the same mechanism. As in the Node.js SDK, a
+`Map` argument is sent as a literal map, but a `List` or `Map` nested in it is
+sent as the `array(...)` or `map(...)` function that builds it, so it may hold
+expressions.
 
 ```dart
 .rawStage('sample', [10, 'documents'], options: {'stable': true})
 ```
 
+Every stage and source also takes `rawOptions`, for stage options this SDK
+does not wrap yet; they take precedence over the typed ones. A key may be a
+dot-separated path into a map option: `{'outer.inner': 1}` sends
+`outer: {inner: 1}`, merged with anything else set inside `outer`.
+
+```dart
+.limit(10, rawOptions: {'some_option.enabled': true})
+```
+
 Query-level options are passed to `execute()` rather than built onto the
 Pipeline, so a Pipeline value stays a pure description of what to fetch. Use
-`rawOptions` for options this SDK does not wrap yet; they take precedence.
+`rawOptions` for options this SDK does not wrap yet; they take precedence, and
+dotted keys merge into the typed options, so `explain` plus
+`{'explain_options.output_format': 'json'}` sends one `explain_options` map.
 
 ```dart
 .execute(

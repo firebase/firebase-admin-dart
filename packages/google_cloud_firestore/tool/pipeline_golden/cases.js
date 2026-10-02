@@ -126,6 +126,18 @@ module.exports = function buildCases(sdk, db) {
   add('sources/collection/force-index', () =>
     db.pipeline().collection({collection: 'books', forceIndex: 'my_index'}),
   );
+  add('sources/collection/raw-options', () =>
+    db.pipeline().collection({
+      collection: 'books',
+      rawOptions: {foo: 'bar', 'outer.inner': 1},
+    }),
+  );
+  add('sources/collection/reference-raw-options', () =>
+    db.pipeline().collection({
+      collection: db.collection('books'),
+      rawOptions: {foo: 'bar'},
+    }),
+  );
   add('sources/collection-group/id', () =>
     db.pipeline().collectionGroup('reviews'),
   );
@@ -134,7 +146,16 @@ module.exports = function buildCases(sdk, db) {
       .pipeline()
       .collectionGroup({collectionId: 'reviews', forceIndex: 'my_index'}),
   );
+  add('sources/collection-group/raw-options', () =>
+    db.pipeline().collectionGroup({
+      collectionId: 'reviews',
+      rawOptions: {foo: 'bar'},
+    }),
+  );
   add('sources/database/plain', () => db.pipeline().database());
+  add('sources/database/raw-options', () =>
+    db.pipeline().database({rawOptions: {foo: 'bar'}}),
+  );
   add('sources/documents/paths', () =>
     db.pipeline().documents(['books/book1', 'books/book2']),
   );
@@ -143,6 +164,12 @@ module.exports = function buildCases(sdk, db) {
   );
   add('sources/documents/nested', () =>
     db.pipeline().documents([db.doc('authors/author1/books/book1')]),
+  );
+  add('sources/documents/raw-options', () =>
+    db.pipeline().documents({
+      docs: [db.doc('books/book1')],
+      rawOptions: {foo: 'bar'},
+    }),
   );
   add('sources/subcollection/as-array-expression', () =>
     db
@@ -307,6 +334,12 @@ module.exports = function buildCases(sdk, db) {
       .where(field('rating').greaterThan(4))
       .where(field('genre').equal('Fantasy')),
   );
+  stage('where/raw-options', () =>
+    books().where({
+      condition: field('rating').greaterThan(4),
+      rawOptions: {foo: 'bar', 'outer.inner': true},
+    }),
+  );
 
   stage('select/field-names', () => books().select('title', 'author'));
   stage('select/fields', () =>
@@ -344,6 +377,12 @@ module.exports = function buildCases(sdk, db) {
     ),
   );
   stage('add-fields/field', () => books().addFields(field('rating')));
+  stage('add-fields/raw-options', () =>
+    books().addFields({
+      fields: [field('rating').as('copiedRating')],
+      rawOptions: {foo: 'bar'},
+    }),
+  );
 
   stage('remove-fields/field-names', () =>
     books().removeFields('title', 'author'),
@@ -352,6 +391,9 @@ module.exports = function buildCases(sdk, db) {
     books().removeFields(field('title'), field('author')),
   );
   stage('remove-fields/nested', () => books().removeFields('metadata.lang'));
+  stage('remove-fields/raw-options', () =>
+    books().removeFields({fields: ['title'], rawOptions: {foo: 'bar'}}),
+  );
 
   stage('sort/ascending-method', () => books().sort(field('rating').ascending()));
   stage('sort/descending-method', () =>
@@ -372,15 +414,30 @@ module.exports = function buildCases(sdk, db) {
   stage('sort/expression-method', () =>
     books().sort(field('title').charLength().descending()),
   );
+  stage('sort/raw-options', () =>
+    books().sort({
+      orderings: [field('rating').descending()],
+      rawOptions: {foo: 'bar'},
+    }),
+  );
 
   stage('offset/plain', () => books().offset(10));
+  stage('offset/raw-options', () =>
+    books().offset({offset: 10, rawOptions: {foo: 'bar'}}),
+  );
   stage('limit/plain', () => books().limit(10));
   stage('limit/zero', () => books().limit(0));
+  stage('limit/raw-options', () =>
+    books().limit({limit: 10, rawOptions: {foo: 'bar'}}),
+  );
 
   stage('distinct/field-names', () => books().distinct('genre', 'author'));
   stage('distinct/fields', () => books().distinct(field('genre')));
   stage('distinct/aliased', () =>
     books().distinct(field('genre').toLower().as('lowerGenre')),
+  );
+  stage('distinct/raw-options', () =>
+    books().distinct({groups: ['genre'], rawOptions: {foo: 'bar'}}),
   );
 
   stage('aggregate/single', () => books().aggregate(P.countAll().as('total')));
@@ -409,6 +466,13 @@ module.exports = function buildCases(sdk, db) {
       ],
     }),
   );
+  stage('aggregate/raw-options', () =>
+    books().aggregate({
+      accumulators: [P.countAll().as('total')],
+      groups: ['genre'],
+      rawOptions: {foo: 'bar'},
+    }),
+  );
 
   const findNearest = options =>
     books().findNearest({
@@ -434,6 +498,14 @@ module.exports = function buildCases(sdk, db) {
   stage('find-nearest/all-options', () =>
     findNearest({limit: 10, distanceField: 'distance'}),
   );
+  // rawOptions override the typed options they share a name with.
+  stage('find-nearest/raw-options', () =>
+    findNearest({
+      limit: 10,
+      distanceField: 'distance',
+      rawOptions: {limit: 20, 'extra.flag': true},
+    }),
+  );
 
   stage('replace-with/field-name', () => books().replaceWith('metadata'));
   stage('replace-with/field', () => books().replaceWith(field('metadata')));
@@ -442,10 +514,16 @@ module.exports = function buildCases(sdk, db) {
       P.map({title: field('title'), rating: field('rating')}),
     ),
   );
+  stage('replace-with/raw-options', () =>
+    books().replaceWith({map: 'metadata', rawOptions: {foo: 'bar'}}),
+  );
 
   stage('sample/documents', () => books().sample(10));
   stage('sample/documents-option', () => books().sample({documents: 10}));
   stage('sample/percentage', () => books().sample({percentage: 0.25}));
+  stage('sample/raw-options', () =>
+    books().sample({documents: 10, rawOptions: {foo: 'bar'}}),
+  );
 
   stage('union/plain', () =>
     books().union(db.pipeline().collection('magazines')),
@@ -461,6 +539,12 @@ module.exports = function buildCases(sdk, db) {
           .select('title'),
       ),
   );
+  stage('union/raw-options', () =>
+    books().union({
+      other: db.pipeline().collection('magazines'),
+      rawOptions: {foo: 'bar'},
+    }),
+  );
 
   stage('unnest/field', () => books().unnest(field('tags')));
   stage('unnest/aliased-field', () => books().unnest(field('tags').as('tag')));
@@ -472,6 +556,13 @@ module.exports = function buildCases(sdk, db) {
   );
   stage('unnest/options-object', () =>
     books().unnest({selectable: field('tags').as('tag'), indexField: 'idx'}),
+  );
+  stage('unnest/raw-options', () =>
+    books().unnest({
+      selectable: field('tags').as('tag'),
+      indexField: 'idx',
+      rawOptions: {index_field: field('position'), foo: 'bar'},
+    }),
   );
 
   stage('raw-stage/expression-params', () =>
@@ -487,8 +578,46 @@ module.exports = function buildCases(sdk, db) {
   stage('raw-stage/nested-plain-object-param', () =>
     books().rawStage('select', [{meta: {lang: field('lang')}}]),
   );
+  // A plain object param is a literal map whose values go through
+  // valueToDefaultExpr: a nested object or array becomes a map(...) or
+  // array(...) function, with or without expressions in it.
+  stage('raw-stage/plain-object-param-literals', () =>
+    books().rawStage('custom', [{a: 1, b: 'x', c: null}]),
+  );
+  stage('raw-stage/empty-object-param', () => books().rawStage('custom', [{}]));
+  stage('raw-stage/nested-plain-object-param-literals', () =>
+    books().rawStage('custom', [{meta: {lang: 'en', year: 2020}}]),
+  );
+  stage('raw-stage/nested-empty-object-param', () =>
+    books().rawStage('custom', [{meta: {}}]),
+  );
+  stage('raw-stage/array-in-object-param', () =>
+    books().rawStage('custom', [{tags: [field('genre'), 'classic']}]),
+  );
+  stage('raw-stage/array-in-object-param-literals', () =>
+    books().rawStage('custom', [{tags: [1, 2]}]),
+  );
+  stage('raw-stage/deeply-nested-object-param', () =>
+    books().rawStage('custom', [
+      {a: {b: {c: field('x')}, d: [field('y'), {e: 1}]}},
+    ]),
+  );
+  stage('raw-stage/constant-in-object-param', () =>
+    books().rawStage('custom', [{meta: constant({lang: 'en'})}]),
+  );
   stage('raw-stage/array-param', () =>
     books().rawStage('custom', [[1, 'a', field('title')]]),
+  );
+  // Any other param, an array included, is a constant: a literal value all
+  // the way down.
+  stage('raw-stage/array-param-literals', () =>
+    books().rawStage('custom', [[1, 2, 3]]),
+  );
+  stage('raw-stage/nested-array-param', () =>
+    books().rawStage('custom', [[1, [2, field('x')]]]),
+  );
+  stage('raw-stage/object-in-array-param', () =>
+    books().rawStage('custom', [[{a: field('x'), b: {c: 1}}]]),
   );
   stage('raw-stage/aggregate-params', () =>
     books().rawStage('aggregate', [
@@ -505,6 +634,37 @@ module.exports = function buildCases(sdk, db) {
   );
   stage('raw-stage/options-dot-notation', () =>
     books().rawStage('custom', [], {'outer.inner': 'value'}),
+  );
+  stage('raw-stage/options-nested-object', () =>
+    books().rawStage('custom', [], {outer: {inner: 'value', n: 1}}),
+  );
+  stage('raw-stage/options-expression-values', () =>
+    books().rawStage('custom', [], {
+      target: field('x'),
+      nested: {target: field('y')},
+    }),
+  );
+  stage('raw-stage/options-dot-notation-siblings', () =>
+    books().rawStage('custom', [], {'outer.a': 1, 'outer.b': 2}),
+  );
+  stage('raw-stage/options-dot-notation-deep', () =>
+    books().rawStage('custom', [], {'a.b.c': true}),
+  );
+  // Keys apply in order: a dotted key merges into an earlier object, an
+  // object replaces what earlier dotted keys built, and a dotted key
+  // replaces an earlier value that is not a map.
+  stage('raw-stage/options-dot-notation-merges-object', () =>
+    books().rawStage('custom', [], {outer: {a: 1}, 'outer.b': 2}),
+  );
+  stage('raw-stage/options-object-replaces-dot-notation', () =>
+    books().rawStage('custom', [], {'outer.a': 1, outer: {b: 2}}),
+  );
+  stage('raw-stage/options-dot-notation-replaces-scalar', () =>
+    books().rawStage('custom', [], {outer: 'x', 'outer.a': 1}),
+  );
+  // Segments are not unescaped: backticks are part of the name.
+  stage('raw-stage/options-dot-notation-backticks', () =>
+    books().rawStage('custom', [], {'a.`b.c`': 1}),
   );
 
   stage('search/query-string', () => books().search({query: 'breakfast'}));
@@ -534,6 +694,13 @@ module.exports = function buildCases(sdk, db) {
     books().search({
       query: 'breakfast',
       addFields: [P.score().as('searchScore')],
+    }),
+  );
+  stage('search/raw-options', () =>
+    books().search({
+      query: 'breakfast',
+      limit: 10,
+      rawOptions: {limit: 20, 'extra.flag': true},
     }),
   );
 
@@ -590,6 +757,26 @@ module.exports = function buildCases(sdk, db) {
     explainOptions: {mode: 'analyze'},
     rawOptions: {'explain_options.output_format': 'text'},
   });
+  execute('raw-options/dot-notation-overrides-known', {
+    explainOptions: {mode: 'analyze', outputFormat: 'text'},
+    rawOptions: {'explain_options.mode': 'execute'},
+  });
+  execute('raw-options/object-replaces-known', {
+    explainOptions: {mode: 'analyze', outputFormat: 'text'},
+    rawOptions: {explain_options: {mode: 'execute'}},
+  });
+  execute('raw-options/dot-notation-into-empty-explain', {
+    explainOptions: {},
+    rawOptions: {'explain_options.mode': 'analyze'},
+  });
+  execute('raw-options/dot-notation-replaces-known-scalar', {
+    indexMode: 'recommended',
+    rawOptions: {'index_mode.mode': 'custom'},
+  });
+  execute('raw-options/dot-notation-siblings', {
+    rawOptions: {'outer.a': 1, 'outer.b': 'two'},
+  });
+  execute('raw-options/dot-notation-deep', {rawOptions: {'a.b.c': true}});
 
   // ---------------------------------------------------------------------------
   // Values: constants, fields, variables and plain values in value positions

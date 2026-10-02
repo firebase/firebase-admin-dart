@@ -313,6 +313,24 @@ Object? _valueToDefaultExpr(Object? value) {
   };
 }
 
+/// Converts a [Pipeline.rawStage] argument.
+///
+/// Mirrors the Node SDK's `rawStage`, which sends a plain object as a literal
+/// map value (`_mapValue`) and anything else as is (`constant`). A literal map
+/// that is a stage argument may hold expressions, as `select`'s does, but the
+/// backend rejects them one level deeper, so each value of the map goes
+/// through [_valueToDefaultExpr]: a nested collection becomes the `map(...)`
+/// or `array(...)` function that builds it.
+Object? _rawStageArg(Object? value) {
+  return switch (value) {
+    Map() => {
+      for (final entry in value.entries)
+        entry.key.toString(): _valueToDefaultExpr(entry.value),
+    },
+    _ => value,
+  };
+}
+
 /// Whether [value] is, or holds, an expression the backend has to evaluate.
 ///
 /// Constants already encode to plain values, so they don't count.
@@ -1412,13 +1430,28 @@ final class PipelineSource {
   final Firestore _firestore;
 
   /// Starts a Pipeline over documents in the collection at [collectionPath].
-  Pipeline collection(String collectionPath) {
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [Pipeline.rawStage]'s `options` do.
+  Pipeline collection(
+    String collectionPath, {
+    Map<String, Object?> rawOptions = const {},
+  }) {
     _validateResourcePath('collectionPath', collectionPath);
-    return collectionReference(_firestore.collection(collectionPath));
+    return collectionReference(
+      _firestore.collection(collectionPath),
+      rawOptions: rawOptions,
+    );
   }
 
   /// Starts a Pipeline over every collection with [collectionId].
-  Pipeline collectionGroup(String collectionId) {
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [Pipeline.rawStage]'s `options` do.
+  Pipeline collectionGroup(
+    String collectionId, {
+    Map<String, Object?> rawOptions = const {},
+  }) {
     if (collectionId.contains('/')) {
       throw ArgumentError(
         'Invalid collectionId "$collectionId". Collection IDs must not contain "/".',
@@ -1430,32 +1463,47 @@ final class PipelineSource {
     return _start('collection_group', [
       _PipelineProtoValue(firestore_v1.Value(referenceValue: '')),
       collectionId,
-    ]);
+    ], rawOptions: rawOptions);
   }
 
   /// Starts a Pipeline over every document in the database.
-  Pipeline database() => _start('database', const []);
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [Pipeline.rawStage]'s `options` do.
+  Pipeline database({Map<String, Object?> rawOptions = const {}}) {
+    return _start('database', const [], rawOptions: rawOptions);
+  }
 
   /// Starts a Pipeline over the provided collection reference.
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [Pipeline.rawStage]'s `options` do.
   ///
   /// Throws an [ArgumentError] when [collectionReference] targets a different
   /// database than this Pipeline.
   Pipeline collectionReference(
-    CollectionReference<DocumentData> collectionReference,
-  ) {
+    CollectionReference<DocumentData> collectionReference, {
+    Map<String, Object?> rawOptions = const {},
+  }) {
     _validateSameDatabase(
       _firestore,
       collectionReference.firestore,
       'collectionReference',
     );
-    return _start('collection', [collectionReference]);
+    return _start('collection', [collectionReference], rawOptions: rawOptions);
   }
 
   /// Starts a Pipeline over the provided document references.
   ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [Pipeline.rawStage]'s `options` do.
+  ///
   /// Throws an [ArgumentError] when any of [documents] targets a different
   /// database than this Pipeline.
-  Pipeline documents(Iterable<DocumentReference<dynamic>> documents) {
+  Pipeline documents(
+    Iterable<DocumentReference<dynamic>> documents, {
+    Map<String, Object?> rawOptions = const {},
+  }) {
     final refs = documents.toList();
     if (refs.isEmpty) {
       throw ArgumentError.value(documents, 'documents', 'Must not be empty.');
@@ -1468,7 +1516,7 @@ final class PipelineSource {
     // name. The full name is only correct for references in a value position.
     return _start('documents', [
       for (final ref in refs) _PipelineProtoValue(_relativeReference(ref.path)),
-    ]);
+    ], rawOptions: rawOptions);
   }
 
   /// Converts [query] into an equivalent Pipeline.
@@ -1496,10 +1544,14 @@ final class PipelineSource {
     }
   }
 
-  Pipeline _start(String name, List<Object?> args) {
+  Pipeline _start(
+    String name,
+    List<Object?> args, {
+    required Map<String, Object?> rawOptions,
+  }) {
     return Pipeline._(
       firestore: _firestore,
-      stages: [_PipelineStage(name, args)],
+      stages: [_PipelineStage(name, args, _PipelineOptions(raw: rawOptions))],
     );
   }
 }
@@ -1519,17 +1571,64 @@ final class Pipeline {
   /// Adds a raw backend Pipeline stage.
   ///
   /// Use this for preview stages or options not yet wrapped by this SDK.
+  ///
+  /// [args] are converted like the Node SDK's `rawStage` params: each is sent
+  /// as is (a [List] as a literal array value), except a [Map]. A [Map] is
+  /// sent as a literal map value, which may hold expressions, but a [List] or
+  /// [Map] nested in it is sent as the [PipelineFunctions.array] or
+  /// [PipelineFunctions.map] function that builds it, since the backend
+  /// rejects expressions nested in a literal value at that depth. Wrap a
+  /// nested collection in [constant] to send it as a literal value instead.
+  ///
+  /// [options] are the stage's options, keyed by the names the backend
+  /// expects. A key may be a dot-separated path into a map option:
+  /// `{'outer.inner': 1}` sends `outer: {inner: 1}`, and is merged with any
+  /// other value set inside `outer`. Keys are applied in order, so a later
+  /// key overwrites an earlier one it overlaps with.
+  ///
+  /// Throws an [ArgumentError] when a key of [options] has an empty segment,
+  /// such as `''`, `'a.'` or `'a..b'`.
   Pipeline rawStage(
     String name,
     Iterable<Object?> args, {
     Map<String, Object?> options = const {},
   }) {
-    return _append(_PipelineStage(name, args.toList(), options));
+    return _append(
+      _PipelineStage(name, [
+        for (final arg in args) _rawStageArg(arg),
+      ], _PipelineOptions(raw: options, rawName: 'options')),
+    );
+  }
+
+  /// Adds the stage [name], as one of this SDK's typed stage methods does.
+  ///
+  /// Unlike [rawStage], [args] are sent as they are. [options] are the typed
+  /// options of the stage, under their backend names, and [rawOptions] the
+  /// caller's raw options, overlaid on them.
+  Pipeline _stage(
+    String name,
+    List<Object?> args, {
+    Map<String, Object?> options = const {},
+    required Map<String, Object?> rawOptions,
+  }) {
+    return _append(
+      _PipelineStage(
+        name,
+        args,
+        _PipelineOptions(known: options, raw: rawOptions),
+      ),
+    );
   }
 
   /// Filters inputs using [condition].
-  Pipeline where(PipelineBooleanExpression condition) {
-    return rawStage('where', [condition]);
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [rawStage]'s `options` do.
+  Pipeline where(
+    PipelineBooleanExpression condition, {
+    Map<String, Object?> rawOptions = const {},
+  }) {
+    return _stage('where', [condition], rawOptions: rawOptions);
   }
 
   /// Selects or computes fields from the inputs.
@@ -1539,8 +1638,16 @@ final class Pipeline {
   ///
   /// Throws an [ArgumentError] when two [selections] land on the same field
   /// name or alias.
-  Pipeline select(Iterable<Object> selections) {
-    return rawStage('select', [_projectionMap(selections)]);
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [rawStage]'s `options` do.
+  Pipeline select(
+    Iterable<Object> selections, {
+    Map<String, Object?> rawOptions = const {},
+  }) {
+    return _stage('select', [
+      _projectionMap(selections),
+    ], rawOptions: rawOptions);
   }
 
   /// Adds or overwrites fields on the inputs.
@@ -1550,19 +1657,29 @@ final class Pipeline {
   /// a single map keyed by alias.
   ///
   /// Throws an [ArgumentError] when two [fields] share an alias.
-  Pipeline addFields(Iterable<PipelineAliasedExpression> fields) {
-    return rawStage('add_fields', [
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [rawStage]'s `options` do.
+  Pipeline addFields(
+    Iterable<PipelineAliasedExpression> fields, {
+    Map<String, Object?> rawOptions = const {},
+  }) {
+    return _stage('add_fields', [
       _projectionMap(fields, argumentName: 'fields'),
-    ]);
+    ], rawOptions: rawOptions);
   }
 
   /// Aggregates inputs using aliased aggregate expressions.
   ///
   /// Throws an [ArgumentError] when two [accumulators], or two [groups], land
   /// on the same field name or alias.
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [rawStage]'s `options` do.
   Pipeline aggregate(
     Iterable<PipelineAliasedExpression> accumulators, {
     Iterable<Object> groups = const [],
+    Map<String, Object?> rawOptions = const {},
   }) {
     final values = accumulators.toList();
     if (values.isEmpty) {
@@ -1572,10 +1689,10 @@ final class Pipeline {
         'Must not be empty.',
       );
     }
-    return rawStage('aggregate', [
+    return _stage('aggregate', [
       _projectionMap(values, argumentName: 'accumulators'),
       _projectionMap(groups, argumentName: 'groups'),
-    ]);
+    ], rawOptions: rawOptions);
   }
 
   /// Returns unique combinations of the provided grouping expressions.
@@ -1585,47 +1702,71 @@ final class Pipeline {
   ///
   /// Throws an [ArgumentError] when two [groups] land on the same field name
   /// or alias.
-  Pipeline distinct(Iterable<Object> groups) {
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [rawStage]'s `options` do.
+  Pipeline distinct(
+    Iterable<Object> groups, {
+    Map<String, Object?> rawOptions = const {},
+  }) {
     final values = groups.toList();
     if (values.isEmpty) {
       throw ArgumentError.value(groups, 'groups', 'Must not be empty.');
     }
-    return rawStage('distinct', [
+    return _stage('distinct', [
       _projectionMap(values, argumentName: 'groups'),
-    ]);
+    ], rawOptions: rawOptions);
   }
 
   /// Removes fields from the inputs.
-  Pipeline removeFields(Iterable<Object> fields) {
-    return rawStage('remove_fields', [
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [rawStage]'s `options` do.
+  Pipeline removeFields(
+    Iterable<Object> fields, {
+    Map<String, Object?> rawOptions = const {},
+  }) {
+    return _stage('remove_fields', [
       for (final value in fields)
         if (value is String) field(value) else value,
-    ]);
+    ], rawOptions: rawOptions);
   }
 
   /// Sorts inputs according to [orderings].
-  Pipeline sort(Iterable<PipelineOrdering> orderings) {
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [rawStage]'s `options` do.
+  Pipeline sort(
+    Iterable<PipelineOrdering> orderings, {
+    Map<String, Object?> rawOptions = const {},
+  }) {
     final values = orderings.toList();
     if (values.isEmpty) {
       throw ArgumentError.value(orderings, 'orderings', 'Must not be empty.');
     }
-    return rawStage('sort', values);
+    return _stage('sort', values, rawOptions: rawOptions);
   }
 
   /// Skips the first [offset] inputs.
-  Pipeline offset(int offset) {
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [rawStage]'s `options` do.
+  Pipeline offset(int offset, {Map<String, Object?> rawOptions = const {}}) {
     if (offset < 0) {
       throw ArgumentError.value(offset, 'offset', 'Must be non-negative.');
     }
-    return rawStage('offset', [offset]);
+    return _stage('offset', [offset], rawOptions: rawOptions);
   }
 
   /// Limits the number of returned inputs to [limit].
-  Pipeline limit(int limit) {
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [rawStage]'s `options` do.
+  Pipeline limit(int limit, {Map<String, Object?> rawOptions = const {}}) {
     if (limit < 0) {
       throw ArgumentError.value(limit, 'limit', 'Must be non-negative.');
     }
-    return rawStage('limit', [limit]);
+    return _stage('limit', [limit], rawOptions: rawOptions);
   }
 
   /// Emits a document for each element of the array selected by [selectable].
@@ -1637,36 +1778,63 @@ final class Pipeline {
   ///
   /// When [indexField] is given, the element's zero-based index is assigned to
   /// that field.
-  Pipeline unnest(Object selectable, {String? indexField}) {
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [rawStage]'s `options` do, and takes precedence over [indexField].
+  Pipeline unnest(
+    Object selectable, {
+    String? indexField,
+    Map<String, Object?> rawOptions = const {},
+  }) {
     final (expression, alias) = _selectableParts(selectable);
-    return rawStage(
+    return _stage(
       'unnest',
       [expression, field(alias)],
       options: _compactOptions({
         'index_field': indexField == null ? null : field(indexField),
       }),
+      rawOptions: rawOptions,
     );
   }
 
   /// Replaces each input document with the map produced by [expression].
-  Pipeline replaceWith(Object expression) {
-    return rawStage('replace_with', [
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [rawStage]'s `options` do.
+  Pipeline replaceWith(
+    Object expression, {
+    Map<String, Object?> rawOptions = const {},
+  }) {
+    return _stage('replace_with', [
       _fieldOrExpression(expression),
       'full_replace',
-    ]);
+    ], rawOptions: rawOptions);
   }
 
   /// Performs a union with [pipeline], including duplicates.
   ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [rawStage]'s `options` do.
+  ///
   /// Throws an [ArgumentError] when [pipeline] targets a different database
   /// than this Pipeline.
-  Pipeline union(Pipeline pipeline) {
+  Pipeline union(
+    Pipeline pipeline, {
+    Map<String, Object?> rawOptions = const {},
+  }) {
     _validateSameDatabase(firestore, pipeline.firestore, 'pipeline');
-    return rawStage('union', [pipeline]);
+    return _stage('union', [pipeline], rawOptions: rawOptions);
   }
 
   /// Samples a fixed number or percentage of documents from the input.
-  Pipeline sample({int? documents, double? percentage}) {
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [rawStage]'s `options` do.
+  Pipeline sample({
+    int? documents,
+    double? percentage,
+    Map<String, Object?> rawOptions = const {},
+  }) {
     if ((documents == null) == (percentage == null)) {
       throw ArgumentError(
         'Exactly one of documents or percentage must be provided.',
@@ -1692,12 +1860,15 @@ final class Pipeline {
         ? (documents, 'documents')
         : (percentage!, 'percent');
 
-    return rawStage('sample', [rate, mode]);
+    return _stage('sample', [rate, mode], rawOptions: rawOptions);
   }
 
   /// Performs vector nearest-neighbor search.
   ///
   /// [queryVector] is a [VectorValue], a list of numbers, or an expression.
+  ///
+  /// [rawOptions] sets stage options this SDK does not wrap yet, as
+  /// [rawStage]'s `options` do, and takes precedence over the typed options.
   Pipeline findNearest({
     required Object vectorField,
     required Object queryVector,
@@ -1705,8 +1876,9 @@ final class Pipeline {
     int? limit,
     String? distanceResultField,
     double? distanceThreshold,
+    Map<String, Object?> rawOptions = const {},
   }) {
-    return rawStage(
+    return _stage(
       'find_nearest',
       [
         if (vectorField is String) field(vectorField) else vectorField,
@@ -1720,15 +1892,23 @@ final class Pipeline {
             : field(distanceResultField),
         'distance_threshold': distanceThreshold,
       }),
+      rawOptions: rawOptions,
     );
   }
 
   /// Adds a search stage.
   ///
   /// The search API is still evolving; [options] is passed through to the
-  /// backend stage as encoded Pipeline values.
-  Pipeline search(Map<String, Object?> options) {
-    return rawStage('search', const [], options: options);
+  /// backend stage as encoded Pipeline values, keyed by the names the backend
+  /// expects.
+  ///
+  /// [rawOptions] is overlaid on [options] the way [rawStage] reads its
+  /// `options`, so its keys may be dot-separated paths.
+  Pipeline search(
+    Map<String, Object?> options, {
+    Map<String, Object?> rawOptions = const {},
+  }) {
+    return _stage('search', const [], options: options, rawOptions: rawOptions);
   }
 
   /// Executes this Pipeline and returns the results.
@@ -1743,7 +1923,13 @@ final class Pipeline {
   /// Pass [explain] to ask the backend for planning stats, then read
   /// [PipelineSnapshot.explainStats]. [rawOptions] sets options this SDK does
   /// not wrap yet, keyed by the names the backend expects, and takes
-  /// precedence over the typed options above.
+  /// precedence over the typed options above. As in [rawStage]'s `options`, a
+  /// key may be a dot-separated path into a map option, merged with the typed
+  /// options: `explain` plus `{'explain_options.output_format': 'json'}` send
+  /// a single `explain_options` map holding both.
+  ///
+  /// Throws an [ArgumentError] when a key of [rawOptions] has an empty
+  /// segment, such as `''`, `'a.'` or `'a..b'`.
   ///
   /// ```dart
   /// final snapshot = await firestore
@@ -1776,18 +1962,18 @@ final class Pipeline {
   }
 
   /// Builds the StructuredPipeline options, with [rawOptions] winning.
-  static Map<String, Object?> _executeOptions({
+  static _PipelineOptions _executeOptions({
     required PipelineIndexMode? indexMode,
     required PipelineExplainOptions? explain,
     required Map<String, Object?> rawOptions,
   }) {
-    return {
-      ..._compactOptions({
+    return _PipelineOptions(
+      known: _compactOptions({
         'index_mode': indexMode?.value,
         'explain_options': explain?._encoded,
       }),
-      ...rawOptions,
-    };
+      raw: rawOptions,
+    );
   }
 
   /// Executes this Pipeline, optionally as part of a transaction.
@@ -1799,7 +1985,7 @@ final class Pipeline {
     String? transactionId,
     Timestamp? readTime,
     firestore_v1.TransactionOptions? transactionOptions,
-    Map<String, Object?> options = const {},
+    _PipelineOptions options = const _PipelineOptions.none(),
   }) {
     final results = <PipelineResult>[];
     Timestamp? executionTime;
@@ -1827,7 +2013,7 @@ final class Pipeline {
             database: 'projects/$projectId/databases/${firestore.databaseId}',
             structuredPipeline: firestore_v1.StructuredPipeline(
               pipeline: _toProto(),
-              options: _encodeOptions(options, firestore),
+              options: options._toProto(firestore),
             ),
             transaction: transactionId.let(base64Decode),
             newTransaction: transactionOptions,
@@ -3112,17 +3298,85 @@ final class _PipelineBooleanCastExpression extends PipelineBooleanExpression {
 }
 
 final class _PipelineStage {
-  const _PipelineStage(this.name, this.args, [this.options = const {}]);
+  const _PipelineStage(this.name, this.args, this.options);
 
   final String name;
   final List<Object?> args;
-  final Map<String, Object?> options;
+  final _PipelineOptions options;
 
   firestore_v1.Pipeline_Stage _toProto(Firestore firestore) {
     return firestore_v1.Pipeline_Stage(
       name: name,
       args: [for (final arg in args) _encodePipelineValue(arg, firestore)],
-      options: _encodeOptions(options, firestore),
+      options: options._toProto(firestore),
+    );
+  }
+}
+
+/// The options of a stage or of a Pipeline execution.
+///
+/// Mirrors the Node SDK's `OptionsUtil.getOptionsProto`. [known] holds the
+/// options this SDK types, under their backend names. [raw] holds the
+/// caller's raw options, which are overlaid on [known] one key at a time, in
+/// order. A [raw] key is a dot-separated path: `'explain_options.mode'` sets
+/// `mode` inside the `explain_options` map and keeps the map's other entries,
+/// creating the map, or replacing a value that is not a map, on the way. A
+/// key without a dot replaces the whole option. Segments are not unescaped,
+/// so a backtick is part of the name.
+@immutable
+final class _PipelineOptions {
+  /// Throws an [ArgumentError], naming the parameter [rawName], when a key of
+  /// [raw] has an empty segment, which the Node SDK rejects too.
+  _PipelineOptions({
+    this.known = const {},
+    Map<String, Object?> raw = const {},
+    String rawName = 'rawOptions',
+  }) : raw = _validateRawOptions(raw, rawName);
+
+  const _PipelineOptions.none() : known = const {}, raw = const {};
+
+  final Map<String, Object?> known;
+  final Map<String, Object?> raw;
+
+  static Map<String, Object?> _validateRawOptions(
+    Map<String, Object?> raw,
+    String name,
+  ) {
+    for (final key in raw.keys) {
+      if (key.split('.').any((segment) => segment.isEmpty)) {
+        throw ArgumentError.value(
+          key,
+          name,
+          'Option keys must be dot-separated paths without empty segments.',
+        );
+      }
+    }
+    return raw;
+  }
+
+  Map<String, firestore_v1.Value> _toProto(Firestore firestore) {
+    final result = _encodeOptions(known, firestore);
+    for (final MapEntry(:key, :value) in raw.entries) {
+      _setPath(result, key.split('.'), _encodePipelineValue(value, firestore));
+    }
+    return result;
+  }
+
+  /// Sets [value] at [path] inside [fields], descending into map values.
+  static void _setPath(
+    Map<String, firestore_v1.Value> fields,
+    List<String> path,
+    firestore_v1.Value value,
+  ) {
+    final [segment, ...rest] = path;
+    if (rest.isEmpty) {
+      fields[segment] = value;
+      return;
+    }
+    final nested = {...?fields[segment]?.mapValue?.fields};
+    _setPath(nested, rest, value);
+    fields[segment] = firestore_v1.Value(
+      mapValue: firestore_v1.MapValue(fields: nested),
     );
   }
 }

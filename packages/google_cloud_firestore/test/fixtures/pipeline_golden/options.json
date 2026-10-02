@@ -145,6 +145,95 @@
         }
       }
     },
+    "options/raw-options/dot-notation-deep": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "a": {
+            "mapValue": {
+              "fields": {
+                "b": {"mapValue": {"fields": {"c": {"booleanValue": true}}}}
+              }
+            }
+          }
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/raw-options/dot-notation-into-empty-explain": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "explain_options": {
+            "mapValue": {"fields": {"mode": {"stringValue": "analyze"}}}
+          }
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/raw-options/dot-notation-overrides-known": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "explain_options": {
+            "mapValue": {
+              "fields": {
+                "mode": {"stringValue": "execute"},
+                "output_format": {"stringValue": "text"}
+              }
+            }
+          }
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/raw-options/dot-notation-replaces-known-scalar": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "index_mode": {
+            "mapValue": {"fields": {"mode": {"stringValue": "custom"}}}
+          }
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/raw-options/dot-notation-siblings": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "outer": {
+            "mapValue": {
+              "fields": {
+                "a": {"integerValue": "1"},
+                "b": {"stringValue": "two"}
+              }
+            }
+          }
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
     "options/raw-options/flat": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -185,6 +274,21 @@
         "options": {
           "explain_options": {
             "mapValue": {"fields": {"mode": {"stringValue": "analyze"}}}
+          }
+        },
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]}
+          ]
+        }
+      }
+    },
+    "options/raw-options/object-replaces-known": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "options": {
+          "explain_options": {
+            "mapValue": {"fields": {"mode": {"stringValue": "execute"}}}
           }
         },
         "pipeline": {

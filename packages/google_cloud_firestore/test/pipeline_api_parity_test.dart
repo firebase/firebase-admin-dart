@@ -231,9 +231,6 @@ const _pendingFixes = <String, String>{
   'PipelineSource.collectionGroup#forceIndex':
       'Node collectionGroup({collectionId, forceIndex}) can force an index; '
       'Dart cannot.',
-  'StageOptions#rawOptions':
-      'Every Node stage takes rawOptions; Dart stages only take them through '
-      'rawStage(options:).',
   // Dart-only functions with no Node counterpart.
   'PipelineFunctions.log':
       'Node has no log function; check the backend supports `log`, or drop.',
