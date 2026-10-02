@@ -78,6 +78,23 @@ final _knownDivergences = <String, _Divergence>{
     r'("`\`first-name\``").',
     _projectionIsQuotedOnce,
   ),
+  for (final (id, stage, argument) in [
+    ('select/special-characters', 'select', 0),
+    ('distinct/special-characters', 'distinct', 0),
+    ('aggregate/groups-special-characters', 'aggregate', 1),
+  ])
+    'stages/$id': _Divergence(
+      "A String selection such as 'first-name' is keyed by its quoted path, "
+      '`first-name`, like a PipelineField. The backend reads the keys as '
+      'field paths and rejects an unquoted one that is not an identifier: '
+      "for select(['last name']) it answers "
+      r'"Invalid property path \"last name\". Unquoted property paths must '
+      r'match regex ([a-zA-Z_][a-zA-Z_0-9]*), and quoted property paths must '
+      r'match regex (`(?:[^`\\]|(?:\\.))+`)". Node keys a string by the '
+      'string itself.',
+      (request) =>
+          _projectionIsQuotedOnce(request, stage: stage, argument: argument),
+    ),
   for (final (name, operand) in [('add', 1), ('multiply', 2)])
     for (final form in ['static', 'method'])
       'functions/$name/$form-variadic': _Divergence(
@@ -491,19 +508,26 @@ bool _unnestTargetIsQuotedOnce(Object? request) {
       _jsonEquals(_path(stages[1], ['args']), [target, target]);
 }
 
-/// Whether the `select` stage keys `` `first-name` `` and `` `last name` ``
-/// by their singly quoted paths.
-bool _projectionIsQuotedOnce(Object? request) {
+/// Whether the [stage] stage's [argument] keys `` `first-name` `` and
+/// `` `last name` `` by their singly quoted paths.
+bool _projectionIsQuotedOnce(
+  Object? request, {
+  String stage = 'select',
+  int argument = 0,
+}) {
   final stages = _path(request, ['structuredPipeline', 'pipeline', 'stages']);
   if (stages is! List) return false;
-  final select = stages.cast<Object?>().firstWhere(
-    (stage) => _path(stage, ['name']) == 'select',
+  final projection = stages.cast<Object?>().firstWhere(
+    (candidate) => _path(candidate, ['name']) == stage,
     orElse: () => null,
   );
-  return _jsonEquals(_path(select, ['args', 0, 'mapValue', 'fields']), {
-    for (final path in ['`first-name`', '`last name`'])
-      path: {'fieldReferenceValue': path},
-  });
+  return _jsonEquals(
+    _path(projection, ['args', argument, 'mapValue', 'fields']),
+    {
+      for (final path in ['`first-name`', '`last name`'])
+        path: {'fieldReferenceValue': path},
+    },
+  );
 }
 
 bool _jsonEquals(Object? a, Object? b) => equals(b).matches(a, {});

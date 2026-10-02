@@ -82,11 +82,11 @@ void main() {
     });
 
     test('select keeps field names that are not identifiers', () async {
-      // A String names its output field as given. A PipelineField is keyed by
-      // its quoted path ("`first-name`"), as in the Node SDK, and the backend
-      // takes select keys verbatim (Node's system tests read `awards.hugo`
-      // back as one key), so the field's value is read through whichever key
-      // comes back.
+      // The backend reads select keys as field paths and rejects an unquoted
+      // `last name` ("Invalid property path"), so a String is keyed by its
+      // quoted path ("`last name`"), like a PipelineField. Whether a result
+      // comes back under the field name or the quoted path is not pinned
+      // down yet, so each value is read through whichever key comes back.
       final data = await _dataOf(
         ctx.book1Pipeline().select([field('first-name'), 'last name']),
       );
@@ -94,10 +94,15 @@ void main() {
       expect(data, hasLength(1));
       final result = data.single;
       expect(result, hasLength(2));
-      expect(result['last name'], 'Lovelace');
-      final firstNameKey = result.keys.singleWhere((key) => key != 'last name');
-      expect(firstNameKey, anyOf('first-name', '`first-name`'));
-      expect(result[firstNameKey], 'Ada');
+      Object? valueOf(String name) {
+        final key = result.keys.singleWhere(
+          (key) => key == name || key == '`$name`',
+        );
+        return result[key];
+      }
+
+      expect(valueOf('first-name'), 'Ada');
+      expect(valueOf('last name'), 'Lovelace');
     });
 
     test('an alias names the field its expression lands on', () async {

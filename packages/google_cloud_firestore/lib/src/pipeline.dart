@@ -1756,13 +1756,15 @@ final class Pipeline {
   /// references, [PipelineExpression] instances, or
   /// [PipelineAliasedExpression] values.
   ///
-  /// The selections are sent as a map keyed by the field they land on: a
-  /// [String] is keyed by the string itself, a [PipelineField] by its
-  /// [PipelineField.path] and an aliased expression by its alias, as in the
-  /// Node SDK.
+  /// The selections are sent as a map keyed by the field they land on, which
+  /// the backend reads as a field path. A [String] or [PipelineField] is keyed
+  /// by its [PipelineField.path], so `'last name'` is keyed by
+  /// `` `last name` ``. An aliased expression is keyed by its alias as
+  /// written, as in the Node SDK, so an alias must be a valid field path
+  /// itself; see [PipelineExpression.as].
   ///
-  /// Throws an [ArgumentError] when two [selections] land on the same field
-  /// name or alias.
+  /// Throws an [ArgumentError] when two [selections] land on the same key, as
+  /// `select(['x-y', field('x-y')])` does.
   ///
   /// [rawOptions] sets stage options this SDK does not wrap yet, as
   /// [rawStage]'s `options` do.
@@ -2680,6 +2682,11 @@ sealed class PipelineExpression {
   firestore_v1.Value _toValue(Firestore firestore);
 
   /// Assigns [alias] to this expression for projection-style stages.
+  ///
+  /// The backend reads [alias] as a field path, so it must be a valid one: a
+  /// segment that is not an identifier, such as `total price`, must be
+  /// backtick-quoted (`` '`total price`' ``), and a dot separates the
+  /// segments of a nested field.
   PipelineAliasedExpression as(String alias) {
     return PipelineAliasedExpression._(this, alias);
   }
@@ -3722,10 +3729,13 @@ Map<String, Object?> _compactOptions(Map<String, Object?> options) {
 /// last entry. A [String] or [PipelineField] lands on its own path, so it
 /// collides with an alias of the same name, matching the Node SDK.
 ///
-/// Like the Node SDK's `selectablesToObject`, a [String] is keyed by the
-/// string itself and a [PipelineField] by its canonical [PipelineField.path]:
-/// `select(['first-name', field('last name')])` keys `first-name` and
-/// `` `last name` ``, both referencing their backtick-quoted path.
+/// The backend reads each key as a field path, and rejects one that is not
+/// an identifier unless it is quoted ("Invalid property path \"last
+/// name\""). So a [String] is keyed by the canonical [PipelineField.path] of
+/// [field], as a [PipelineField] is: `select(['first-name', field('last
+/// name')])` keys `` `first-name` `` and `` `last name` ``. The Node SDK's
+/// `selectablesToObject` keys a string by the string itself. An alias is kept
+/// as written, as in Node.
 Map<String, Object?> _projectionMap(
   Iterable<Object> selections, {
   String argumentName = 'selections',
@@ -3769,7 +3779,7 @@ Map<String, Object?> _projectionMap(
 
 MapEntry<String, Object?> _projectionEntry(Object selection) {
   return switch (selection) {
-    String() => MapEntry(selection, field(selection)),
+    String() => _projectionEntry(field(selection)),
     PipelineField() => MapEntry(selection.path, selection),
     PipelineAliasedExpression() => MapEntry(
       selection.name,

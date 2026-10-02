@@ -370,7 +370,10 @@ dot-separated path, so `field('address.city')` reads `city` inside the
 `address` map; use a `FieldPath` for a field whose name contains a dot. Names
 that are not simple identifiers need no escaping: they are sent
 backtick-quoted, as the Node.js SDK sends them. The same rules apply to every
-`String` field name a stage or function takes.
+`String` field name a stage or function takes, and `select`, `distinct` and
+`aggregate` key each field by its quoted path. An alias given to `as()` is sent
+as written, and the backend reads it as a field path too, so backtick-quote an
+alias that is not an identifier.
 
 ```dart
 field('first-name');        // sent as `first-name`
