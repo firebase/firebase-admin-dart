@@ -1340,6 +1340,366 @@ void main() {
       });
     });
 
+    // Mirrors the Node SDK's `OptionsUtil` and `rawStage`.
+    group('raw options and raw stages', () {
+      final requests = <firestore_v1.ExecutePipelineRequest>[];
+
+      setUp(() {
+        requests.clear();
+        when(
+          () => mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(
+            any(),
+          ),
+        ).thenAnswer((invocation) async {
+          final callback =
+              invocation.positionalArguments.single
+                  as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                  Function(firestore_v1.Firestore api, String projectId);
+
+          final api = FakeFirestore(
+            executePipeline: (request) {
+              requests.add(request);
+              return Stream.value(
+                firestore_v1.ExecutePipelineResponse(
+                  transaction: Uint8List.fromList([9, 9]),
+                ),
+              );
+            },
+          );
+
+          return callback(api, _projectId);
+        });
+      });
+
+      Pipeline base() => firestore.pipeline().collection('books');
+
+      Map<String, Object?> json(Map<String, firestore_v1.Value> options) {
+        return {
+          for (final MapEntry(:key, :value) in options.entries)
+            key: value.toJson(),
+        };
+      }
+
+      Map<String, Object?> executeOptions() {
+        return json(requests.single.structuredPipeline!.options);
+      }
+
+      List<firestore_v1.Pipeline_Stage> stages() {
+        return requests.single.structuredPipeline!.pipeline!.stages;
+      }
+
+      Map<String, Object?> string(String value) => {'stringValue': value};
+
+      Map<String, Object?> map(Map<String, Object?> fields) {
+        return {
+          'mapValue': {'fields': fields},
+        };
+      }
+
+      test(
+        'execute merges dotted rawOptions keys into typed options',
+        () async {
+          await base().execute(
+            indexMode: PipelineIndexMode.recommended,
+            explain: const PipelineExplainOptions(
+              mode: PipelineExplainMode.analyze,
+            ),
+            rawOptions: const {
+              'explain_options.output_format': 'json',
+              'index_mode': 'custom',
+              'a.b.c': 'deep',
+            },
+          );
+
+          expect(executeOptions(), {
+            // A single map: the dotted key lands next to the typed mode.
+            'explain_options': map({
+              'mode': string('analyze'),
+              'output_format': string('json'),
+            }),
+            'index_mode': string('custom'),
+            'a': map({
+              'b': map({'c': string('deep')}),
+            }),
+          });
+        },
+      );
+
+      test(
+        'a rawOptions key without a dot replaces the typed option',
+        () async {
+          await base().execute(
+            explain: const PipelineExplainOptions(
+              mode: PipelineExplainMode.analyze,
+              outputFormat: PipelineExplainOutputFormat.text,
+            ),
+            rawOptions: const {
+              'explain_options': {'mode': 'execute'},
+            },
+          );
+
+          expect(executeOptions(), {
+            'explain_options': map({'mode': string('execute')}),
+          });
+        },
+      );
+
+      test(
+        'Transaction.executePipeline merges dotted rawOptions keys',
+        () async {
+          await firestore.runTransaction(
+            (transaction) => transaction.executePipeline(
+              base(),
+              explain: const PipelineExplainOptions(
+                mode: PipelineExplainMode.analyze,
+              ),
+              rawOptions: const {'explain_options.output_format': 'text'},
+            ),
+            transactionOptions: ReadOnlyTransactionOptions(),
+          );
+
+          expect(executeOptions(), {
+            'explain_options': map({
+              'mode': string('analyze'),
+              'output_format': string('text'),
+            }),
+          });
+        },
+      );
+
+      test('raw option keys apply in order', () async {
+        await base()
+            .rawStage(
+              'custom',
+              const [],
+              options: const {
+                // A dotted key merges into an earlier map...
+                'merged': {'a': 1},
+                'merged.b': 'two',
+                // ...a key without a dot replaces what came before...
+                'replaced.a': 1,
+                'replaced': 'value',
+                // ...and a dotted key replaces a value that is not a map.
+                'promoted': 'value',
+                'promoted.a': true,
+                // Backticks are not unescaped.
+                'a.`b`': 1,
+              },
+            )
+            .execute();
+
+        expect(json(stages().last.options), {
+          'merged': map({
+            'a': {'integerValue': '1'},
+            'b': string('two'),
+          }),
+          'replaced': string('value'),
+          'promoted': map({
+            'a': {'booleanValue': true},
+          }),
+          'a': map({
+            '`b`': {'integerValue': '1'},
+          }),
+        });
+      });
+
+      test('every stage takes rawOptions', () async {
+        const raw = {'foo': 'bar', 'outer.inner': 1};
+        final other = firestore.pipeline().collection('magazines');
+
+        await firestore
+            .pipeline()
+            .collection('books', rawOptions: raw)
+            .where(field('rating').greaterThan(1), rawOptions: raw)
+            .select(['title', 'rating', 'tags'], rawOptions: raw)
+            .addFields([field('rating').as('score')], rawOptions: raw)
+            .removeFields(['score'], rawOptions: raw)
+            .sort([field('title').ascending()], rawOptions: raw)
+            .offset(1, rawOptions: raw)
+            .limit(10, rawOptions: raw)
+            .distinct(['title', 'tags'], rawOptions: raw)
+            .aggregate(
+              [PipelineFunctions.countAll().as('total')],
+              groups: ['title'],
+              rawOptions: raw,
+            )
+            .replaceWith('title', rawOptions: raw)
+            .union(other, rawOptions: raw)
+            .sample(documents: 5, rawOptions: raw)
+            .unnest('tags', rawOptions: raw)
+            .findNearest(
+              vectorField: 'embedding',
+              queryVector: const [1, 2],
+              distanceMeasure: DistanceMeasure.cosine,
+              rawOptions: raw,
+            )
+            .search({'query': documentMatches('dart')}, rawOptions: raw)
+            .execute();
+
+        final expected = {
+          'foo': string('bar'),
+          'outer': map({
+            'inner': {'integerValue': '1'},
+          }),
+        };
+        expect(stages().map((stage) => stage.name), [
+          'collection',
+          'where',
+          'select',
+          'add_fields',
+          'remove_fields',
+          'sort',
+          'offset',
+          'limit',
+          'distinct',
+          'aggregate',
+          'replace_with',
+          'union',
+          'sample',
+          'unnest',
+          'find_nearest',
+          'search',
+        ]);
+        for (final stage in stages()) {
+          final options = json(stage.options);
+          if (stage.name == 'search') options.remove('query');
+          expect(options, expected, reason: stage.name);
+        }
+        // The nested Pipeline keeps its own, empty, options.
+        final union = stages().firstWhere((stage) => stage.name == 'union');
+        expect(union.args.single.pipelineValue!.stages.single.options, isEmpty);
+      });
+
+      test('every source takes rawOptions', () async {
+        const raw = {'foo': 'bar'};
+        final source = firestore.pipeline();
+
+        for (final pipeline in [
+          source.collection('books', rawOptions: raw),
+          source.collectionReference(
+            firestore.collection('books'),
+            rawOptions: raw,
+          ),
+          source.collectionGroup('books', rawOptions: raw),
+          source.database(rawOptions: raw),
+          source.documents([firestore.doc('books/b')], rawOptions: raw),
+        ]) {
+          requests.clear();
+          await pipeline.execute();
+          expect(json(stages().single.options), {'foo': string('bar')});
+        }
+      });
+
+      test('rawOptions override typed stage options', () async {
+        await base()
+            .findNearest(
+              vectorField: 'embedding',
+              queryVector: const [1, 2],
+              distanceMeasure: DistanceMeasure.euclidean,
+              limit: 10,
+              distanceResultField: 'distance',
+              rawOptions: const {'limit': 20, 'extra.flag': true},
+            )
+            .unnest(
+              'tags',
+              indexField: 'index',
+              rawOptions: {'index_field': field('position')},
+            )
+            .search(
+              {'query': documentMatches('dart'), 'limit': 10},
+              rawOptions: const {'limit': 20},
+            )
+            .execute();
+
+        final [_, nearest, unnest, search] = stages();
+        expect(json(nearest.options), {
+          'limit': {'integerValue': '20'},
+          'distance_field': {'fieldReferenceValue': 'distance'},
+          'extra': map({
+            'flag': {'booleanValue': true},
+          }),
+        });
+        expect(json(unnest.options), {
+          'index_field': {'fieldReferenceValue': 'position'},
+        });
+        expect(search.options['limit']!.integerValue, 20);
+      });
+
+      test('rejects raw option keys with an empty segment', () async {
+        for (final key in ['', '.', 'a.', '.a', 'a..b']) {
+          final options = {key: 1};
+          final invalid = throwsA(
+            isA<ArgumentError>().having((e) => e.invalidValue, 'key', key),
+          );
+
+          expect(
+            () => base().rawStage('custom', [], options: options),
+            invalid,
+          );
+          expect(() => base().limit(1, rawOptions: options), invalid);
+          expect(
+            () => firestore.pipeline().database(rawOptions: options),
+            invalid,
+          );
+          await expectLater(base().execute(rawOptions: options), invalid);
+          await expectLater(
+            firestore.runTransaction(
+              (transaction) =>
+                  transaction.executePipeline(base(), rawOptions: options),
+              transactionOptions: ReadOnlyTransactionOptions(),
+            ),
+            invalid,
+          );
+        }
+        expect(requests, isEmpty);
+      });
+
+      test('rawStage converts collections nested in a map argument', () async {
+        await base().rawStage('custom', [
+          {
+            'field': field('f'),
+            'literal': 1,
+            'nestedMap': {'lang': field('lang')},
+            'nestedList': [field('a'), 1],
+            'literalMap': constant({'x': 1}),
+          },
+          // A list argument stays a literal value, as in Node.
+          [
+            field('b'),
+            {'c': 1},
+          ],
+        ]).execute();
+
+        final [mapArg, listArg] = stages().last.args;
+        final fields = mapArg.mapValue!.fields;
+        expect(fields['field']!.fieldReferenceValue, 'f');
+        expect(fields['literal']!.integerValue, 1);
+
+        final nestedMap = fields['nestedMap']!.functionValue!;
+        expect(nestedMap.name, 'map');
+        expect(nestedMap.args.map((arg) => arg.toJson()), [
+          string('lang'),
+          {'fieldReferenceValue': 'lang'},
+        ]);
+
+        final nestedList = fields['nestedList']!.functionValue!;
+        expect(nestedList.name, 'array');
+        expect(nestedList.args.map((arg) => arg.toJson()), [
+          {'fieldReferenceValue': 'a'},
+          {'integerValue': '1'},
+        ]);
+
+        expect(fields['literalMap']!.mapValue!.fields['x']!.integerValue, 1);
+
+        expect(listArg.arrayValue!.values.map((value) => value.toJson()), [
+          {'fieldReferenceValue': 'b'},
+          map({
+            'c': {'integerValue': '1'},
+          }),
+        ]);
+      });
+    });
+
     // Mirrors the Node SDK's `selectablesToObject` / `aliasedAggregateToMap`,
     // which throw rather than let a later entry overwrite an earlier one.
     group('duplicate aliases or fields', () {

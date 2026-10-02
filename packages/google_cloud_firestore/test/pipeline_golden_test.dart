@@ -117,31 +117,12 @@ const _pendingFixes = <String, String>{
       'As equalAny: nested literal arrayValue vs Node array(...) function.',
   'functions/arrayContainsAny/static-field-name-list-nested':
       'As equalAny: nested literal arrayValue vs Node array(...) function.',
-  'stages/raw-stage/nested-plain-object-param':
-      'rawStage sends a nested map param as a literal mapValue holding a '
-      'field reference; Node sends a map(...) function for the nested map.',
-  // Dotted option keys.
-  'options/raw-options/dot-notation':
-      "execute(rawOptions: {'explain_options.mode': ...}) sends the dotted "
-      'key verbatim; Node expands it into explain_options.mode.',
-  'options/raw-options/merge-into-explain':
-      'A dotted rawOptions key is sent verbatim instead of being merged into '
-      'the explain_options map built from explain:.',
-  'stages/raw-stage/options-dot-notation':
-      "rawStage(options: {'outer.inner': ...}) sends the dotted key "
-      'verbatim; Node expands it into a nested map.',
 };
 
 /// Node APIs this SDK has no way to express; there is no Dart case for them.
 const _dartApiGaps = <String, String>{
-  'sources/collection/force-index':
-      'PipelineSource.collection has no forceIndex option.',
-  'sources/collection-group/force-index':
-      'PipelineSource.collectionGroup has no forceIndex option.',
   'sources/subcollection/as-array-expression':
       'No subcollection() source and no Pipeline.toArrayExpression().',
-  'stages/select/raw-options':
-      'Typed stages take no per-stage rawOptions; only rawStage does.',
   'stages/define/plain': 'No Pipeline.define (let) stage.',
   'stages/delete/plain': 'No Pipeline.delete stage.',
   'stages/update/plain': 'No Pipeline.update stage.',
@@ -620,7 +601,48 @@ void _registerSources(_Registry r) {
     'sources/collection-group/id',
     (db) => db.pipeline().collectionGroup('reviews'),
   );
+  // Dart has no typed forceIndex (a pending fix in the API parity test), but
+  // rawOptions sends the same option.
+  r.pipeline(
+    'sources/collection/force-index',
+    (db) => db.pipeline().collection(
+      'books',
+      rawOptions: const {'force_index': 'my_index'},
+    ),
+  );
+  r.pipeline(
+    'sources/collection/raw-options',
+    (db) => db.pipeline().collection(
+      'books',
+      rawOptions: const {'foo': 'bar', 'outer.inner': 1},
+    ),
+  );
+  r.pipeline(
+    'sources/collection/reference-raw-options',
+    (db) => db.pipeline().collectionReference(
+      db.collection('books'),
+      rawOptions: const {'foo': 'bar'},
+    ),
+  );
+  r.pipeline(
+    'sources/collection-group/force-index',
+    (db) => db.pipeline().collectionGroup(
+      'reviews',
+      rawOptions: const {'force_index': 'my_index'},
+    ),
+  );
+  r.pipeline(
+    'sources/collection-group/raw-options',
+    (db) => db.pipeline().collectionGroup(
+      'reviews',
+      rawOptions: const {'foo': 'bar'},
+    ),
+  );
   r.pipeline('sources/database/plain', (db) => db.pipeline().database());
+  r.pipeline(
+    'sources/database/raw-options',
+    (db) => db.pipeline().database(rawOptions: const {'foo': 'bar'}),
+  );
   // Dart only takes references; Node turns its paths into references.
   r.pipeline(
     'sources/documents/paths',
@@ -635,6 +657,13 @@ void _registerSources(_Registry r) {
   r.pipeline(
     'sources/documents/nested',
     (db) => db.pipeline().documents([db.doc('authors/author1/books/book1')]),
+  );
+  r.pipeline(
+    'sources/documents/raw-options',
+    (db) => db.pipeline().documents(
+      [db.doc('books/book1')],
+      rawOptions: const {'foo': 'bar'},
+    ),
   );
 }
 
@@ -902,6 +931,13 @@ void _registerStages(_Registry r) {
         .where(field('rating').greaterThan(4))
         .where(field('genre').equal('Fantasy')),
   );
+  stage(
+    'where/raw-options',
+    (db) => _books(db).where(
+      field('rating').greaterThan(4),
+      rawOptions: const {'foo': 'bar', 'outer.inner': true},
+    ),
+  );
 
   stage('select/field-names', (db) => _books(db).select(['title', 'author']));
   stage(
@@ -933,6 +969,10 @@ void _registerStages(_Registry r) {
     'select/options-object',
     (db) => _books(db).select(['title', field('rating').as('score')]),
   );
+  stage(
+    'select/raw-options',
+    (db) => _books(db).select(['title'], rawOptions: const {'foo': 'bar'}),
+  );
 
   stage(
     'add-fields/single',
@@ -951,6 +991,13 @@ void _registerStages(_Registry r) {
     'add-fields/field',
     (db) => _books(db).addFields([field('rating').as('rating')]),
   );
+  stage(
+    'add-fields/raw-options',
+    (db) => _books(db).addFields(
+      [field('rating').as('copiedRating')],
+      rawOptions: const {'foo': 'bar'},
+    ),
+  );
 
   stage(
     'remove-fields/field-names',
@@ -963,6 +1010,11 @@ void _registerStages(_Registry r) {
   stage(
     'remove-fields/nested',
     (db) => _books(db).removeFields(['metadata.lang']),
+  );
+  stage(
+    'remove-fields/raw-options',
+    (db) =>
+        _books(db).removeFields(['title'], rawOptions: const {'foo': 'bar'}),
   );
 
   stage(
@@ -994,10 +1046,24 @@ void _registerStages(_Registry r) {
     'sort/expression-method',
     (db) => _books(db).sort([field('title').charLength().descending()]),
   );
+  stage(
+    'sort/raw-options',
+    (db) => _books(
+      db,
+    ).sort([field('rating').descending()], rawOptions: const {'foo': 'bar'}),
+  );
 
   stage('offset/plain', (db) => _books(db).offset(10));
+  stage(
+    'offset/raw-options',
+    (db) => _books(db).offset(10, rawOptions: const {'foo': 'bar'}),
+  );
   stage('limit/plain', (db) => _books(db).limit(10));
   stage('limit/zero', (db) => _books(db).limit(0));
+  stage(
+    'limit/raw-options',
+    (db) => _books(db).limit(10, rawOptions: const {'foo': 'bar'}),
+  );
 
   stage(
     'distinct/field-names',
@@ -1008,6 +1074,10 @@ void _registerStages(_Registry r) {
     'distinct/aliased',
     (db) =>
         _books(db).distinct([field('genre').toLowerCase().as('lowerGenre')]),
+  );
+  stage(
+    'distinct/raw-options',
+    (db) => _books(db).distinct(['genre'], rawOptions: const {'foo': 'bar'}),
   );
 
   stage(
@@ -1041,6 +1111,14 @@ void _registerStages(_Registry r) {
       ],
     ),
   );
+  stage(
+    'aggregate/raw-options',
+    (db) => _books(db).aggregate(
+      [PipelineFunctions.countAll().as('total')],
+      groups: ['genre'],
+      rawOptions: const {'foo': 'bar'},
+    ),
+  );
 
   Pipeline findNearest(
     Firestore db, {
@@ -1049,6 +1127,7 @@ void _registerStages(_Registry r) {
     DistanceMeasure distanceMeasure = DistanceMeasure.euclidean,
     int? limit,
     String? distanceResultField,
+    Map<String, Object?> rawOptions = const {},
   }) {
     return _books(db).findNearest(
       vectorField: vectorField,
@@ -1056,6 +1135,7 @@ void _registerStages(_Registry r) {
       distanceMeasure: distanceMeasure,
       limit: limit,
       distanceResultField: distanceResultField,
+      rawOptions: rawOptions,
     );
   }
 
@@ -1089,6 +1169,15 @@ void _registerStages(_Registry r) {
     'find-nearest/all-options',
     (db) => findNearest(db, limit: 10, distanceResultField: 'distance'),
   );
+  stage(
+    'find-nearest/raw-options',
+    (db) => findNearest(
+      db,
+      limit: 10,
+      distanceResultField: 'distance',
+      rawOptions: const {'limit': 20, 'extra.flag': true},
+    ),
+  );
 
   stage('replace-with/field-name', (db) => _books(db).replaceWith('metadata'));
   stage(
@@ -1106,10 +1195,19 @@ void _registerStages(_Registry r) {
       ]),
     ),
   );
+  stage(
+    'replace-with/raw-options',
+    (db) =>
+        _books(db).replaceWith('metadata', rawOptions: const {'foo': 'bar'}),
+  );
 
   stage('sample/documents', (db) => _books(db).sample(documents: 10));
   stage('sample/documents-option', (db) => _books(db).sample(documents: 10));
   stage('sample/percentage', (db) => _books(db).sample(percentage: 0.25));
+  stage(
+    'sample/raw-options',
+    (db) => _books(db).sample(documents: 10, rawOptions: const {'foo': 'bar'}),
+  );
 
   stage(
     'union/plain',
@@ -1126,6 +1224,13 @@ void _registerStages(_Registry r) {
               .where(field('rating').greaterThan(3))
               .select(['title']),
         ),
+  );
+  stage(
+    'union/raw-options',
+    (db) => _books(db).union(
+      db.pipeline().collection('magazines'),
+      rawOptions: const {'foo': 'bar'},
+    ),
   );
 
   stage('unnest/field', (db) => _books(db).unnest(field('tags')), [
@@ -1148,6 +1253,14 @@ void _registerStages(_Registry r) {
   stage(
     'unnest/options-object',
     (db) => _books(db).unnest(field('tags').as('tag'), indexField: 'idx'),
+  );
+  stage(
+    'unnest/raw-options',
+    (db) => _books(db).unnest(
+      field('tags').as('tag'),
+      indexField: 'idx',
+      rawOptions: {'index_field': field('position'), 'foo': 'bar'},
+    ),
   );
 
   stage(
@@ -1173,10 +1286,104 @@ void _registerStages(_Registry r) {
       },
     ]),
   );
+  // A map param is a literal map whose values are converted like a value
+  // position: a nested map or list becomes a map(...) or array(...) function,
+  // with or without expressions in it.
+  stage(
+    'raw-stage/plain-object-param-literals',
+    (db) => _books(db).rawStage('custom', [
+      {'a': 1, 'b': 'x', 'c': null},
+    ]),
+  );
+  stage(
+    'raw-stage/empty-object-param',
+    (db) => _books(db).rawStage('custom', [<String, Object?>{}]),
+  );
+  stage(
+    'raw-stage/nested-plain-object-param-literals',
+    (db) => _books(db).rawStage('custom', [
+      {
+        'meta': {'lang': 'en', 'year': 2020},
+      },
+    ]),
+  );
+  stage(
+    'raw-stage/nested-empty-object-param',
+    (db) => _books(db).rawStage('custom', [
+      {'meta': <String, Object?>{}},
+    ]),
+  );
+  stage(
+    'raw-stage/array-in-object-param',
+    (db) => _books(db).rawStage('custom', [
+      {
+        'tags': [field('genre'), 'classic'],
+      },
+    ]),
+  );
+  stage(
+    'raw-stage/array-in-object-param-literals',
+    (db) => _books(db).rawStage('custom', [
+      {
+        'tags': [1, 2],
+      },
+    ]),
+  );
+  stage(
+    'raw-stage/deeply-nested-object-param',
+    (db) => _books(db).rawStage('custom', [
+      {
+        'a': {
+          'b': {'c': field('x')},
+          'd': [
+            field('y'),
+            {'e': 1},
+          ],
+        },
+      },
+    ]),
+  );
+  // constant() keeps a nested map literal.
+  stage(
+    'raw-stage/constant-in-object-param',
+    (db) => _books(db).rawStage('custom', [
+      {
+        'meta': constant({'lang': 'en'}),
+      },
+    ]),
+  );
   stage(
     'raw-stage/array-param',
     (db) => _books(db).rawStage('custom', [
       [1, 'a', field('title')],
+    ]),
+  );
+  // Any other param, a list included, is sent as is: a literal value all the
+  // way down.
+  stage(
+    'raw-stage/array-param-literals',
+    (db) => _books(db).rawStage('custom', [
+      [1, 2, 3],
+    ]),
+  );
+  stage(
+    'raw-stage/nested-array-param',
+    (db) => _books(db).rawStage('custom', [
+      [
+        1,
+        [2, field('x')],
+      ],
+    ]),
+  );
+  stage(
+    'raw-stage/object-in-array-param',
+    (db) => _books(db).rawStage('custom', [
+      [
+        {
+          'a': field('x'),
+          'b': {'c': 1},
+        },
+      ],
     ]),
   );
   stage(
@@ -1202,6 +1409,39 @@ void _registerStages(_Registry r) {
     (db) =>
         _books(db).rawStage('custom', [], options: {'outer.inner': 'value'}),
   );
+  void rawOptions(String id, Map<String, Object?> options) {
+    stage(
+      'raw-stage/$id',
+      (db) => _books(db).rawStage('custom', const [], options: options),
+    );
+  }
+
+  rawOptions('options-nested-object', {
+    'outer': {'inner': 'value', 'n': 1},
+  });
+  rawOptions('options-expression-values', {
+    'target': field('x'),
+    'nested': {'target': field('y')},
+  });
+  rawOptions('options-dot-notation-siblings', {'outer.a': 1, 'outer.b': 2});
+  rawOptions('options-dot-notation-deep', {'a.b.c': true});
+  // Keys apply in order: a dotted key merges into an earlier map, a map
+  // replaces what earlier dotted keys built, and a dotted key replaces an
+  // earlier value that is not a map.
+  rawOptions('options-dot-notation-merges-object', {
+    'outer': {'a': 1},
+    'outer.b': 2,
+  });
+  rawOptions('options-object-replaces-dot-notation', {
+    'outer.a': 1,
+    'outer': {'b': 2},
+  });
+  rawOptions('options-dot-notation-replaces-scalar', {
+    'outer': 'x',
+    'outer.a': 1,
+  });
+  // Segments are not unescaped: backticks are part of the name.
+  rawOptions('options-dot-notation-backticks', {'a.`b.c`': 1});
 
   // Dart's search stage takes the backend options as-is.
   final breakfast = documentMatches('breakfast');
@@ -1242,6 +1482,13 @@ void _registerStages(_Registry r) {
       'query': breakfast,
       'add_fields': {'searchScore': score()},
     }),
+  );
+  stage(
+    'search/raw-options',
+    (db) => _books(db).search(
+      {'query': breakfast, 'limit': 10},
+      rawOptions: const {'limit': 20, 'extra.flag': true},
+    ),
   );
 }
 
@@ -1322,6 +1569,44 @@ void _registerOptions(_Registry r) {
       explain: const PipelineExplainOptions(mode: analyze),
       rawOptions: {'explain_options.output_format': 'text'},
     ),
+  );
+  execute(
+    'raw-options/dot-notation-overrides-known',
+    (p) => p.execute(
+      explain: const PipelineExplainOptions(mode: analyze, outputFormat: text),
+      rawOptions: {'explain_options.mode': 'execute'},
+    ),
+  );
+  execute(
+    'raw-options/object-replaces-known',
+    (p) => p.execute(
+      explain: const PipelineExplainOptions(mode: analyze, outputFormat: text),
+      rawOptions: {
+        'explain_options': {'mode': 'execute'},
+      },
+    ),
+  );
+  execute(
+    'raw-options/dot-notation-into-empty-explain',
+    (p) => p.execute(
+      explain: const PipelineExplainOptions(),
+      rawOptions: {'explain_options.mode': 'analyze'},
+    ),
+  );
+  execute(
+    'raw-options/dot-notation-replaces-known-scalar',
+    (p) => p.execute(
+      indexMode: PipelineIndexMode.recommended,
+      rawOptions: {'index_mode.mode': 'custom'},
+    ),
+  );
+  execute(
+    'raw-options/dot-notation-siblings',
+    (p) => p.execute(rawOptions: {'outer.a': 1, 'outer.b': 'two'}),
+  );
+  execute(
+    'raw-options/dot-notation-deep',
+    (p) => p.execute(rawOptions: {'a.b.c': true}),
   );
 }
 

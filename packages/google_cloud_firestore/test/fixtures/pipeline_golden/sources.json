@@ -29,6 +29,20 @@
         }
       }
     },
+    "sources/collection-group/raw-options": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "collection_group",
+              "args": [{"referenceValue": ""}, {"stringValue": "reviews"}],
+              "options": {"foo": {"stringValue": "bar"}}
+            }
+          ]
+        }
+      }
+    },
     "sources/collection/force-index": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -66,6 +80,25 @@
         }
       }
     },
+    "sources/collection/raw-options": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "collection",
+              "args": [{"referenceValue": "/books"}],
+              "options": {
+                "foo": {"stringValue": "bar"},
+                "outer": {
+                  "mapValue": {"fields": {"inner": {"integerValue": "1"}}}
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
     "sources/collection/reference": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -76,9 +109,33 @@
         }
       }
     },
+    "sources/collection/reference-raw-options": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "collection",
+              "args": [{"referenceValue": "/books"}],
+              "options": {"foo": {"stringValue": "bar"}}
+            }
+          ]
+        }
+      }
+    },
     "sources/database/plain": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {"pipeline": {"stages": [{"name": "database"}]}}
+    },
+    "sources/database/raw-options": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "database", "options": {"foo": {"stringValue": "bar"}}}
+          ]
+        }
+      }
     },
     "sources/documents/nested": {
       "database": "projects/test-project/databases/(default)",
@@ -104,6 +161,20 @@
                 {"referenceValue": "/books/book1"},
                 {"referenceValue": "/books/book2"}
               ]
+            }
+          ]
+        }
+      }
+    },
+    "sources/documents/raw-options": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "documents",
+              "args": [{"referenceValue": "/books/book1"}],
+              "options": {"foo": {"stringValue": "bar"}}
             }
           ]
         }
