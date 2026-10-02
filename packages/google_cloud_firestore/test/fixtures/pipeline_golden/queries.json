@@ -1,0 +1,3846 @@
+{
+  "generator": "tool/pipeline_golden (npm run generate)",
+  "sdk": "@google-cloud/firestore@9.3.1",
+  "cases": {
+    "queries/collection-group/plain": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "collection_group",
+              "args": [{"referenceValue": ""}, {"stringValue": "reviews"}]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/collection-group/where": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "collection_group",
+              "args": [{"referenceValue": ""}, {"stringValue": "reviews"}]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "greater_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "3"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/collection/nested-path": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "collection",
+              "args": [{"referenceValue": "/authors/author1/books"}]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/collection/plain": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/cursor/end-at": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "or",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "less_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/cursor/end-before": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "less_than",
+                    "args": [
+                      {"fieldReferenceValue": "rating"},
+                      {"integerValue": "4"}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/cursor/limit-to-last": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "or",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "greater_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "2"}
+                          ]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "2"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "less_than",
+                    "args": [
+                      {"fieldReferenceValue": "rating"},
+                      {"integerValue": "5"}
+                    ]
+                  }
+                }
+              ]
+            },
+            {"name": "limit", "args": [{"integerValue": "3"}]},
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/cursor/multiple-fields": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "title"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "title"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "or",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "greater_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "and",
+                          "args": [
+                            {
+                              "functionValue": {
+                                "name": "equal",
+                                "args": [
+                                  {"fieldReferenceValue": "rating"},
+                                  {"integerValue": "4"}
+                                ]
+                              }
+                            },
+                            {
+                              "functionValue": {
+                                "name": "or",
+                                "args": [
+                                  {
+                                    "functionValue": {
+                                      "name": "greater_than",
+                                      "args": [
+                                        {"fieldReferenceValue": "title"},
+                                        {"stringValue": "M"}
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "functionValue": {
+                                      "name": "equal",
+                                      "args": [
+                                        {"fieldReferenceValue": "title"},
+                                        {"stringValue": "M"}
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/cursor/start-after": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "greater_than",
+                    "args": [
+                      {"fieldReferenceValue": "rating"},
+                      {"integerValue": "4"}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/cursor/start-and-end": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "greater_than",
+                    "args": [
+                      {"fieldReferenceValue": "rating"},
+                      {"integerValue": "2"}
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "or",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "less_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/cursor/start-at": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "or",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "greater_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/limit-to-last/plain": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {"name": "limit", "args": [{"integerValue": "5"}]},
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/limit/with-order-by": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {"name": "limit", "args": [{"integerValue": "5"}]}
+          ]
+        }
+      }
+    },
+    "queries/limit/without-order-by": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {"name": "limit", "args": [{"integerValue": "5"}]}
+          ]
+        }
+      }
+    },
+    "queries/offset/plain": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {"name": "offset", "args": [{"integerValue": "10"}]}
+          ]
+        }
+      }
+    },
+    "queries/offset/with-limit": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {"name": "limit", "args": [{"integerValue": "5"}]},
+            {"name": "offset", "args": [{"integerValue": "10"}]}
+          ]
+        }
+      }
+    },
+    "queries/order-by/ascending": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/order-by/descending": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/order-by/document-id": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/order-by/explicit-and-inequality": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "greater_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "title"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "title"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/order-by/implicit-from-inequalities": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "greater_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "published"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "less_than",
+                          "args": [
+                            {"fieldReferenceValue": "published"},
+                            {"integerValue": "2000"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "published"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/order-by/implicit-from-inequality": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "greater_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/order-by/multiple": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "title"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "title"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/order-by/special-characters": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "`first-name`"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "`first-name`"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/select/empty": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"__name__": {"fieldReferenceValue": "__name__"}}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/select/fields": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "author": {"fieldReferenceValue": "author"},
+                      "title": {"fieldReferenceValue": "title"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/vector/cosine": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "embedding"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "find_nearest",
+              "args": [
+                {"fieldReferenceValue": "embedding"},
+                {
+                  "mapValue": {
+                    "fields": {
+                      "__type__": {"stringValue": "__vector__"},
+                      "value": {
+                        "arrayValue": {
+                          "values": [
+                            {"doubleValue": 0.1},
+                            {"doubleValue": 0.2},
+                            {"doubleValue": 0.3}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"stringValue": "cosine"}
+              ],
+              "options": {"limit": {"integerValue": "5"}}
+            }
+          ]
+        }
+      }
+    },
+    "queries/vector/distance-result-field": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "embedding"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "find_nearest",
+              "args": [
+                {"fieldReferenceValue": "embedding"},
+                {
+                  "mapValue": {
+                    "fields": {
+                      "__type__": {"stringValue": "__vector__"},
+                      "value": {
+                        "arrayValue": {
+                          "values": [
+                            {"doubleValue": 0.1},
+                            {"doubleValue": 0.2},
+                            {"doubleValue": 0.3}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"stringValue": "euclidean"}
+              ],
+              "options": {"limit": {"integerValue": "5"}}
+            }
+          ]
+        }
+      }
+    },
+    "queries/vector/distance-threshold": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "embedding"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "find_nearest",
+              "args": [
+                {"fieldReferenceValue": "embedding"},
+                {
+                  "mapValue": {
+                    "fields": {
+                      "__type__": {"stringValue": "__vector__"},
+                      "value": {
+                        "arrayValue": {
+                          "values": [
+                            {"doubleValue": 0.1},
+                            {"doubleValue": 0.2},
+                            {"doubleValue": 0.3}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"stringValue": "euclidean"}
+              ],
+              "options": {"limit": {"integerValue": "5"}}
+            }
+          ]
+        }
+      }
+    },
+    "queries/vector/dot-product": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "embedding"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "find_nearest",
+              "args": [
+                {"fieldReferenceValue": "embedding"},
+                {
+                  "mapValue": {
+                    "fields": {
+                      "__type__": {"stringValue": "__vector__"},
+                      "value": {
+                        "arrayValue": {
+                          "values": [
+                            {"doubleValue": 0.1},
+                            {"doubleValue": 0.2},
+                            {"doubleValue": 0.3}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"stringValue": "dot_product"}
+              ],
+              "options": {"limit": {"integerValue": "5"}}
+            }
+          ]
+        }
+      }
+    },
+    "queries/vector/euclidean": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "embedding"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "find_nearest",
+              "args": [
+                {"fieldReferenceValue": "embedding"},
+                {
+                  "mapValue": {
+                    "fields": {
+                      "__type__": {"stringValue": "__vector__"},
+                      "value": {
+                        "arrayValue": {
+                          "values": [
+                            {"doubleValue": 0.1},
+                            {"doubleValue": 0.2},
+                            {"doubleValue": 0.3}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"stringValue": "euclidean"}
+              ],
+              "options": {"limit": {"integerValue": "5"}}
+            }
+          ]
+        }
+      }
+    },
+    "queries/vector/vector-value": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "embedding"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "find_nearest",
+              "args": [
+                {"fieldReferenceValue": "embedding"},
+                {
+                  "mapValue": {
+                    "fields": {
+                      "__type__": {"stringValue": "__vector__"},
+                      "value": {
+                        "arrayValue": {
+                          "values": [
+                            {"doubleValue": 0.1},
+                            {"doubleValue": 0.2},
+                            {"doubleValue": 0.3}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"stringValue": "euclidean"}
+              ],
+              "options": {"limit": {"integerValue": "5"}}
+            }
+          ]
+        }
+      }
+    },
+    "queries/vector/with-prefilter": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "genre"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "genre"},
+                            {"stringValue": "Fantasy"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "embedding"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "find_nearest",
+              "args": [
+                {"fieldReferenceValue": "embedding"},
+                {
+                  "mapValue": {
+                    "fields": {
+                      "__type__": {"stringValue": "__vector__"},
+                      "value": {
+                        "arrayValue": {
+                          "values": [
+                            {"doubleValue": 0.1},
+                            {"doubleValue": 0.2},
+                            {"doubleValue": 0.3}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"stringValue": "euclidean"}
+              ],
+              "options": {"limit": {"integerValue": "5"}}
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/array-contains": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "tags"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "array_contains",
+                          "args": [
+                            {"fieldReferenceValue": "tags"},
+                            {"stringValue": "magic"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/array-contains-any": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "tags"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "array_contains_any",
+                          "args": [
+                            {"fieldReferenceValue": "tags"},
+                            {
+                              "arrayValue": {
+                                "values": [
+                                  {"stringValue": "magic"},
+                                  {"stringValue": "epic"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/composite-and": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "and",
+                          "args": [
+                            {
+                              "functionValue": {
+                                "name": "exists",
+                                "args": [{"fieldReferenceValue": "genre"}]
+                              }
+                            },
+                            {
+                              "functionValue": {
+                                "name": "equal",
+                                "args": [
+                                  {"fieldReferenceValue": "genre"},
+                                  {"stringValue": "Fantasy"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "and",
+                          "args": [
+                            {
+                              "functionValue": {
+                                "name": "exists",
+                                "args": [{"fieldReferenceValue": "rating"}]
+                              }
+                            },
+                            {
+                              "functionValue": {
+                                "name": "greater_than",
+                                "args": [
+                                  {"fieldReferenceValue": "rating"},
+                                  {"integerValue": "4"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/composite-nested": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "or",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "and",
+                          "args": [
+                            {
+                              "functionValue": {
+                                "name": "and",
+                                "args": [
+                                  {
+                                    "functionValue": {
+                                      "name": "exists",
+                                      "args": [{"fieldReferenceValue": "genre"}]
+                                    }
+                                  },
+                                  {
+                                    "functionValue": {
+                                      "name": "equal",
+                                      "args": [
+                                        {"fieldReferenceValue": "genre"},
+                                        {"stringValue": "Fantasy"}
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "functionValue": {
+                                "name": "and",
+                                "args": [
+                                  {
+                                    "functionValue": {
+                                      "name": "exists",
+                                      "args": [
+                                        {"fieldReferenceValue": "rating"}
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "functionValue": {
+                                      "name": "greater_than",
+                                      "args": [
+                                        {"fieldReferenceValue": "rating"},
+                                        {"integerValue": "4"}
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "and",
+                          "args": [
+                            {
+                              "functionValue": {
+                                "name": "exists",
+                                "args": [{"fieldReferenceValue": "published"}]
+                              }
+                            },
+                            {
+                              "functionValue": {
+                                "name": "less_than",
+                                "args": [
+                                  {"fieldReferenceValue": "published"},
+                                  {"integerValue": "1950"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "published"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/composite-or": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "or",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "and",
+                          "args": [
+                            {
+                              "functionValue": {
+                                "name": "exists",
+                                "args": [{"fieldReferenceValue": "genre"}]
+                              }
+                            },
+                            {
+                              "functionValue": {
+                                "name": "equal",
+                                "args": [
+                                  {"fieldReferenceValue": "genre"},
+                                  {"stringValue": "Fantasy"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "and",
+                          "args": [
+                            {
+                              "functionValue": {
+                                "name": "exists",
+                                "args": [{"fieldReferenceValue": "rating"}]
+                              }
+                            },
+                            {
+                              "functionValue": {
+                                "name": "greater_than",
+                                "args": [
+                                  {"fieldReferenceValue": "rating"},
+                                  {"integerValue": "4"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/document-id": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "__name__"},
+                            {
+                              "referenceValue": "projects/test-project/databases/(default)/documents/books/book1"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/double": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "greater_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"doubleValue": 4.5}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/equal": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "genre"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "genre"},
+                            {"stringValue": "Fantasy"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/equal-nan": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"doubleValue": "NaN"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/equal-null": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "genre"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "genre"},
+                            {"nullValue": null}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/greater-than": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "greater_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/greater-than-or-equal": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "greater_than_or_equal",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/in": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "genre"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal_any",
+                          "args": [
+                            {"fieldReferenceValue": "genre"},
+                            {
+                              "arrayValue": {
+                                "values": [
+                                  {"stringValue": "Fantasy"},
+                                  {"stringValue": "Sci-Fi"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/less-than": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "less_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/less-than-or-equal": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "less_than_or_equal",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/multiple": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "genre"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "genre"},
+                            {"stringValue": "Fantasy"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "greater_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/nested-field": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "metadata.lang"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "metadata.lang"},
+                            {"stringValue": "en"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/not-equal": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "genre"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "not_equal",
+                          "args": [
+                            {"fieldReferenceValue": "genre"},
+                            {"stringValue": "Fantasy"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "genre"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/not-equal-null": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "genre"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "not_equal",
+                          "args": [
+                            {"fieldReferenceValue": "genre"},
+                            {"nullValue": null}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "genre"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/not-in": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "not_equal_any",
+                    "args": [
+                      {"fieldReferenceValue": "genre"},
+                      {
+                        "arrayValue": {
+                          "values": [
+                            {"stringValue": "Fantasy"},
+                            {"stringValue": "Sci-Fi"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "genre"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/special-characters": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "`first-name`"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "`first-name`"},
+                            {"stringValue": "Ada"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/where/timestamp": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "published"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "less_than",
+                          "args": [
+                            {"fieldReferenceValue": "published"},
+                            {"timestampValue": "2023-11-14T22:13:20.123456789Z"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "published"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
