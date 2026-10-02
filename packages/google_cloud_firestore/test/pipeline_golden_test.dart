@@ -78,6 +78,13 @@ final _knownDivergences = <String, _Divergence>{
     r'("`\`first-name\``").',
     _projectionIsQuotedOnce,
   ),
+  for (final name in ['add', 'multiply'])
+    'functions/$name/static-variadic': const _Divergence(
+      'PipelineFunctions.add/multiply send every operand, like the Node '
+      'method form. The Node top-level functions are typed variadic but drop '
+      '`...others` at runtime: they only forward `second` to the method.',
+      _selectsThreeOperands,
+    ),
 };
 
 /// Differences from the Node SDK that are not intended, awaiting a fix.
@@ -127,10 +134,6 @@ const _dartApiGaps = <String, String>{
   'stages/delete/plain': 'No Pipeline.delete stage.',
   'stages/update/plain': 'No Pipeline.update stage.',
   'stages/to-scalar-expression/plain': 'No Pipeline.toScalarExpression().',
-  'functions/add/method-variadic':
-      'PipelineExpression.add takes a single operand.',
-  'functions/multiply/method-variadic':
-      'PipelineExpression.multiply takes a single operand.',
   'functions/arraySlice/static-field-name-offset':
       'PipelineFunctions.arraySlice requires a length; only the '
       'PipelineExpression.arraySlice method makes it optional.',
@@ -432,6 +435,23 @@ bool _jsonEquals(Object? a, Object? b) => equals(b).matches(a, {});
 
 /// Whether the `where` stage's function receives its search space as an
 /// `array(...)` function.
+/// Whether the selected function receives all three operands of a variadic
+/// call.
+bool _selectsThreeOperands(Object? request) {
+  final stages = _path(request, ['structuredPipeline', 'pipeline', 'stages']);
+  if (stages is! List || stages.length != 2) return false;
+  final operands = _path(stages[1], [
+    'args',
+    0,
+    'mapValue',
+    'fields',
+    'result',
+    'functionValue',
+    'args',
+  ]);
+  return operands is List && operands.length == 3;
+}
+
 bool _searchSpaceIsArrayFunction(Object? request) {
   final stages = _path(request, ['structuredPipeline', 'pipeline', 'stages']);
   if (stages is! List || stages.length != 2) return false;
@@ -1912,6 +1932,14 @@ void _registerArithmetic(_Registry r) {
     (e, v) => e.add(v),
   );
   r.expr('functions/add/method-double', () => field('rating').add(0.5));
+  r.expr(
+    'functions/add/method-variadic',
+    () => field('rating').add(1, [field('bonus')]),
+  );
+  r.expr(
+    'functions/add/static-variadic',
+    () => PipelineFunctions.add('rating', 1, [field('bonus')]),
+  );
   r.binary(
     'subtract',
     'rating',
@@ -1927,6 +1955,14 @@ void _registerArithmetic(_Registry r) {
     () => field('weight'),
     PipelineFunctions.multiply,
     (e, v) => e.multiply(v),
+  );
+  r.expr(
+    'functions/multiply/method-variadic',
+    () => field('rating').multiply(2, [field('weight')]),
+  );
+  r.expr(
+    'functions/multiply/static-variadic',
+    () => PipelineFunctions.multiply('rating', 2, [field('weight')]),
   );
   r.binary(
     'divide',

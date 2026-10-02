@@ -440,6 +440,13 @@ maps; `charLength`/`stringReverse`/`stringConcat` and
 `minimum`/`maximum` are the aggregate forms; use `logicalMinimum` /
 `logicalMaximum` to compare several operands element-wise.
 
+`add` and `multiply` take extra operands as a trailing list, sent as a single
+backend call:
+
+```dart
+field('price').add(field('tax'), [field('shipping')]);
+```
+
 Anything not yet wrapped is reachable via `PipelineFunctions.raw` or
 `pipelineFunction`. Their arguments are sent as-is, so build a collection that
 holds expressions with `PipelineFunctions.array` / `PipelineFunctions.map`:
