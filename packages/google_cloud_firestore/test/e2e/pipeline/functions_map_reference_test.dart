@@ -278,13 +278,13 @@ void main() {
         PipelineFunctions.mapValues('stats'),
         unorderedEquals([100, 7]),
       ),
+      // `nested.level1` is {level2: {value: 42}}, so its single value is the
+      // `level2` map.
       FunctionCase(
         'static mapValues on an expression',
         PipelineFunctions.mapValues(Expression.field('nested.level1')),
         [
-          {
-            'level2': {'value': 42},
-          },
+          {'value': 42},
         ],
       ),
       FunctionCase(
