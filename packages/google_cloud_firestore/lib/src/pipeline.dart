@@ -298,14 +298,23 @@ String _canonicalFieldPath(Object fieldPath) {
   return path._formattedName;
 }
 
-/// Interprets a [String] in a field position as a field reference.
+/// Whether [value] is a field name, as [field] takes one: a [String] (a
+/// dot-separated path) or a [FieldPath].
+bool _isFieldName(Object? value) => value is String || value is FieldPath;
+
+/// Interprets a field name in a field position as a field reference.
 ///
 /// Mirrors the Node SDK's `fieldOrExpression`: arguments that name the target
 /// of a function accept either a field name or an expression, so a bare
-/// [String] means [field]. Arguments in a value position keep [String]s as
-/// string literals, which is what [_encodePipelineValue] does by default.
+/// [String] means [field]. So does a [FieldPath], which [field] takes too but
+/// Node only takes inside `field()`. Arguments in a value position keep
+/// [String]s as string literals, which is what [_encodePipelineValue] does by
+/// default.
+///
+/// Every stage and function reads its field names through this, so they all
+/// accept the same ones.
 Object? _fieldOrExpression(Object? value) {
-  return value is String ? field(value) : value;
+  return _isFieldName(value) ? field(value!) : value;
 }
 
 /// Applies [_fieldOrExpression] to the first entry of [values].
@@ -419,11 +428,11 @@ PipelineBooleanExpression documentMatches(Object? rquery) {
 /// Convenience wrappers for the Firestore Pipeline function catalog.
 ///
 /// These helpers encode to the backend function names documented in the
-/// Firestore Pipeline functions reference. A [String] in a field position
-/// (the target of most functions, such as `'title'` in
+/// Firestore Pipeline functions reference. A [String] or a [FieldPath] in a
+/// field position (the target of most functions, such as `'title'` in
 /// `startsWith('title', 'Harry')`) is a field name, read like [field]; in a
-/// value position it is a string literal. Use [field] to reference a document
-/// field in a value position.
+/// value position a [String] is a string literal. Use [field] to reference a
+/// document field in a value position.
 ///
 /// A [List] or [Map] argument may hold expressions, as in `[field('a'), 1]`:
 /// it is sent as an [array] or [map] function so the backend evaluates them.
@@ -1502,24 +1511,20 @@ abstract final class PipelineFunctions {
 
 /// Creates an ascending Pipeline ordering.
 ///
-/// [expression] is a field name or an expression, like
-/// [PipelineExpression.ascending] on that expression.
+/// [expression] is a field name (a [String] or a [FieldPath], read like
+/// [field]) or an expression, like [PipelineExpression.ascending] on that
+/// expression.
 PipelineOrdering ascending(Object expression) {
-  return PipelineOrdering._(
-    'ascending',
-    expression is String ? field(expression) : expression,
-  );
+  return PipelineOrdering._('ascending', _fieldOrExpression(expression)!);
 }
 
 /// Creates a descending Pipeline ordering.
 ///
-/// [expression] is a field name or an expression, like
-/// [PipelineExpression.descending] on that expression.
+/// [expression] is a field name (a [String] or a [FieldPath], read like
+/// [field]) or an expression, like [PipelineExpression.descending] on that
+/// expression.
 PipelineOrdering descending(Object expression) {
-  return PipelineOrdering._(
-    'descending',
-    expression is String ? field(expression) : expression,
-  );
+  return PipelineOrdering._('descending', _fieldOrExpression(expression)!);
 }
 
 /// The starting point for constructing Firestore Pipeline operations.
@@ -1752,13 +1757,13 @@ final class Pipeline {
 
   /// Selects or computes fields from the inputs.
   ///
-  /// Entries may be [String] field names (read like [field]), [PipelineField]
-  /// references, [PipelineExpression] instances, or
-  /// [PipelineAliasedExpression] values.
+  /// Entries may be field names ([String]s or [FieldPath]s, read like
+  /// [field]), [PipelineField] references, or [PipelineAliasedExpression]
+  /// values.
   ///
   /// The selections are sent as a map keyed by the field they land on, which
-  /// the backend reads as a field path. A [String] or [PipelineField] is keyed
-  /// by its [PipelineField.path], so `'last name'` is keyed by
+  /// the backend reads as a field path. A field name or [PipelineField] is
+  /// keyed by its [PipelineField.path], so `'last name'` is keyed by
   /// `` `last name` ``. An aliased expression is keyed by its alias as
   /// written, as in the Node SDK, so an alias must be a valid field path
   /// itself; see [PipelineExpression.as].
@@ -1826,8 +1831,9 @@ final class Pipeline {
 
   /// Returns unique combinations of the provided grouping expressions.
   ///
-  /// Entries may be [String] field names (read like [field]), [PipelineField]
-  /// references, or [PipelineAliasedExpression] values, keyed as in [select].
+  /// Entries may be field names ([String]s or [FieldPath]s, read like
+  /// [field]), [PipelineField] references, or [PipelineAliasedExpression]
+  /// values, keyed as in [select].
   ///
   /// Throws an [ArgumentError] when two [groups] land on the same field name
   /// or alias.
@@ -1849,8 +1855,8 @@ final class Pipeline {
 
   /// Removes fields from the inputs.
   ///
-  /// Entries may be [String] field names, read like [field], or
-  /// [PipelineField] references.
+  /// Entries may be field names ([String]s or [FieldPath]s, read like
+  /// [field]), or [PipelineField] references.
   ///
   /// [rawOptions] sets stage options this SDK does not wrap yet, as
   /// [rawStage]'s `options` do.
@@ -1859,8 +1865,7 @@ final class Pipeline {
     Map<String, Object?> rawOptions = const {},
   }) {
     return _stage('remove_fields', [
-      for (final value in fields)
-        if (value is String) field(value) else value,
+      for (final value in fields) _fieldOrExpression(value),
     ], rawOptions: rawOptions);
   }
 
@@ -1904,10 +1909,11 @@ final class Pipeline {
   /// Emits a document for each element of the array selected by [selectable].
   ///
   /// Each emitted document has the array element assigned to the selection's
-  /// alias. [selectable] may be a [String] field name, a [PipelineField], or a
-  /// [PipelineAliasedExpression] created with [PipelineExpression.as] when the
-  /// element should land on a different field than the source array. A
-  /// [String] field name, an alias and [indexField] are all read like [field].
+  /// alias. [selectable] may be a field name (a [String] or a [FieldPath]), a
+  /// [PipelineField], or a [PipelineAliasedExpression] created with
+  /// [PipelineExpression.as] when the element should land on a different
+  /// field than the source array. A field name, an alias and [indexField] are
+  /// all read like [field].
   ///
   /// When [indexField] is given, the element's zero-based index is assigned to
   /// that field.
@@ -1998,10 +2004,11 @@ final class Pipeline {
 
   /// Performs vector nearest-neighbor search.
   ///
-  /// [vectorField] is a field name, read like [field], or an expression.
-  /// [queryVector] is a [VectorValue], a list of numbers, or an expression.
-  /// [distanceResultField] is the field name, read like [field], that each
-  /// result's distance is written to.
+  /// [vectorField] is a field name (a [String] or a [FieldPath], read like
+  /// [field]) or an expression. [queryVector] is a [VectorValue], a list of
+  /// numbers, or an expression. [distanceResultField] is the field name, a
+  /// [String] or a [FieldPath] read like [field], that each result's distance
+  /// is written to, as for [Query.findNearest].
   ///
   /// The backend's `find_nearest` stage takes no distance threshold, so a
   /// [distanceThreshold] adds a [where] stage after it, as
@@ -2020,12 +2027,12 @@ final class Pipeline {
     required Object queryVector,
     required DistanceMeasure distanceMeasure,
     int? limit,
-    String? distanceResultField,
+    Object? distanceResultField,
     double? distanceThreshold,
     Map<String, Object?> rawOptions = const {},
   }) {
     return _findNearest(
-      vectorField: vectorField is String ? field(vectorField) : vectorField,
+      vectorField: _fieldOrExpression(vectorField)!,
       queryVector: queryVector,
       distanceMeasure: distanceMeasure,
       limit: limit,
@@ -3726,16 +3733,16 @@ Map<String, Object?> _compactOptions(Map<String, Object?> options) {
 /// Keys each selection's expression by the field name or alias it lands on.
 ///
 /// Throws an [ArgumentError] on a repeated key instead of silently keeping the
-/// last entry. A [String] or [PipelineField] lands on its own path, so it
+/// last entry. A field name or [PipelineField] lands on its own path, so it
 /// collides with an alias of the same name, matching the Node SDK.
 ///
 /// The backend reads each key as a field path, and rejects one that is not
 /// an identifier unless it is quoted ("Invalid property path \"last
-/// name\""). So a [String] is keyed by the canonical [PipelineField.path] of
-/// [field], as a [PipelineField] is: `select(['first-name', field('last
-/// name')])` keys `` `first-name` `` and `` `last name` ``. The Node SDK's
-/// `selectablesToObject` keys a string by the string itself. An alias is kept
-/// as written, as in Node.
+/// name\""). So a field name ([String] or [FieldPath]) is keyed by the
+/// canonical [PipelineField.path] of [field], as a [PipelineField] is:
+/// `select(['first-name', field('last name')])` keys `` `first-name` `` and
+/// `` `last name` ``. The Node SDK's `selectablesToObject` keys a string by
+/// the string itself. An alias is kept as written, as in Node.
 Map<String, Object?> _projectionMap(
   Iterable<Object> selections, {
   String argumentName = 'selections',
@@ -3754,36 +3761,37 @@ Map<String, Object?> _projectionMap(
 /// Splits a selectable into the expression it computes and the field it lands
 /// on.
 ///
-/// A [String] or [PipelineField] lands on its own path, matching the Node SDK
-/// where `Field._alias` is the field name. An alias is a field path, as in
-/// Node's `field(alias)`.
+/// A field name ([String] or [FieldPath]) or [PipelineField] lands on its own
+/// path, matching the Node SDK where `Field._alias` is the field name. An
+/// alias is a field path, as in Node's `field(alias)`.
 ///
 /// Node rebuilds the field from `Field._alias`, its already-quoted name, so it
 /// quotes a field such as `last name` twice. The field is reused as is here.
 (Object expression, PipelineField target) _selectableParts(Object selectable) {
-  return switch (selectable) {
-    String() => (field(selectable), field(selectable)),
-    PipelineField() => (selectable, selectable),
-    PipelineAliasedExpression() => (
-      selectable.expression,
-      field(selectable.name),
+  return switch (_fieldOrExpression(selectable)) {
+    final PipelineField target => (target, target),
+    final PipelineAliasedExpression aliased => (
+      aliased.expression,
+      field(aliased.name),
     ),
     _ => throw ArgumentError.value(
       selectable,
       'selectable',
-      'Expected a String, PipelineField, or PipelineAliasedExpression. '
-          'Computed expressions must be aliased with as().',
+      'Expected a String, FieldPath, PipelineField, or '
+          'PipelineAliasedExpression. Computed expressions must be aliased '
+          'with as().',
     ),
   };
 }
 
+/// The key and the expression of a selection, a field name being read like
+/// [field].
 MapEntry<String, Object?> _projectionEntry(Object selection) {
-  return switch (selection) {
-    String() => _projectionEntry(field(selection)),
-    PipelineField() => MapEntry(selection.path, selection),
-    PipelineAliasedExpression() => MapEntry(
-      selection.name,
-      selection.expression,
+  return switch (_fieldOrExpression(selection)) {
+    final PipelineField target => MapEntry(target.path, target),
+    final PipelineAliasedExpression aliased => MapEntry(
+      aliased.name,
+      aliased.expression,
     ),
     PipelineExpression() => throw ArgumentError.value(
       selection,
@@ -3793,7 +3801,8 @@ MapEntry<String, Object?> _projectionEntry(Object selection) {
     _ => throw ArgumentError.value(
       selection,
       'selections',
-      'Expected a String, PipelineField, or PipelineAliasedExpression.',
+      'Expected a String, FieldPath, PipelineField, or '
+          'PipelineAliasedExpression.',
     ),
   };
 }

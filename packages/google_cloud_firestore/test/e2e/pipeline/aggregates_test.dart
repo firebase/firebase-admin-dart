@@ -239,5 +239,27 @@ void main() {
         ],
       );
     });
+
+    test('aggregates per group named by a FieldPath', () async {
+      // A FieldPath names a group as a String does. Only book 3 is archived.
+      final snapshot = await ctx
+          .runPipeline()
+          .aggregate(
+            [PipelineFunctions.countAll().as('books')],
+            groups: [
+              FieldPath(const ['archived']),
+            ],
+          )
+          .sort([ascending('archived')])
+          .execute();
+
+      expect(
+        [for (final result in snapshot.results) result.data()],
+        [
+          {'archived': false, 'books': 2},
+          {'archived': true, 'books': 1},
+        ],
+      );
+    });
   });
 }
