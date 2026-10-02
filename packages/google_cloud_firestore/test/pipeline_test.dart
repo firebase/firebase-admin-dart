@@ -357,6 +357,161 @@ void main() {
       expect(snapshot.results.single.ref, isNull);
     });
 
+    group('reference values in results', () {
+      const documents = 'projects/$_projectId/databases/enterprise/documents';
+      // `parent()` of a top-level document returns the database root, and a
+      // reference can also name a collection; neither is a document.
+      const root = documents;
+      const collection = '$documents/books';
+      const subcollection = '$documents/books/book-1/chapters';
+      const document = '$documents/books/book-1';
+      const subcollectionDocument = '$documents/books/book-1/chapters/c1';
+
+      firestore_v1.Value ref(String name) {
+        return firestore_v1.Value(referenceValue: name);
+      }
+
+      firestore_v1.Value array(List<firestore_v1.Value> values) {
+        return firestore_v1.Value(
+          arrayValue: firestore_v1.ArrayValue(values: values),
+        );
+      }
+
+      firestore_v1.Value map(Map<String, firestore_v1.Value> fields) {
+        return firestore_v1.Value(
+          mapValue: firestore_v1.MapValue(fields: fields),
+        );
+      }
+
+      Future<PipelineResult> decode(Map<String, firestore_v1.Value> fields) {
+        when(
+          () => mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(
+            any(),
+          ),
+        ).thenAnswer((invocation) async {
+          final callback =
+              invocation.positionalArguments.single
+                  as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                  Function(firestore_v1.Firestore api, String projectId);
+          return callback(
+            FakeFirestore(
+              executePipeline: (_) => Stream.value(
+                firestore_v1.ExecutePipelineResponse(
+                  results: [firestore_v1.Document(fields: fields)],
+                ),
+              ),
+            ),
+            _projectId,
+          );
+        });
+
+        return firestore
+            .pipeline()
+            .collection('books')
+            .execute()
+            .then((snapshot) => snapshot.results.single);
+      }
+
+      // Every kind of reference, in the order the expectations below use.
+      final all = [
+        ref(document),
+        ref(subcollectionDocument),
+        ref(root),
+        ref(collection),
+        ref(subcollection),
+      ];
+      // `firestore` is only assigned in setUp, so build these per test.
+      late List<Object?> allDecoded;
+      setUp(() {
+        allDecoded = [
+          firestore.doc('books/book-1'),
+          firestore.doc('books/book-1/chapters/c1'),
+          root,
+          collection,
+          subcollection,
+        ];
+      });
+
+      test('decode the same way at the top level', () async {
+        final result = await decode({
+          'document': all[0],
+          'subcollectionDocument': all[1],
+          'root': all[2],
+          'collection': all[3],
+          'subcollection': all[4],
+        });
+
+        expect(result.data(), {
+          'document': allDecoded[0],
+          'subcollectionDocument': allDecoded[1],
+          'root': allDecoded[2],
+          'collection': allDecoded[3],
+          'subcollection': allDecoded[4],
+        });
+        expect(result.get('document'), isA<DocumentReference<DocumentData>>());
+        expect(result.get('root'), isA<String>());
+      });
+
+      test('decode the same way inside a map', () async {
+        final result = await decode({
+          'm': map({for (var i = 0; i < all.length; i++) 'r$i': all[i]}),
+        });
+
+        expect(result.get('m'), {
+          for (var i = 0; i < allDecoded.length; i++) 'r$i': allDecoded[i],
+        });
+        expect(result.get('m.r0'), firestore.doc('books/book-1'));
+        expect(result.get('m.r2'), root);
+      });
+
+      test('decode the same way inside an array', () async {
+        final result = await decode({'a': array(all)});
+
+        expect(result.get('a'), allDecoded);
+      });
+
+      test('decode the same way nested two deep', () async {
+        final result = await decode({
+          'mapInMap': map({
+            'inner': map({'root': all[2], 'document': all[0]}),
+          }),
+          'arrayInMap': map({'inner': array(all)}),
+          'mapInArray': array([
+            map({'collection': all[3], 'document': all[0]}),
+          ]),
+          'arrayInArray': array([array(all)]),
+        });
+
+        expect(result.data(), {
+          'mapInMap': {
+            'inner': {'root': root, 'document': allDecoded[0]},
+          },
+          'arrayInMap': {'inner': allDecoded},
+          'mapInArray': [
+            {'collection': collection, 'document': allDecoded[0]},
+          ],
+          'arrayInArray': [allDecoded],
+        });
+        expect(result.get('mapInMap.inner.root'), root);
+      });
+
+      test('leave regular document decoding unchanged', () {
+        // Outside Pipelines a non-document reference is still rejected, at
+        // any depth; only document references decode.
+        final serializer = firestore.serializer;
+
+        expect(serializer.decodeValue(all[0]), allDecoded[0]);
+        expect(serializer.decodeValue(map({'d': all[0]})), {
+          'd': allDecoded[0],
+        });
+        expect(() => serializer.decodeValue(all[3]), throwsArgumentError);
+        expect(
+          () => serializer.decodeValue(array([all[4]])),
+          throwsArgumentError,
+        );
+      });
+    });
+
     test('execute encodes options under their backend names', () async {
       firestore_v1.ExecutePipelineRequest? capturedRequest;
 

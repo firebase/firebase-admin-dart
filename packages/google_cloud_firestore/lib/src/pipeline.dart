@@ -2517,6 +2517,12 @@ final class PipelineResult {
   ///
   /// The returned map is unmodifiable. Projection stages may drop every field,
   /// in which case this is empty rather than `null`.
+  ///
+  /// A reference value decodes to a [DocumentReference] when it names a
+  /// document. A reference to anything else, such as the database root that
+  /// `parent()` returns for a top-level document, or a collection, decodes to
+  /// its resource name as a [String]. This holds at every depth, including
+  /// inside maps and arrays. The Node SDK throws for such references instead.
   DocumentData data() => _data;
 
   /// Returns the decoded value at [field], or `null` when absent.
@@ -2555,36 +2561,41 @@ final class PipelineResult {
   }
 }
 
+/// Decodes a Pipeline result value, decoding references as documented on
+/// [PipelineResult.data] at every depth.
 Object? _decodePipelineResultValue(
   firestore_v1.Value value,
   Firestore firestore,
 ) {
-  final referenceValue = value.referenceValue;
-  if (referenceValue != null &&
-      referenceValue.isNotEmpty &&
-      !_isDocumentReferenceValue(referenceValue)) {
-    return referenceValue;
-  }
-  return firestore._serializer.decodeValue(value);
+  return firestore._serializer._decodeValue(value, (referenceValue) {
+    final documentPath = _documentPathOf(referenceValue);
+    return documentPath == null ? referenceValue : firestore.doc(documentPath);
+  });
 }
 
 final _documentReferenceRegExp = RegExp(
   r'^projects/[^/]+/databases/[^/]+(?:/documents(?:/(.*))?)?$',
 );
 
-bool _isDocumentReferenceValue(String referenceValue) {
+/// The database-relative path of [referenceValue] when it names a document,
+/// or `null` for any other reference, such as the database root or a
+/// collection.
+String? _documentPathOf(String referenceValue) {
   final value = referenceValue.startsWith('/')
       ? referenceValue.substring(1)
       : referenceValue;
   final match = _documentReferenceRegExp.firstMatch(value);
   if (match == null) {
-    return false;
+    return null;
   }
-  final path = match.group(1);
-  if (path == null || path.isEmpty) {
-    return false;
+  final segments = (match.group(1) ?? '')
+      .split('/')
+      .where((segment) => segment.isNotEmpty)
+      .toList();
+  if (segments.isEmpty || segments.length.isOdd) {
+    return null;
   }
-  return path.split('/').where((segment) => segment.isNotEmpty).length.isEven;
+  return segments.join('/');
 }
 
 /// A snapshot returned by executing a Firestore Pipeline operation.
