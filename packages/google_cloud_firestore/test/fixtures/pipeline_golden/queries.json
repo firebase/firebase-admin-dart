@@ -3311,6 +3311,213 @@
         }
       }
     },
+    "queries/vector/distance-threshold-and-result-field": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "embedding"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "find_nearest",
+              "args": [
+                {"fieldReferenceValue": "embedding"},
+                {
+                  "mapValue": {
+                    "fields": {
+                      "__type__": {"stringValue": "__vector__"},
+                      "value": {
+                        "arrayValue": {
+                          "values": [
+                            {"doubleValue": 0.1},
+                            {"doubleValue": 0.2},
+                            {"doubleValue": 0.3}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"stringValue": "euclidean"}
+              ],
+              "options": {"limit": {"integerValue": "5"}}
+            }
+          ]
+        }
+      }
+    },
+    "queries/vector/distance-threshold-cosine": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "embedding"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "find_nearest",
+              "args": [
+                {"fieldReferenceValue": "embedding"},
+                {
+                  "mapValue": {
+                    "fields": {
+                      "__type__": {"stringValue": "__vector__"},
+                      "value": {
+                        "arrayValue": {
+                          "values": [
+                            {"doubleValue": 0.1},
+                            {"doubleValue": 0.2},
+                            {"doubleValue": 0.3}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"stringValue": "cosine"}
+              ],
+              "options": {"limit": {"integerValue": "5"}}
+            }
+          ]
+        }
+      }
+    },
+    "queries/vector/distance-threshold-dot-product": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "embedding"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "find_nearest",
+              "args": [
+                {"fieldReferenceValue": "embedding"},
+                {
+                  "mapValue": {
+                    "fields": {
+                      "__type__": {"stringValue": "__vector__"},
+                      "value": {
+                        "arrayValue": {
+                          "values": [
+                            {"doubleValue": 0.1},
+                            {"doubleValue": 0.2},
+                            {"doubleValue": 0.3}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"stringValue": "dot_product"}
+              ],
+              "options": {"limit": {"integerValue": "5"}}
+            }
+          ]
+        }
+      }
+    },
     "queries/vector/dot-product": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -3607,6 +3814,110 @@
             {
               "name": "sort",
               "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "embedding"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "find_nearest",
+              "args": [
+                {"fieldReferenceValue": "embedding"},
+                {
+                  "mapValue": {
+                    "fields": {
+                      "__type__": {"stringValue": "__vector__"},
+                      "value": {
+                        "arrayValue": {
+                          "values": [
+                            {"doubleValue": 0.1},
+                            {"doubleValue": 0.2},
+                            {"doubleValue": 0.3}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"stringValue": "euclidean"}
+              ],
+              "options": {"limit": {"integerValue": "5"}}
+            }
+          ]
+        }
+      }
+    },
+    "queries/vector/with-inequality-prefilter": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "genre"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "not_equal",
+                          "args": [
+                            {"fieldReferenceValue": "genre"},
+                            {"stringValue": "Horror"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "exists",
+                    "args": [{"fieldReferenceValue": "__name__"}]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "genre"}
+                    }
+                  }
+                },
                 {
                   "mapValue": {
                     "fields": {

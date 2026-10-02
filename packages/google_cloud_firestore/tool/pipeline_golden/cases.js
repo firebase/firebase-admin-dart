@@ -398,6 +398,18 @@ module.exports = function buildCases(sdk, db) {
   vectorQuery('field-path-object', () =>
     nearest({vectorField: new FieldPath('a.b')}),
   );
+  vectorQuery('distance-threshold-cosine', () =>
+    nearest({distanceMeasure: 'COSINE', distanceThreshold: 0.5}),
+  );
+  vectorQuery('distance-threshold-dot-product', () =>
+    nearest({distanceMeasure: 'DOT_PRODUCT', distanceThreshold: 0.5}),
+  );
+  vectorQuery('distance-threshold-and-result-field', () =>
+    nearest({distanceThreshold: 0.5, distanceResultField: 'distance'}),
+  );
+  vectorQuery('with-inequality-prefilter', () =>
+    nearest({}, col().where('genre', '!=', 'Horror')),
+  );
 
   // ---------------------------------------------------------------------------
   // Stages

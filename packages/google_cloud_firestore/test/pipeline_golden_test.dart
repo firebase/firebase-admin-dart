@@ -85,22 +85,64 @@ final _knownDivergences = <String, _Divergence>{
       '`...others` at runtime: they only forward `second` to the method.',
       _selectsThreeOperands,
     ),
+  'queries/vector/distance-result-field': _Divergence(
+    _distanceResultFieldReason,
+    (request) => _findNearestDistanceField(request) == 'distance',
+  ),
+  'queries/vector/distance-threshold': _Divergence(
+    _distanceThresholdReason,
+    (request) => _filtersDistance(
+      request,
+      comparison: 'less_than_or_equal',
+      distanceFunction: 'euclidean_distance',
+    ),
+  ),
+  'queries/vector/distance-threshold-cosine': _Divergence(
+    _distanceThresholdReason,
+    (request) => _filtersDistance(
+      request,
+      comparison: 'less_than_or_equal',
+      distanceFunction: 'cosine_distance',
+    ),
+  ),
+  'queries/vector/distance-threshold-dot-product': _Divergence(
+    _distanceThresholdReason,
+    (request) => _filtersDistance(
+      request,
+      comparison: 'greater_than_or_equal',
+      distanceFunction: 'dot_product',
+    ),
+  ),
+  'queries/vector/distance-threshold-and-result-field': _Divergence(
+    '$_distanceResultFieldReason $_distanceThresholdReason With a distance '
+    'result field, the filter reads that field.',
+    (request) =>
+        _findNearestDistanceField(request) == 'distance' &&
+        _filtersDistance(
+          request,
+          comparison: 'less_than_or_equal',
+          distanceField: 'distance',
+        ),
+  ),
 };
+
+const _distanceResultFieldReason =
+    "createFrom(vectorQuery) keeps distanceResultField as find_nearest's "
+    'distance_field option, so each result carries its distance as it does '
+    'for the VectorQuery. Node drops it.';
+
+const _distanceThresholdReason =
+    'createFrom(vectorQuery) applies distanceThreshold as a where stage on '
+    'the distance after find_nearest (<= for euclidean and cosine, >= for '
+    'dot product), keeping the VectorQuery results. Node drops the threshold '
+    'and returns documents beyond it; find_nearest documents no threshold '
+    'option.';
 
 /// Differences from the Node SDK that are not intended, awaiting a fix.
 ///
 /// Each entry must still differ from its fixture; remove it once fixed.
 const _pendingFixes = <String, String>{
   // Ordering helpers.
-  // Query to Pipeline conversion.
-  'queries/vector/distance-result-field':
-      'createFrom(vectorQuery) sends a distance_field option; Node drops '
-      'distanceResultField. Dart keeps the query semantics: decide whether '
-      'this should be a known divergence.',
-  'queries/vector/distance-threshold':
-      'createFrom(vectorQuery) sends a distance_threshold option; Node drops '
-      'distanceThreshold and its find_nearest stage has no such option, so '
-      'the backend name is unverified.',
   // Nested plain collections. Node turns a nested list or map into an
   // array(...) / map(...) function; Dart sends a nested literal.
   'functions/equalAny/static-field-name-list-nested':
@@ -447,6 +489,57 @@ bool _searchSpaceIsArrayFunction(Object? request) {
   if (stages is! List || stages.length != 2) return false;
   final searchSpace = _path(stages[1], ['args', 0, 'functionValue', 'args', 1]);
   return _path(searchSpace, ['functionValue', 'name']) == 'array';
+}
+
+/// The field the find_nearest stage writes the distance to, if any.
+Object? _findNearestDistanceField(Object? request) {
+  final stages = _path(request, ['structuredPipeline', 'pipeline', 'stages']);
+  if (stages is! List) return null;
+  final findNearest = stages.lastWhere(
+    (stage) => _path(stage, ['name']) == 'find_nearest',
+    orElse: () => null,
+  );
+  return _path(findNearest, [
+    'options',
+    'distance_field',
+    'fieldReferenceValue',
+  ]);
+}
+
+/// Whether find_nearest, sent without a threshold option, is followed by a
+/// `where` stage comparing the distance with the 0.5 threshold.
+///
+/// The distance is either [distanceFunction] of the `embedding` field, or
+/// [distanceField].
+bool _filtersDistance(
+  Object? request, {
+  required String comparison,
+  String? distanceFunction,
+  String? distanceField,
+}) {
+  final stages = _path(request, ['structuredPipeline', 'pipeline', 'stages']);
+  if (stages is! List || stages.length < 2) return false;
+  final findNearest = stages[stages.length - 2];
+  if (_path(findNearest, ['name']) != 'find_nearest' ||
+      _path(findNearest, ['options', 'distance_threshold']) != null) {
+    return false;
+  }
+
+  final where = stages.last;
+  final condition = _path(where, ['args', 0, 'functionValue']);
+  if (_path(where, ['name']) != 'where' ||
+      _path(condition, ['name']) != comparison ||
+      _path(condition, ['args', 1, 'doubleValue']) != 0.5) {
+    return false;
+  }
+
+  final distance = _path(condition, ['args', 0]);
+  if (distanceField != null) {
+    return _path(distance, ['fieldReferenceValue']) == distanceField;
+  }
+  return _path(distance, ['functionValue', 'name']) == distanceFunction &&
+      _path(distance, ['functionValue', 'args', 0, 'fieldReferenceValue']) ==
+          'embedding';
 }
 
 Object? _path(Object? value, List<Object> path) {
@@ -1064,6 +1157,34 @@ void _registerQueries(_Registry r) {
   query(
     'vector/field-path-object',
     (db) => nearest(col(db), vectorField: FieldPath(const ['a.b'])),
+  );
+  query(
+    'vector/distance-threshold-cosine',
+    (db) => nearest(
+      col(db),
+      distanceMeasure: DistanceMeasure.cosine,
+      distanceThreshold: 0.5,
+    ),
+  );
+  query(
+    'vector/distance-threshold-dot-product',
+    (db) => nearest(
+      col(db),
+      distanceMeasure: DistanceMeasure.dotProduct,
+      distanceThreshold: 0.5,
+    ),
+  );
+  query(
+    'vector/distance-threshold-and-result-field',
+    (db) => nearest(
+      col(db),
+      distanceThreshold: 0.5,
+      distanceResultField: 'distance',
+    ),
+  );
+  query(
+    'vector/with-inequality-prefilter',
+    (db) => nearest(col(db).where('genre', WhereFilter.notEqual, 'Horror')),
   );
 }
 
