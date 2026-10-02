@@ -2347,6 +2347,11 @@ List<PipelineOrdering> _reversed(List<PipelineOrdering> orderings) {
 /// Cursors compare the ordering expressions lexicographically, so each bound
 /// contributes either a strict comparison or an equality plus the condition for
 /// the remaining bounds.
+///
+/// A cursor is a position in the query's order, so a descending ordering
+/// flips the comparison: `startAt` keeps smaller values. Node's
+/// `whereConditionsFromCursor` ignores the direction and keeps the wrong side
+/// of a descending bound.
 PipelineBooleanExpression _cursorCondition(
   _QueryCursor cursor,
   List<PipelineOrdering> orderings, {
@@ -2361,16 +2366,17 @@ PipelineBooleanExpression _cursorCondition(
     );
   }
 
-  PipelineBooleanExpression compare(Object? expression, Object? value) {
-    return before
-        ? lessThan(expression, value)
-        : greaterThan(expression, value);
+  PipelineBooleanExpression compare(PipelineOrdering ordering, Object? value) {
+    final ascending = ordering._name == 'ascending';
+    return before == ascending
+        ? lessThan(ordering._expression, value)
+        : greaterThan(ordering._expression, value);
   }
 
   var expression = orderings[size - 1]._expression;
   var value = _PipelineProtoValue(cursor.values[size - 1]);
 
-  var condition = compare(expression, value);
+  var condition = compare(orderings[size - 1], value);
   // An inclusive bound also matches the cursor value itself.
   if (before != cursor.before) {
     condition = or([condition, equal(expression, value)]);
@@ -2380,7 +2386,7 @@ PipelineBooleanExpression _cursorCondition(
     expression = orderings[i]._expression;
     value = _PipelineProtoValue(cursor.values[i]);
     condition = or([
-      compare(expression, value),
+      compare(orderings[i], value),
       and([equal(expression, value), condition]),
     ]);
   }

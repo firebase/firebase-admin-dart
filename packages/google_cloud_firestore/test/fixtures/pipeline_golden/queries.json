@@ -254,6 +254,143 @@
         }
       }
     },
+    "queries/cursor/descending-limit-to-last": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "or",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "greater_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "or",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "less_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "1"}
+                          ]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "1"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {"name": "limit", "args": [{"integerValue": "2"}]},
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
     "queries/cursor/end-at": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -408,6 +545,75 @@
         }
       }
     },
+    "queries/cursor/end-before-descending": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "less_than",
+                    "args": [
+                      {"fieldReferenceValue": "rating"},
+                      {"integerValue": "2"}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
     "queries/cursor/limit-to-last": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -521,6 +727,121 @@
                       "direction": {"stringValue": "ascending"},
                       "expression": {"fieldReferenceValue": "__name__"}
                     }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/cursor/mixed-directions": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "title"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "title"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "or",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "greater_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "and",
+                          "args": [
+                            {
+                              "functionValue": {
+                                "name": "equal",
+                                "args": [
+                                  {"fieldReferenceValue": "rating"},
+                                  {"integerValue": "4"}
+                                ]
+                              }
+                            },
+                            {
+                              "functionValue": {
+                                "name": "greater_than",
+                                "args": [
+                                  {"fieldReferenceValue": "title"},
+                                  {"stringValue": "M"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
                   }
                 }
               ]
@@ -873,6 +1194,91 @@
                   "mapValue": {
                     "fields": {
                       "direction": {"stringValue": "ascending"},
+                      "expression": {"fieldReferenceValue": "__name__"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "or",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "greater_than",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "4"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "queries/cursor/start-at-descending": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "exists",
+                          "args": [{"fieldReferenceValue": "__name__"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                },
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
                       "expression": {"fieldReferenceValue": "__name__"}
                     }
                   }

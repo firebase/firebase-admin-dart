@@ -3557,6 +3557,43 @@ void main() {
         expect(endBefore.name, 'less_than');
       });
 
+      test('flips cursor comparisons for descending orderings', () async {
+        // Regression: cursors compared as if every ordering were ascending
+        // (as Node does), so startAt(4) on a descending rating kept ratings of
+        // 4 and more instead of 4 and less.
+        await run(
+          firestore
+              .collection('books')
+              .orderBy('rating', descending: true)
+              .orderBy('title')
+              .startAt([4, 'M'])
+              .endBefore([1]),
+        );
+
+        expect(stages.map((stage) => stage.name), [
+          'collection',
+          'where', // existence checks
+          'sort',
+          'where', // startAt
+          'where', // endBefore
+        ]);
+
+        // rating < 4 || (rating == 4 && (title > 'M' || title == 'M'))
+        final startAt = stages[3].args.single.functionValue!;
+        expect(startAt.name, 'or');
+        expect(startAt.args[0].functionValue!.name, 'less_than');
+        final tie = startAt.args[1].functionValue!;
+        expect(tie.args[0].functionValue!.name, 'equal');
+        final title = tie.args[1].functionValue!;
+        expect(title.args[0].functionValue!.name, 'greater_than');
+        expect(title.args[1].functionValue!.name, 'equal');
+
+        // endBefore(1) on the descending rating keeps ratings above 1.
+        final endBefore = stages[4].args.single.functionValue!;
+        expect(endBefore.name, 'greater_than');
+        expect(endBefore.args[1].integerValue, 1);
+      });
+
       test('sorts twice for limitToLast queries', () async {
         await run(
           firestore.collection('books').orderBy('rating').limitToLast(3),
