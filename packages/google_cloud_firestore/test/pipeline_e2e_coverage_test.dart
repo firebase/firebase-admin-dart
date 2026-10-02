@@ -442,6 +442,9 @@ const _notExecutable = <String, String>{
   'Expression.raw(options)':
       'no backend function takes options yet (the Node SDK only uses them for '
       'the disabled snippet function); an empty map equals omitting it',
+  'PipelineFunctions.raw(options)':
+      'no backend function takes options yet (the Node SDK only uses them for '
+      'the disabled snippet function); an empty map equals omitting it',
   'pipelineFunction(options)':
       'no backend function takes options yet (the Node SDK only uses them for '
       'the disabled snippet function); an empty map equals omitting it',

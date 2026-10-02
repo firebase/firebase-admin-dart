@@ -52,6 +52,73 @@ void main() {
       ]);
     });
 
+    test('collectionReference starts from that collection', () async {
+      expect(
+        await ctx.titlesOf(
+          ctx.firestore
+              .pipeline()
+              .collectionReference(ctx.firestore.collection(ctx.collectionPath))
+              .where(ctx.runFilter())
+              .sort([ascending('price')])
+              .select(['title']),
+        ),
+        ['Dart Pipelines', 'Firestore Admin', 'Inactive Draft'],
+      );
+    });
+
+    test('database starts from every document', () async {
+      // The database source cannot be filtered before its first stage, so the
+      // run filter comes straight after it.
+      expect(
+        await ctx.titlesOf(
+          ctx.firestore
+              .pipeline()
+              .database()
+              .where(ctx.runFilter())
+              .sort([ascending('price')])
+              .select(['title']),
+        ),
+        ['Dart Pipelines', 'Firestore Admin', 'Inactive Draft'],
+      );
+    });
+
+    test('executes a pipeline created from a query', () async {
+      // Translates the filter, the descending order and the limit.
+      expect(
+        await ctx.titlesOf(
+          ctx.firestore.pipeline().createFrom(
+            ctx.firestore
+                .collection(ctx.collectionPath)
+                .where('runId', WhereFilter.equal, ctx.runId)
+                .orderBy('price', descending: true)
+                .limit(2),
+          ),
+        ),
+        ['Inactive Draft', 'Firestore Admin'],
+      );
+    });
+
+    test('executes a pipeline created from a vector query', () async {
+      // Euclidean distances from [3, 2, 1]: book 1 = 3, book 2 = sqrt(11),
+      // book 3 = sqrt(13).
+      expect(
+        await ctx.titlesOf(
+          ctx.firestore.pipeline().createFrom(
+            ctx.firestore
+                .collection(ctx.collectionPath)
+                .where('runId', WhereFilter.equal, ctx.runId)
+                .findNearest(
+                  vectorField: 'embedding',
+                  queryVector: const <double>[3, 2, 1],
+                  limit: 2,
+                  distanceMeasure: DistanceMeasure.euclidean,
+                ),
+          ),
+        ),
+        ['Dart Pipelines', 'Firestore Admin'],
+      );
+    });
+
     test('executes a pipeline created from a collection group query', () async {
       final snapshot = await ctx.firestore
           .pipeline()
