@@ -912,6 +912,17 @@ final _functionScenarios = <_FunctionScenario>[
       Expression.field('title').substringLiteral(0, 4),
       'Dart',
     ),
+    // The second argument is a length, not an end index.
+    _FunctionExpectation(
+      'substringLength',
+      Expression.field('title').substring(5, 3),
+      'Pip',
+    ),
+    _FunctionExpectation(
+      'substringToEnd',
+      Expression.field('title').substring(5),
+      'Pipelines',
+    ),
     _FunctionExpectation(
       'stringReverse',
       PipelineFunctions.stringReverse(Expression.constant('Dart')),

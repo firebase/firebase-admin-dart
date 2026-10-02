@@ -1247,6 +1247,64 @@ void main() {
         });
       });
 
+      group('substring', () {
+        test('sends position and length, in that order', () async {
+          await capture(
+            base().select([
+              field('title').substring(2, 3).as('fluent'),
+              field('title').substringLiteral(2, 3).as('literal'),
+              PipelineFunctions.substring('title', 2, 3).as('static'),
+            ]),
+          );
+
+          final fields = stage.args.single.mapValue!.fields;
+          for (final alias in ['fluent', 'literal', 'static']) {
+            final function = fields[alias]!.functionValue!;
+            expect(function.name, 'substring', reason: alias);
+            expect(function.args, hasLength(3), reason: alias);
+            expect(function.args[0].fieldReferenceValue, 'title');
+            expect(function.args[1].integerValue, 2, reason: alias);
+            // A length (as in Node), not an end index like String.substring.
+            expect(function.args[2].integerValue, 3, reason: alias);
+          }
+        });
+
+        test('omits the length when it is not given', () async {
+          await capture(
+            base().select([
+              field('title').substring(2).as('fluent'),
+              field('title').substringLiteral(2).as('literal'),
+              PipelineFunctions.substring('title', 2).as('static'),
+            ]),
+          );
+
+          final fields = stage.args.single.mapValue!.fields;
+          for (final alias in ['fluent', 'literal', 'static']) {
+            final function = fields[alias]!.functionValue!;
+            expect(function.name, 'substring', reason: alias);
+            // Regression: the fluent forms required a second `end` argument,
+            // so "to the end of the input" could not be expressed.
+            expect(function.args, hasLength(2), reason: alias);
+            expect(function.args[1].integerValue, 2, reason: alias);
+          }
+        });
+
+        test('accepts expressions for position and length', () async {
+          await capture(
+            base().select([
+              field(
+                'title',
+              ).substring(field('start'), field('count')).as('fromFields'),
+            ]),
+          );
+
+          final function =
+              stage.args.single.mapValue!.fields['fromFields']!.functionValue!;
+          expect(function.args[1].fieldReferenceValue, 'start');
+          expect(function.args[2].fieldReferenceValue, 'count');
+        });
+      });
+
       test('select and aggregate use the same projection map', () async {
         await capture(base().select(['title', field('rating')]));
 

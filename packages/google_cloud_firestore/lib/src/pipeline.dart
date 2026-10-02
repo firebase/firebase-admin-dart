@@ -987,14 +987,18 @@ abstract final class PipelineFunctions {
   }
 
   /// SUBSTRING string function.
+  ///
+  /// Returns [length] characters (or bytes, for a bytes value) of [fieldName]
+  /// starting at index [position]. [length] is a count, not an end index; when
+  /// omitted the substring runs to the end of the input.
   static PipelineExpression substring(
     Object? fieldName,
-    Object? offset, [
+    Object? position, [
     Object? length,
   ]) {
     return _expr('substring', [
       _fieldOrExpression(fieldName),
-      offset,
+      position,
       ..._optionalArg(length),
     ]);
   }
@@ -2616,14 +2620,23 @@ sealed class PipelineExpression {
     return stringReplaceOne(find, replacement);
   }
 
-  /// Extracts a substring from this string expression.
-  PipelineExpression substring(Object? start, Object? end) {
-    return PipelineFunctions.substring(this, start, end);
+  /// Extracts [length] characters of this string (or bytes) expression,
+  /// starting at index [position].
+  ///
+  /// Unlike [String.substring], the second argument is a length, not an end
+  /// index: `substring(2, 3)` returns three characters starting at index 2.
+  /// When [length] is omitted the substring runs to the end of the input.
+  PipelineExpression substring(Object? position, [Object? length]) {
+    return PipelineFunctions.substring(this, position, length);
   }
 
-  /// Extracts a substring from this string expression.
-  PipelineExpression substringLiteral(int start, int end) {
-    return substring(start, end);
+  /// Extracts [length] characters of this string (or bytes) expression,
+  /// starting at literal index [position].
+  ///
+  /// See [substring]: [length] is a count, not an end index, and when omitted
+  /// the substring runs to the end of the input.
+  PipelineExpression substringLiteral(int position, [int? length]) {
+    return substring(position, length);
   }
 
   /// Checks if this string expression starts with [prefix].
