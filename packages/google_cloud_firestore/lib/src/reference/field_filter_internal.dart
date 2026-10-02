@@ -33,14 +33,21 @@ class _FieldFilterInternal extends _FilterInternal {
   @override
   List<_FieldFilterInternal> get filters => [this];
 
-  @override
-  FieldPath? get firstInequalityField => isInequalityFilter ? field : null;
-
+  /// Whether the backend implicitly orders by this filter's field: `<`, `<=`,
+  /// `>`, `>=`, `!=` and `not-in`, as in the Node SDK.
   bool get isInequalityFilter {
-    return op == WhereFilter.lessThan ||
-        op == WhereFilter.lessThanOrEqual ||
-        op == WhereFilter.greaterThan ||
-        op == WhereFilter.greaterThanOrEqual;
+    return switch (op) {
+      WhereFilter.lessThan ||
+      WhereFilter.lessThanOrEqual ||
+      WhereFilter.greaterThan ||
+      WhereFilter.greaterThanOrEqual ||
+      WhereFilter.notEqual ||
+      WhereFilter.notIn => true,
+      WhereFilter.equal ||
+      WhereFilter.arrayContains ||
+      WhereFilter.isIn ||
+      WhereFilter.arrayContainsAny => false,
+    };
   }
 
   @override

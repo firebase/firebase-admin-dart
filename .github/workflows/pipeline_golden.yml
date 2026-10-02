@@ -1,0 +1,62 @@
+name: Pipeline Golden Fixtures
+
+on:
+  pull_request:
+    # The fixtures only depend on google_cloud_firestore's generator and the
+    # Node SDK it pins, so there is nothing to check for other changes.
+    paths:
+      - "packages/google_cloud_firestore/**"
+      - ".github/workflows/pipeline_golden.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/google_cloud_firestore/**"
+      - ".github/workflows/pipeline_golden.yml"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline-golden:
+    name: Pipeline golden fixtures are up to date
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: packages/google_cloud_firestore/tool/pipeline_golden
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          # The pinned @google-cloud/firestore requires Node.js 22 or later.
+          node-version: "24"
+
+      - name: Install the pinned Node SDK
+        run: npm ci --no-audit --no-fund
+
+      - name: Regenerate the fixtures
+        run: npm run generate
+
+      # test/pipeline_golden_test.dart compares against the committed fixtures
+      # in the regular `test` job of build.yml; this only proves they are what
+      # the pinned Node SDK produces for tool/pipeline_golden/cases.js.
+      - name: Fail if the committed fixtures are stale
+        working-directory: .
+        run: |
+          fixtures=packages/google_cloud_firestore/test/fixtures/pipeline_golden
+          if [ -n "$(git status --porcelain -- "$fixtures")" ]; then
+            git status --short -- "$fixtures"
+            git --no-pager diff --stat -- "$fixtures"
+            git --no-pager diff -- "$fixtures" | head -n 200
+            echo "::error::The Pipeline golden fixtures are stale. Run 'npm ci && npm run generate' in packages/google_cloud_firestore/tool/pipeline_golden and commit the result."
+            exit 1
+          fi
+          git diff --exit-code -- "$fixtures"

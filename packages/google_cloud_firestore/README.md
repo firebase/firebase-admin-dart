@@ -197,7 +197,7 @@ A pipeline starts from exactly one source, via `firestore.pipeline()`.
 | `collectionReference(ref)` | Same, from a `CollectionReference`. |
 | `collectionGroup(id)` | Every collection with the given ID. |
 | `database()` | Every document in the database. |
-| `documents([refs])` | An explicit set of documents. |
+| `documents([refsOrPaths])` | An explicit set of documents, as references or paths. |
 | `createFrom(query)` | An existing `Query` or `VectorQuery`. |
 
 ```dart
@@ -206,6 +206,7 @@ firestore.pipeline().collectionReference(firestore.collection('books'));
 firestore.pipeline().collectionGroup('books');
 firestore.pipeline().database();
 firestore.pipeline().documents([firestore.doc('books/book-1')]);
+firestore.pipeline().documents(['books/book-1', 'books/book-2']);
 ```
 
 #### Stages
@@ -312,19 +313,32 @@ expression. So does the second argument of `cosineDistance`, `dotProduct` and
 `euclideanDistance`; either way it is sent as a vector.
 
 **`rawStage`** — escape hatch for preview stages this SDK does not yet wrap.
-`search` is a thin wrapper over the same mechanism.
+`search` is a thin wrapper over the same mechanism. As in the Node.js SDK, a
+`Map` argument is sent as a literal map, but a `List` or `Map` nested in it is
+sent as the `array(...)` or `map(...)` function that builds it, so it may hold
+expressions.
 
 ```dart
 .rawStage('sample', [10, 'documents'], options: {'stable': true})
 ```
 
+Every stage and source also takes `rawOptions`, for stage options this SDK
+does not wrap yet; they take precedence over the typed ones. A key may be a
+dot-separated path into a map option: `{'outer.inner': 1}` sends
+`outer: {inner: 1}`, merged with anything else set inside `outer`.
+
+```dart
+.limit(10, rawOptions: {'some_option.enabled': true})
+```
+
 Query-level options are passed to `execute()` rather than built onto the
 Pipeline, so a Pipeline value stays a pure description of what to fetch. Use
-`rawOptions` for options this SDK does not wrap yet; they take precedence.
+`rawOptions` for options this SDK does not wrap yet; they take precedence, and
+dotted keys merge into the typed options, so `explain` plus
+`{'explain_options.output_format': 'json'}` sends one `explain_options` map.
 
 ```dart
 .execute(
-  indexMode: PipelineIndexMode.recommended,
   explain: const PipelineExplainOptions(
     mode: PipelineExplainMode.analyze,
     outputFormat: PipelineExplainOutputFormat.text,
@@ -350,6 +364,23 @@ PipelineFunctions.toUpper('title');
 `Expression.field` / `Expression.constant` / `Expression.variable` are aliases
 for the top-level `field` / `constant` / `variable`, for callers who prefer a
 namespaced entry point.
+
+**Field paths.** `field` takes a `String` or a `FieldPath`. A `String` is a
+dot-separated path, so `field('address.city')` reads `city` inside the
+`address` map; use a `FieldPath` for a field whose name contains a dot. Names
+that are not simple identifiers need no escaping: they are sent
+backtick-quoted, as the Node.js SDK sends them. The same rules apply to every
+field name a stage or function takes, which may be a `FieldPath` wherever it
+may be a `String`, and `select`, `distinct` and `aggregate` key each field by
+its quoted path. An alias given to `as()` is sent as written, and the backend
+reads it as a field path too, so backtick-quote an alias that is not an
+identifier.
+
+```dart
+field('first-name');        // sent as `first-name`
+field('author.last name');  // sent as author.`last name`
+field(FieldPath(['a.b']));  // a single field named "a.b", sent as `a.b`
+```
 
 `variable` references a name bound by the enclosing expression, such as the
 element alias of `arrayFilter` / `arrayTransform`:
@@ -396,7 +427,7 @@ available on `PipelineFunctions`; most also exist as a fluent method.
 | Logical | `and`, `or`, `xor`, `nor`, `not`, `conditional`, `ifNull`, `coalesce`, `switchOn`, `equalAny`, `notEqualAny` | `and`, `or`, `xor`, `nor`, `not`, `conditional`, `if_null`, `coalesce`, `switch_on`, `equal_any`, `not_equal_any` |
 | Aggregate | `count`, `countAll`, `countIf`, `countDistinct`, `sum`, `average`, `minimum`, `maximum`, `first`, `last`, `arrayAgg`, `arrayAggDistinct` | `count`, `count_if`, `count_distinct`, `sum`, `average`, `minimum`, `maximum`, `first`, `last`, `array_agg`, `array_agg_distinct` |
 | Arithmetic | `add`, `subtract`, `multiply`, `divide`, `mod`, `abs`, `ceil`, `floor`, `round`, `trunc`, `sqrt`, `pow`, `exp`, `ln`, `log`, `log10`, `rand`, `logicalMinimum`, `logicalMaximum` | `add`, `subtract`, `multiply`, `divide`, `mod`, `abs`, `ceil`, `floor`, `round`, `trunc`, `sqrt`, `pow`, `exp`, `ln`, `log`, `log10`, `rand`, `minimum`, `maximum` |
-| Array | `array`, `arrayConcat`, `arrayContains`, `arrayContainsAll`, `arrayContainsAny`, `arrayFilter`, `arrayGet`, `arrayLength`, `arrayReverse`, `arrayFirst`, `arrayFirstN`, `arrayLast`, `arrayLastN`, `arrayIndexOf`, `arrayIndexOfAll`, `arrayLastIndexOf`, `arraySlice`, `arrayTransform`, `arrayMaximum`, `arrayMaximumN`, `arrayMinimum`, `arrayMinimumN`, `arraySum`, `maximumN`, `minimumN`, `join` | `array`, `array_concat`, `array_contains`, `array_contains_all`, `array_contains_any`, `array_filter`, `array_get`, `array_length`, `array_reverse`, `array_first`, `array_first_n`, `array_last`, `array_last_n`, `array_index_of`, `array_index_of_all`, `array_index_of`, `array_slice`, `array_transform`, `maximum`, `maximum_n`, `minimum`, `minimum_n`, `sum`, `maximum_n`, `minimum_n`, `join` |
+| Array | `array`, `arrayConcat`, `arrayContains`, `arrayContainsAll`, `arrayContainsAny`, `arrayFilter`, `arrayGet`, `arrayLength`, `arrayReverse`, `arrayFirst`, `arrayFirstN`, `arrayLast`, `arrayLastN`, `arrayIndexOf`, `arrayIndexOfAll`, `arrayLastIndexOf`, `arraySlice`, `arrayTransform`, `arrayTransformWithIndex`, `arrayMaximum`, `arrayMaximumN`, `arrayMinimum`, `arrayMinimumN`, `arraySum`, `maximumN`, `minimumN`, `join` | `array`, `array_concat`, `array_contains`, `array_contains_all`, `array_contains_any`, `array_filter`, `array_get`, `array_length`, `array_reverse`, `array_first`, `array_first_n`, `array_last`, `array_last_n`, `array_index_of`, `array_index_of_all`, `array_index_of`, `array_slice`, `array_transform`, `array_transform`, `maximum`, `maximum_n`, `minimum`, `minimum_n`, `sum`, `maximum_n`, `minimum_n`, `join` |
 | String | `byteLength`, `charLength`, `startsWith`, `endsWith`, `like`, `regexContains`, `regexMatch`, `regexFind`, `regexFindAll`, `stringConcat`, `stringContains`, `stringIndexOf`, `toUpper`, `toLower`, `substring`, `stringReverse`, `stringRepeat`, `stringReplaceAll`, `stringReplaceOne`, `trim`, `ltrim`, `rtrim`, `split` | `byte_length`, `char_length`, `starts_with`, `ends_with`, `like`, `regex_contains`, `regex_match`, `regex_find`, `regex_find_all`, `string_concat`, `string_contains`, `string_index_of`, `to_upper`, `to_lower`, `substring`, `string_reverse`, `string_repeat`, `string_replace_all`, `string_replace_one`, `trim`, `ltrim`, `rtrim`, `split` |
 | Generic | `length`, `reverse`, `concat` | `length`, `reverse`, `concat` |
 | Map | `map`, `mapGet`, `getField`, `mapSet`, `mapRemove`, `mapMerge`, `mapKeys`, `mapValues`, `mapEntries` | `map`, `map_get`, `get_field`, `map_set`, `map_remove`, `map_merge`, `map_keys`, `map_values`, `map_entries` |
@@ -412,6 +443,15 @@ maps; `charLength`/`stringReverse`/`stringConcat` and
 `arrayLength`/`arrayReverse`/`arrayConcat` are the type-specific ones.
 `minimum`/`maximum` are the aggregate forms; use `logicalMinimum` /
 `logicalMaximum` to compare several operands element-wise.
+
+`add` and `multiply` take extra operands as a trailing list, sent as nested
+two-operand calls (the backend's `add` and `multiply` take exactly two), and
+`map` takes a `Map` or a list alternating keys and values:
+
+```dart
+field('price').add(field('tax'), [field('shipping')]);
+PipelineFunctions.map({'title': field('title'), 'rating': 5});
+```
 
 Anything not yet wrapped is reachable via `PipelineFunctions.raw` or
 `pipelineFunction`. Their arguments are sent as-is, so build a collection that
@@ -524,15 +564,23 @@ Two behavioural notes:
 
 #### E2E Testing
 
-Real-project Pipeline E2E tests live in `test/e2e/pipeline_e2e_test.dart`.
-They are skipped unless you provide a project and credentials:
+Real-project Pipeline E2E tests live in `test/e2e/pipeline/`, one file per
+area (sources, stages, results, execution, aggregates, and one per function
+family). They are skipped unless you provide a project and credentials:
 
 ```bash
 export FIRESTORE_PIPELINE_E2E_PROJECT_ID="your-project-id"
 export FIRESTORE_PIPELINE_E2E_DATABASE_ID="your-enterprise-database-id"
 export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
-dart test -P prod test/e2e/pipeline_e2e_test.dart
+dart test -P prod test/e2e/pipeline/ --concurrency=1
 ```
+
+`test/pipeline_e2e_coverage_test.dart` runs with the ordinary unit tests and
+needs no credentials. It statically checks that the E2E suite references every
+public Pipeline API member, supplies and omits every optional parameter, and
+passes both an expression and a plain value to every value position, so a new
+Pipeline function needs a live case before the build goes green. See
+[`test/e2e/README.md`](test/e2e/README.md) for the layout and helpers.
 
 The E2E suite includes vector nearest-neighbor coverage. Create the vector index
 once for the test collection group before running the suite in CI:

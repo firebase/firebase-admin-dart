@@ -1,0 +1,55 @@
+name: Pipeline API snapshot
+
+# Checks that test/fixtures/node_pipeline_api.json, which
+# test/pipeline_api_parity_test.dart compares the Dart Pipelines API against,
+# is what tool/pipeline_api_parity extracts from the pinned Node SDK. The Dart
+# test itself runs with the other google_cloud_firestore tests in build.yml.
+#
+# A separate workflow so that it only runs for google_cloud_firestore changes:
+# build.yml cannot filter paths per job.
+on:
+  pull_request:
+    paths:
+      - "packages/google_cloud_firestore/**"
+      - ".github/workflows/pipeline_api_snapshot.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/google_cloud_firestore/**"
+      - ".github/workflows/pipeline_api_snapshot.yml"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    name: Node Pipeline API snapshot is up to date
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    defaults:
+      run:
+        working-directory: packages/google_cloud_firestore/tool/pipeline_api_parity
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - run: npm run extract
+
+      - name: Fail if the snapshot is stale
+        run: |
+          if ! git diff --exit-code -- ../../test/fixtures/node_pipeline_api.json; then
+            echo "::error::test/fixtures/node_pipeline_api.json is stale. Regenerate it with 'npm ci && npm run extract' in packages/google_cloud_firestore/tool/pipeline_api_parity."
+            exit 1
+          fi
