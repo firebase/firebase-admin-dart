@@ -1250,13 +1250,85 @@ void main() {
       expect(fields['inactive']!.functionValue!.name, 'not');
       expect(fields['activeCount']!.functionValue!.name, 'count_if');
       expect(fields['label']!.functionValue!.name, 'conditional');
-      expect(fields['maxNumber']!.functionValue!.name, 'array_maximum');
-      expect(fields['minNumber']!.functionValue!.name, 'array_minimum');
-      expect(fields['top2']!.functionValue!.name, 'array_maximum_n');
-      expect(fields['bottom2']!.functionValue!.name, 'array_minimum_n');
-      expect(fields['total']!.functionValue!.name, 'array_sum');
+      expect(fields['maxNumber']!.functionValue!.name, 'maximum');
+      expect(fields['minNumber']!.functionValue!.name, 'minimum');
+      expect(fields['top2']!.functionValue!.name, 'maximum_n');
+      expect(fields['bottom2']!.functionValue!.name, 'minimum_n');
+      expect(fields['total']!.functionValue!.name, 'sum');
       expect(fields['rows']!.functionValue!.name, 'count');
       expect(fields['rows']!.functionValue!.args, isEmpty);
+    });
+
+    test('array aggregation helpers encode like their fluent forms', () async {
+      firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+      when(
+        () =>
+            mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                Function(firestore_v1.Firestore api, String projectId);
+
+        final api = FakeFirestore(
+          executePipeline: (request) {
+            capturedRequest = request;
+            return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+          },
+        );
+
+        return callback(api, _projectId);
+      });
+
+      final numbers = field('numbers');
+      await firestore.pipeline().collection('books').select([
+        PipelineFunctions.arrayMaximum('numbers').as('max'),
+        numbers.arrayMaximum().as('maxFluent'),
+        PipelineFunctions.arrayMaximumN('numbers', 2).as('maxN'),
+        numbers.arrayMaximumN(2).as('maxNFluent'),
+        PipelineFunctions.arrayMinimum('numbers').as('min'),
+        numbers.arrayMinimum().as('minFluent'),
+        PipelineFunctions.arrayMinimumN('numbers', 2).as('minN'),
+        numbers.arrayMinimumN(2).as('minNFluent'),
+        PipelineFunctions.arraySum('numbers').as('sum'),
+        numbers.arraySum().as('sumFluent'),
+      ]).execute();
+
+      final fields = capturedRequest!
+          .structuredPipeline!
+          .pipeline!
+          .stages[1]
+          .args
+          .single
+          .mapValue!
+          .fields;
+
+      // Regression: the static helpers used to emit `array_maximum`,
+      // `array_maximum_n`, `array_minimum`, `array_minimum_n` and `array_sum`,
+      // which the backend rejects with "The function 'array_maximum' does not
+      // exist, did you mean 'maximum'?". Node emits the unprefixed names.
+      const expectedNames = {
+        'max': 'maximum',
+        'maxN': 'maximum_n',
+        'min': 'minimum',
+        'minN': 'minimum_n',
+        'sum': 'sum',
+      };
+      for (final MapEntry(key: alias, value: name) in expectedNames.entries) {
+        final helper = fields[alias]!.functionValue!;
+        final fluent = fields['${alias}Fluent']!.functionValue!;
+
+        expect(helper.name, name, reason: alias);
+        expect(helper.args.first.fieldReferenceValue, 'numbers', reason: alias);
+        expect(
+          helper.toJson(),
+          fluent.toJson(),
+          reason: '$alias should encode exactly like its fluent form',
+        );
+      }
+      expect(fields['maxN']!.functionValue!.args[1].integerValue, 2);
+      expect(fields['minN']!.functionValue!.args[1].integerValue, 2);
     });
 
     group('createFrom', () {

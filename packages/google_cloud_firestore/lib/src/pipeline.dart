@@ -532,30 +532,30 @@ abstract final class PipelineFunctions {
     return _expr('array_first_n', [_fieldOrExpression(array), n]);
   }
 
-  /// ARRAY_MAXIMUM function.
-  static PipelineExpression arrayMaximum(Object? array) {
-    return _expr('array_maximum', [_fieldOrExpression(array)]);
-  }
+  /// MAXIMUM function over the elements of [array].
+  ///
+  /// The backend has no `array_maximum`; this emits `maximum`, like [maximum].
+  static PipelineExpression arrayMaximum(Object? array) => maximum(array);
 
-  /// ARRAY_MAXIMUM_N function.
+  /// MAXIMUM_N function over the elements of [array]; same as [maximumN].
   static PipelineExpression arrayMaximumN(Object? array, Object? n) {
-    return _expr('array_maximum_n', [_fieldOrExpression(array), n]);
+    return maximumN(array, n);
   }
 
-  /// ARRAY_MINIMUM function.
-  static PipelineExpression arrayMinimum(Object? array) {
-    return _expr('array_minimum', [_fieldOrExpression(array)]);
-  }
+  /// MINIMUM function over the elements of [array].
+  ///
+  /// The backend has no `array_minimum`; this emits `minimum`, like [minimum].
+  static PipelineExpression arrayMinimum(Object? array) => minimum(array);
 
-  /// ARRAY_MINIMUM_N function.
+  /// MINIMUM_N function over the elements of [array]; same as [minimumN].
   static PipelineExpression arrayMinimumN(Object? array, Object? n) {
-    return _expr('array_minimum_n', [_fieldOrExpression(array), n]);
+    return minimumN(array, n);
   }
 
-  /// ARRAY_SUM function.
-  static PipelineExpression arraySum(Object? array) {
-    return _expr('array_sum', [_fieldOrExpression(array)]);
-  }
+  /// SUM function over the elements of [array].
+  ///
+  /// The backend has no `array_sum`; this emits `sum`, like [sum].
+  static PipelineExpression arraySum(Object? array) => sum(array);
 
   /// COUNT function over every input, without inspecting a field.
   static PipelineAggregateFunction countAll() => _expr('count', const []);
@@ -2318,18 +2318,18 @@ sealed class PipelineExpression {
   }
 
   /// Returns the maximum element of this array expression.
-  PipelineExpression arrayMaximum() => PipelineFunctions.maximum(this);
+  PipelineExpression arrayMaximum() => PipelineFunctions.arrayMaximum(this);
 
   /// Returns the largest [n] elements of this array expression.
   PipelineExpression arrayMaximumN(Object? n) =>
-      PipelineFunctions.maximumN(this, n);
+      PipelineFunctions.arrayMaximumN(this, n);
 
   /// Returns the minimum element of this array expression.
-  PipelineExpression arrayMinimum() => PipelineFunctions.minimum(this);
+  PipelineExpression arrayMinimum() => PipelineFunctions.arrayMinimum(this);
 
   /// Returns the smallest [n] elements of this array expression.
   PipelineExpression arrayMinimumN(Object? n) =>
-      PipelineFunctions.minimumN(this, n);
+      PipelineFunctions.arrayMinimumN(this, n);
 
   /// Reverses this array expression.
   PipelineExpression arrayReverse() => PipelineFunctions.arrayReverse(this);
@@ -2342,7 +2342,7 @@ sealed class PipelineExpression {
   }
 
   /// Returns the sum of numeric elements in this array expression.
-  PipelineExpression arraySum() => PipelineFunctions.sum(this);
+  PipelineExpression arraySum() => PipelineFunctions.arraySum(this);
 
   /// Transforms this array expression.
   PipelineExpression arrayTransform(String elementAlias, Object? transform) {

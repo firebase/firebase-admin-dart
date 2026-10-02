@@ -538,14 +538,52 @@ final _functionScenarios = <_FunctionScenario>[
       [3, 2, 4, 6],
     ),
     _FunctionExpectation(
+      'arrayMaximum',
+      Expression.field('numbers').arrayMaximum(),
+      3,
+    ),
+    _FunctionExpectation(
       'maximumN',
       Expression.field('numbers').arrayMaximumN(2),
       [3, 3],
     ),
     _FunctionExpectation(
+      'arrayMinimum',
+      Expression.field('numbers').arrayMinimum(),
+      1,
+    ),
+    _FunctionExpectation(
       'minimumN',
       Expression.field('numbers').arrayMinimumN(2),
       [1, 2],
+    ),
+    _FunctionExpectation('arraySum', Expression.field('numbers').arraySum(), 9),
+    // The static helpers must emit the same backend names as the fluent
+    // forms (`maximum`, not `array_maximum`).
+    _FunctionExpectation(
+      'staticArrayMaximum',
+      PipelineFunctions.arrayMaximum('numbers'),
+      3,
+    ),
+    _FunctionExpectation(
+      'staticArrayMaximumN',
+      PipelineFunctions.arrayMaximumN('numbers', 2),
+      [3, 3],
+    ),
+    _FunctionExpectation(
+      'staticArrayMinimum',
+      PipelineFunctions.arrayMinimum('numbers'),
+      1,
+    ),
+    _FunctionExpectation(
+      'staticArrayMinimumN',
+      PipelineFunctions.arrayMinimumN('numbers', 2),
+      [1, 2],
+    ),
+    _FunctionExpectation(
+      'staticArraySum',
+      PipelineFunctions.arraySum('numbers'),
+      9,
     ),
     _FunctionExpectation(
       'join',
