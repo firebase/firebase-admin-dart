@@ -97,13 +97,13 @@ jobs:
           # Same Enterprise-edition database FlutterFire's pipeline suite
           # targets; not a secret, it is hardcoded in FlutterFire's own tests.
           FIRESTORE_PIPELINE_E2E_DATABASE_ID: firestore-pipeline-test
-        # --concurrency=1: every test seeds and deletes its own documents in a
-        # shared live database, matching how scripts/firestore-coverage.sh runs
-        # the other prod-tagged suites.
+        # --concurrency=1: every file under test/e2e/pipeline/ seeds and
+        # deletes its own documents in a shared live database, matching how
+        # scripts/firestore-coverage.sh runs the other prod-tagged suites.
         #
         # Prerequisite: the target database needs the `pipeline_e2e_books`
         # vector index described in test/e2e/README.md, otherwise the
-        # findNearest test fails. It is created once, out of band.
+        # findNearest tests fail. It is created once, out of band.
         run: |
           set -o pipefail
           if [ -z "${FIRESTORE_PIPELINE_E2E_PROJECT_ID:-}" ]; then
@@ -111,7 +111,7 @@ jobs:
             exit 1
           fi
           log="$RUNNER_TEMP/pipeline-e2e.log"
-          dart test -P prod test/e2e/pipeline_e2e_test.dart \
+          dart test -P prod test/e2e/pipeline/ \
             --concurrency=1 --reporter expanded 2>&1 | tee "$log"
           # `dart test` exits 0 when every test is skipped, which is exactly
           # what a missing project or database ID produces. Treat that as a

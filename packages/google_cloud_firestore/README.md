@@ -524,15 +524,23 @@ Two behavioural notes:
 
 #### E2E Testing
 
-Real-project Pipeline E2E tests live in `test/e2e/pipeline_e2e_test.dart`.
-They are skipped unless you provide a project and credentials:
+Real-project Pipeline E2E tests live in `test/e2e/pipeline/`, one file per
+area (sources, stages, results, execution, aggregates, and one per function
+family). They are skipped unless you provide a project and credentials:
 
 ```bash
 export FIRESTORE_PIPELINE_E2E_PROJECT_ID="your-project-id"
 export FIRESTORE_PIPELINE_E2E_DATABASE_ID="your-enterprise-database-id"
 export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
-dart test -P prod test/e2e/pipeline_e2e_test.dart
+dart test -P prod test/e2e/pipeline/ --concurrency=1
 ```
+
+`test/pipeline_e2e_coverage_test.dart` runs with the ordinary unit tests and
+needs no credentials. It statically checks that the E2E suite references every
+public Pipeline API member, supplies and omits every optional parameter, and
+passes both an expression and a plain value to every value position, so a new
+Pipeline function needs a live case before the build goes green. See
+[`test/e2e/README.md`](test/e2e/README.md) for the layout and helpers.
 
 The E2E suite includes vector nearest-neighbor coverage. Create the vector index
 once for the test collection group before running the suite in CI:

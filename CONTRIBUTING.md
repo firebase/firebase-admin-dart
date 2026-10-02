@@ -307,7 +307,7 @@ in that project:
 
 | Job | Trigger | What it does |
 |-----|---------|--------------|
-| `pipeline-e2e` | PRs (non-fork) touching `packages/google_cloud_firestore/**`, pushes to `main`, schedule & manual | Runs `test/e2e/pipeline_e2e_test.dart` against live Firestore |
+| `pipeline-e2e` | PRs (non-fork) touching `packages/google_cloud_firestore/**`, pushes to `main`, schedule & manual | Runs `test/e2e/pipeline/` against live Firestore |
 
 It is a separate workflow so the live-quota cost is only paid for changes that
 can affect it. See
