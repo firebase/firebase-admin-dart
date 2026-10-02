@@ -78,13 +78,18 @@ final _knownDivergences = <String, _Divergence>{
     r'("`\`first-name\``").',
     _projectionIsQuotedOnce,
   ),
-  for (final name in ['add', 'multiply'])
-    'functions/$name/static-variadic': const _Divergence(
-      'PipelineFunctions.add/multiply send every operand, like the Node '
-      'method form. The Node top-level functions are typed variadic but drop '
-      '`...others` at runtime: they only forward `second` to the method.',
-      _selectsThreeOperands,
-    ),
+  for (final (name, operand) in [('add', 1), ('multiply', 2)])
+    for (final form in ['static', 'method'])
+      'functions/$name/$form-variadic': _Divergence(
+        'add and multiply send further operands as nested two-operand calls, '
+        '$name($name(rating, $operand), x). The backend takes exactly two '
+        'operands: for add(a, b, c, d) it answers "The function '
+        "'add[T <: number](x: T, y: T): T' takes [2..2] argument(s), but 4 "
+        'were provided." Node sends a single call with every operand from its '
+        'method form, and its top-level functions drop `...others` at runtime, '
+        'only forwarding `second`.',
+        (request) => _selectsNestedBinary(request, name, operand),
+      ),
   for (final (id, comparisons) in [
     ('start-at-descending', ['less_than']),
     ('end-before-descending', ['greater_than']),
@@ -479,25 +484,36 @@ bool _projectionIsQuotedOnce(Object? request) {
 
 bool _jsonEquals(Object? a, Object? b) => equals(b).matches(a, {});
 
-/// Whether the `where` stage's function receives its search space as an
-/// `array(...)` function.
-/// Whether the selected function receives all three operands of a variadic
-/// call.
-bool _selectsThreeOperands(Object? request) {
+/// Whether the selected expression is the variadic call of `functions/$name`
+/// sent as two nested two-operand calls: `name(name(rating, operand), x)`,
+/// where `x` is the third operand's field.
+bool _selectsNestedBinary(Object? request, String name, int operand) {
   final stages = _path(request, ['structuredPipeline', 'pipeline', 'stages']);
   if (stages is! List || stages.length != 2) return false;
-  final operands = _path(stages[1], [
+  final outer = _path(stages[1], [
     'args',
     0,
     'mapValue',
     'fields',
     'result',
     'functionValue',
-    'args',
   ]);
-  return operands is List && operands.length == 3;
+  final inner = _path(outer, ['args', 0, 'functionValue']);
+  return _path(outer, ['name']) == name &&
+      _path(outer, ['args']) is List &&
+      (_path(outer, ['args'])! as List).length == 2 &&
+      _path(outer, ['args', 1, 'fieldReferenceValue']) != null &&
+      _jsonEquals(inner, {
+        'name': name,
+        'args': [
+          {'fieldReferenceValue': 'rating'},
+          {'integerValue': '$operand'},
+        ],
+      });
 }
 
+/// Whether the `where` stage's function receives its search space as an
+/// `array(...)` function.
 bool _searchSpaceIsArrayFunction(Object? request) {
   final stages = _path(request, ['structuredPipeline', 'pipeline', 'stages']);
   if (stages is! List || stages.length != 2) return false;

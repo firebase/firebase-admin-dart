@@ -29,7 +29,7 @@
 - Fixed `Pipeline.createFrom()` of a `VectorQuery` sending its `distanceThreshold` as an undocumented `find_nearest` option. It is now applied as a filter on the distance.
 - Fixed Pipeline results failing to decode when a reference that names no document, such as the database root returned by `parent()`, is nested in a map or array. It now decodes to its resource name at every depth, as it already did for top-level fields.
 - Pipeline raw options now match the Node Admin SDK. Every stage and source takes an optional `rawOptions`. Keys in `rawOptions` and `rawStage(options:)` are dot-separated paths merged into the typed options, and keys with an empty segment throw an `ArgumentError`. `rawStage` sends collections nested in a `Map` argument as `map(...)` / `array(...)` functions.
-- `PipelineFunctions.add` and `multiply` take an optional trailing list of further operands, and `PipelineExpression.add` and `multiply` take `(second, [others])`, like the variadic Node Admin SDK functions.
+- `PipelineFunctions.add` and `multiply` take an optional trailing list of further operands, and `PipelineExpression.add` and `multiply` take `(second, [others])`, like the variadic Node Admin SDK functions. Further operands are sent as nested two-operand calls, `add(add(a, b), c)`, since the backend's `add` and `multiply` take exactly two operands.
 - `PipelineSource.documents()` also accepts document paths such as `'books/book1'`, validated like `Firestore.doc()`.
 - `PipelineFunctions.map()` also accepts a Dart `Map`, as in `map({'title': field('title')})`.
 - Added the `PipelineOrdering.expr` and `PipelineOrdering.direction` getters.

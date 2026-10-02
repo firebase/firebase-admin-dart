@@ -441,8 +441,9 @@ maps; `charLength`/`stringReverse`/`stringConcat` and
 `minimum`/`maximum` are the aggregate forms; use `logicalMinimum` /
 `logicalMaximum` to compare several operands element-wise.
 
-`add` and `multiply` take extra operands as a trailing list, sent as a single
-backend call, and `map` takes a `Map` or a list alternating keys and values:
+`add` and `multiply` take extra operands as a trailing list, sent as nested
+two-operand calls (the backend's `add` and `multiply` take exactly two), and
+`map` takes a `Map` or a list alternating keys and values:
 
 ```dart
 field('price').add(field('tax'), [field('shipping')]);

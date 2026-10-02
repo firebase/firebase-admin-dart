@@ -3212,21 +3212,36 @@ void main() {
                 e.multiply(second, others),
           ),
         ]) {
-          test('$name sends every operand to one $name call', () async {
+          test('$name nests further operands in two-operand calls', () async {
             final fields = await select([
               static('rating', 2, [field('bonus'), 3]).as('static'),
               fluent(field('rating'), 2, [field('bonus'), 3]).as('fluent'),
             ]);
 
+            // The backend's add and multiply take exactly two operands, so
+            // (rating, 2, [bonus, 3]) is sent as name(name(name(rating, 2),
+            // bonus), 3).
+            Map<String, Object?> call(Object? left, Object? right) => {
+              'functionValue': {
+                'name': name,
+                'args': [left, right],
+              },
+            };
             for (final alias in ['static', 'fluent']) {
-              final function = fields[alias]!.functionValue!;
-              expect(function.name, name, reason: alias);
-              expect(function.args.map((arg) => arg.toJson()), [
-                {'fieldReferenceValue': 'rating'},
-                {'integerValue': '2'},
-                {'fieldReferenceValue': 'bonus'},
-                {'integerValue': '3'},
-              ], reason: alias);
+              expect(
+                fields[alias]!.toJson(),
+                call(
+                  call(
+                    call(
+                      {'fieldReferenceValue': 'rating'},
+                      {'integerValue': '2'},
+                    ),
+                    {'fieldReferenceValue': 'bonus'},
+                  ),
+                  {'integerValue': '3'},
+                ),
+                reason: alias,
+              );
             }
           });
 
@@ -3251,7 +3266,7 @@ void main() {
             ]).as('sum'),
           ]);
 
-          final operand = fields['sum']!.functionValue!.args[2];
+          final operand = fields['sum']!.functionValue!.args[1];
           expect(operand.functionValue!.name, 'array');
           expect(operand.functionValue!.args.single.fieldReferenceValue, 'b');
         });
