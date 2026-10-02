@@ -12,6 +12,7 @@
 - Fixed `PipelineValueType.double` sending `'double'` instead of `'float64'`, which made `isType` fail. Added the `int32`, `decimal128`, `maxKey`, `minKey`, `objectId` and `regex` value types.
 - Fixed `cosineDistance`, `dotProduct`, `euclideanDistance` and `Pipeline.findNearest` sending a plain list of numbers as an array instead of a vector.
 - Fixed Pipeline functions such as `equalAny`, `notEqualAny`, `arrayContainsAll`, `arrayContainsAny` and `mapMerge` failing when a `List` or `Map` argument holds expressions. Collection arguments are now sent as `array(...)` / `map(...)` functions, like the Node Admin SDK, and the static and fluent forms encode identically.
+- Fixed the top-level `ascending()` and `descending()` sorting by a string constant when given a field name. A `String` now names a field, like everywhere else in the Pipeline API and in the Node Admin SDK.
 - Fixed `PipelineResult.get` ignoring nested paths. It now accepts a `String` or a `FieldPath` and resolves dot-separated paths such as `'metadata.lang'`, like `DocumentSnapshot.get`.
 - `Pipeline.select`, `addFields`, `aggregate` and `distinct` now throw an `ArgumentError` on a duplicate field name or alias instead of silently keeping the last one, like the Node Admin SDK.
 - `PipelineExpression.substring` and `substringLiteral` now take `(position, [length])` like `PipelineFunctions.substring`: the second argument is a length, not an end index, and can be omitted.

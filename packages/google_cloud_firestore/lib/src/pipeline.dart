@@ -1383,13 +1383,25 @@ abstract final class PipelineFunctions {
 }
 
 /// Creates an ascending Pipeline ordering.
+///
+/// [expression] is a field name or an expression, like
+/// [PipelineExpression.ascending] on that expression.
 PipelineOrdering ascending(Object expression) {
-  return PipelineOrdering._('ascending', expression);
+  return PipelineOrdering._(
+    'ascending',
+    expression is String ? field(expression) : expression,
+  );
 }
 
 /// Creates a descending Pipeline ordering.
+///
+/// [expression] is a field name or an expression, like
+/// [PipelineExpression.descending] on that expression.
 PipelineOrdering descending(Object expression) {
-  return PipelineOrdering._('descending', expression);
+  return PipelineOrdering._(
+    'descending',
+    expression is String ? field(expression) : expression,
+  );
 }
 
 /// The starting point for constructing Firestore Pipeline operations.
