@@ -181,6 +181,65 @@ void main() {
       expect(snapshot.pipeline, isA<Pipeline>());
     });
 
+    test('result get resolves nested field paths', () async {
+      when(
+        () =>
+            mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                Function(firestore_v1.Firestore api, String projectId);
+
+        final api = FakeFirestore(
+          executePipeline: (_) {
+            return Stream.value(
+              firestore_v1.ExecutePipelineResponse(
+                results: [
+                  firestore_v1.Document(
+                    fields: {
+                      'title': firestore.serializer.encodeValue('Dart')!,
+                      'metadata': firestore.serializer.encodeValue({
+                        'lang': 'dart',
+                        'stats': {'pages': 42, 'note': null},
+                      })!,
+                      'a.b': firestore.serializer.encodeValue('dotted')!,
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+
+        return callback(api, _projectId);
+      });
+
+      final snapshot = await firestore.pipeline().collection('books').execute();
+      final result = snapshot.results.single;
+
+      expect(result.get('title'), 'Dart');
+      expect(result.get('metadata.lang'), 'dart');
+      expect(result.get('metadata.stats.pages'), 42);
+      expect(result.get('metadata.stats'), {'pages': 42, 'note': null});
+      expect(result.get(FieldPath(const ['metadata', 'lang'])), 'dart');
+      // A FieldPath segment may contain a dot; a string is split on dots.
+      expect(result.get(FieldPath(const ['a.b'])), 'dotted');
+      expect(result.get('a.b'), isNull);
+
+      // Missing fields and paths through non-map values resolve to null.
+      expect(result.get('missing'), isNull);
+      expect(result.get('metadata.missing.deeper'), isNull);
+      expect(result.get('title.length'), isNull);
+      expect(result.get('metadata.stats.note'), isNull);
+
+      // Invalid paths are rejected, as in DocumentSnapshot.get.
+      expect(() => result.get('metadata..lang'), throwsArgumentError);
+      expect(() => result.get('.metadata'), throwsArgumentError);
+      expect(() => result.get(''), throwsArgumentError);
+      expect(() => result.get(42), throwsArgumentError);
+    });
+
     test('results compare by reference and fields, not read time', () async {
       firestore_v1.ExecutePipelineResponse chunk({
         required String path,

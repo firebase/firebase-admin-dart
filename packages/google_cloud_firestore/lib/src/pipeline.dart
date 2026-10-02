@@ -2023,8 +2023,21 @@ final class PipelineResult {
   /// in which case this is empty rather than `null`.
   DocumentData data() => _data;
 
-  /// Returns the decoded value at [fieldName], or `null` when absent.
-  Object? get(String fieldName) => _data[fieldName];
+  /// Returns the decoded value at [field], or `null` when absent.
+  ///
+  /// [field] is a [String] or a [FieldPath], validated as in
+  /// [DocumentSnapshot.get]. A dot-separated string such as `'metadata.lang'`
+  /// reads a nested map field; use a [FieldPath] when a segment itself
+  /// contains a dot. Returns `null` when any segment is missing or traverses
+  /// a non-map value.
+  Object? get(Object field) {
+    Object? value = _data;
+    for (final segment in FieldPath.from(field).segments) {
+      if (value is! Map<String, Object?>) return null;
+      value = value[segment];
+    }
+    return value;
+  }
 
   /// Whether [other] refers to the same document with the same fields.
   ///

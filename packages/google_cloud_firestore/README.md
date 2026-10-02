@@ -457,10 +457,11 @@ metadata, its identity:
 
 ```dart
 for (final result in snapshot.results) {
-  print(result.data());       // all decoded fields
-  print(result.get('title')); // a single field
-  print(result.ref?.path);    // null when a projection dropped metadata
-  print(result.id);           // the document ID, or null
+  print(result.data());               // all decoded fields
+  print(result.get('title'));         // a single field
+  print(result.get('metadata.lang')); // a nested field (or pass a FieldPath)
+  print(result.ref?.path);            // null when a projection dropped metadata
+  print(result.id);                   // the document ID, or null
   print(result.createTime);
   print(result.updateTime);
 }

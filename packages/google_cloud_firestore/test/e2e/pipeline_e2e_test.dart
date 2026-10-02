@@ -174,6 +174,15 @@ void main() {
       expect(metadataSnapshot.results.single.createTime, isNotNull);
       expect(metadataSnapshot.results.single.updateTime, isNotNull);
       expect(metadataSnapshot.results.single.ref, isNotNull);
+      // get resolves nested dot-paths and FieldPaths, as in Node.
+      expect(metadataSnapshot.results.single.get('metadata.lang'), 'dart');
+      expect(
+        metadataSnapshot.results.single.get(
+          FieldPath(const ['metadata', 'category']),
+        ),
+        'sdk',
+      );
+      expect(metadataSnapshot.results.single.get('metadata.missing'), isNull);
     });
 
     test('executes aggregate pipeline stages', () async {
