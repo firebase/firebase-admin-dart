@@ -1001,6 +1001,39 @@ void main() {
         });
       });
 
+      group('add_fields', () {
+        test('sends a single map argument keyed by alias', () async {
+          await capture(
+            base().addFields([
+              field('rating').as('copiedRating'),
+              constant(true).as('annotated'),
+            ]),
+          );
+
+          expect(stage.name, 'add_fields');
+          // The backend stage takes exactly one MapValue argument; one arg per
+          // field is rejected with "takes [1..1] argument(s)".
+          expect(stage.args, hasLength(1));
+          final fields = stage.args.single.mapValue!.fields;
+          expect(fields.keys, ['copiedRating', 'annotated']);
+          expect(fields['copiedRating']!.fieldReferenceValue, 'rating');
+          expect(fields['annotated']!.booleanValue, isTrue);
+          expect(stage.options, isEmpty);
+        });
+
+        test('wraps a single field in a map, not an alias function', () async {
+          await capture(
+            base().addFields([field('title').toUpperCase().as('upper')]),
+          );
+
+          expect(stage.args, hasLength(1));
+          expect(stage.args.single.functionValue, isNull);
+          final fields = stage.args.single.mapValue!.fields;
+          expect(fields.keys, ['upper']);
+          expect(fields['upper']!.functionValue!.name, 'to_upper');
+        });
+      });
+
       test('select and aggregate use the same projection map', () async {
         await capture(base().select(['title', field('rating')]));
 

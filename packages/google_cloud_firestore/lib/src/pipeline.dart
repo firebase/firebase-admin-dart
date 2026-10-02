@@ -1339,8 +1339,12 @@ final class Pipeline {
   }
 
   /// Adds or overwrites fields on the inputs.
+  ///
+  /// Each expression is written to the field named by its alias, replacing
+  /// any existing value. Like [select], the fields are sent to the backend as
+  /// a single map keyed by alias.
   Pipeline addFields(Iterable<PipelineAliasedExpression> fields) {
-    return rawStage('add_fields', fields);
+    return rawStage('add_fields', [_projectionMap(fields)]);
   }
 
   /// Aggregates inputs using aliased aggregate expressions.

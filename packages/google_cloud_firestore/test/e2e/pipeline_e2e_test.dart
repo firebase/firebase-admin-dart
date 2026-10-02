@@ -194,6 +194,45 @@ void main() {
       expect(aggregateSnapshot.results.single.get('bookCount'), 2);
     });
 
+    test('executes an addFields stage', () async {
+      final snapshot = await firestore
+          .pipeline()
+          .collection(_collectionPath)
+          .where(
+            _runFilter(
+              runId,
+              Expression.field('title').equal('Dart Pipelines'),
+            ),
+          )
+          .addFields([
+            Expression.field('rating').as('copiedRating'),
+            Expression.constant(true).as('annotated'),
+          ])
+          .execute();
+
+      expect(snapshot.results, hasLength(1));
+      final result = snapshot.results.single;
+      expect(result.get('copiedRating'), 5);
+      expect(result.get('annotated'), true);
+      // Existing fields are kept alongside the added ones.
+      expect(result.get('title'), 'Dart Pipelines');
+
+      // A single field must still be sent as a map, not an alias function.
+      final single = await firestore
+          .pipeline()
+          .collection(_collectionPath)
+          .where(
+            _runFilter(
+              runId,
+              Expression.field('title').equal('Dart Pipelines'),
+            ),
+          )
+          .addFields([Expression.field('title').toUpperCase().as('upper')])
+          .execute();
+
+      expect(single.results.single.get('upper'), 'DART PIPELINES');
+    });
+
     test('requests explain stats via typed options', () async {
       final snapshot = await firestore
           .pipeline()
