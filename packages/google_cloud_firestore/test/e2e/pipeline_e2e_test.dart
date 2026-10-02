@@ -282,6 +282,39 @@ void main() {
       ]);
     });
 
+    test('executes a collection group source stage', () async {
+      final snapshot = await firestore
+          .pipeline()
+          .collectionGroup(_collectionPath)
+          .where(_runFilter(runId, Expression.field('active').equal(true)))
+          .sort([Expression.field('price').ascending()])
+          .select([Expression.field('title')])
+          .execute();
+
+      expect(snapshot.results.map((result) => result.get('title')), [
+        'Dart Pipelines',
+        'Firestore Admin',
+      ]);
+    });
+
+    test('executes a pipeline created from a collection group query', () async {
+      final snapshot = await firestore
+          .pipeline()
+          .createFrom(
+            firestore
+                .collectionGroup(_collectionPath)
+                .where('runId', WhereFilter.equal, runId)
+                .where('active', WhereFilter.equal, true)
+                .orderBy('price'),
+          )
+          .execute();
+
+      expect(snapshot.results.map((result) => result.get('title')), [
+        'Dart Pipelines',
+        'Firestore Admin',
+      ]);
+    });
+
     group('function catalog', () {
       for (final scenario in _functionScenarios) {
         test(scenario.name, () async {

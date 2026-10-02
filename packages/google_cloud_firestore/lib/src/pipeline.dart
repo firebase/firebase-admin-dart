@@ -1228,7 +1228,13 @@ final class PipelineSource {
         'Invalid collectionId "$collectionId". Collection IDs must not contain "/".',
       );
     }
-    return _start('collection_group', [collectionId]);
+    // The backend stage is `collection_group(ancestor, collection_id)`. An
+    // empty reference names the database root as the ancestor, matching the
+    // Node SDK's `CollectionGroupSource`.
+    return _start('collection_group', [
+      _PipelineProtoValue(firestore_v1.Value(referenceValue: '')),
+      collectionId,
+    ]);
   }
 
   /// Starts a Pipeline over every document in the database.

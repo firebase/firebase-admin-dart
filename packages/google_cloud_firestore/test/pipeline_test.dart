@@ -914,6 +914,33 @@ void main() {
 
       Pipeline base() => firestore.pipeline().collection('books');
 
+      group('collection_group', () {
+        test('sends the root ancestor before the collection id', () async {
+          await capture(firestore.pipeline().collectionGroup('books'));
+
+          expect(stage.name, 'collection_group');
+          // The backend stage is `collection_group(ancestor, collection_id)`
+          // and rejects a lone collection id.
+          expect(stage.args, hasLength(2));
+          expect(stage.args[0].referenceValue, '');
+          expect(stage.args[1].stringValue, 'books');
+          expect(stage.options, isEmpty);
+        });
+
+        test('keeps the empty root reference on the wire', () async {
+          await capture(firestore.pipeline().collectionGroup('books'));
+
+          expect(stage.args[0].toJson(), {'referenceValue': ''});
+        });
+      });
+
+      test('database sends no arguments', () async {
+        await capture(firestore.pipeline().database());
+
+        expect(stage.name, 'database');
+        expect(stage.args, isEmpty);
+      });
+
       group('unnest', () {
         test('sends the array expression and its alias', () async {
           await capture(base().unnest(field('tags').as('tag')));
@@ -1539,7 +1566,10 @@ void main() {
         await run(firestore.collectionGroup('books'));
 
         expect(stages.first.name, 'collection_group');
-        expect(stages.first.args.single.stringValue, 'books');
+        // The root ancestor comes first, as in the Node SDK.
+        expect(stages.first.args, hasLength(2));
+        expect(stages.first.args[0].referenceValue, '');
+        expect(stages.first.args[1].stringValue, 'books');
       });
 
       test('converts orderBy, limit and offset', () async {
