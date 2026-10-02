@@ -204,9 +204,6 @@ const _pendingFixes = <String, String>{
       'Takes an Iterable of alternating keys and values; Node '
       'map(elements: Record<string, unknown>) takes a map, which Dart '
       'callers cannot pass.',
-  'PipelineSource.documents#documents':
-      'Only takes DocumentReferences; Node documents() also takes document '
-      'path strings.',
   'Pipeline.findNearest#distanceThreshold':
       'Dart-only option, sent as `distance_threshold`: Node has no such '
       'find_nearest option and its createFrom(vectorQuery) drops '

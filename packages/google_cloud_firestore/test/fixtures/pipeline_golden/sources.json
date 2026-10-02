@@ -137,6 +137,16 @@
         }
       }
     },
+    "sources/documents/leading-slash-path": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "documents", "args": [{"referenceValue": "/books/book1"}]}
+          ]
+        }
+      }
+    },
     "sources/documents/nested": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -150,7 +160,36 @@
         }
       }
     },
+    "sources/documents/nested-path": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "documents",
+              "args": [{"referenceValue": "/authors/author1/books/book1"}]
+            }
+          ]
+        }
+      }
+    },
     "sources/documents/paths": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {
+              "name": "documents",
+              "args": [
+                {"referenceValue": "/books/book1"},
+                {"referenceValue": "/books/book2"}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "sources/documents/paths-and-references": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
         "pipeline": {

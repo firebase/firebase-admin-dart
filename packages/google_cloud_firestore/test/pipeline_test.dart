@@ -3101,6 +3101,70 @@ void main() {
           expect(operand.functionValue!.args.single.fieldReferenceValue, 'b');
         });
       });
+
+      group('documents', () {
+        test('takes document paths', () async {
+          await run(
+            firestore.pipeline().documents([
+              'books/book-1',
+              '/books/book-2',
+              'authors/author-1/books/book-3',
+            ]),
+          );
+
+          final stage = stages.single;
+          expect(stage.name, 'documents');
+          expect(stage.args.map((arg) => arg.referenceValue), [
+            '/books/book-1',
+            '/books/book-2',
+            '/authors/author-1/books/book-3',
+          ]);
+        });
+
+        test('mixes paths and references', () async {
+          await run(
+            firestore.pipeline().documents([
+              'books/book-1',
+              firestore.doc('books/book-2'),
+            ]),
+          );
+
+          expect(stages.single.args.map((arg) => arg.referenceValue), [
+            '/books/book-1',
+            '/books/book-2',
+          ]);
+        });
+
+        test('rejects paths that do not point to a document', () {
+          for (final path in ['books', 'authors/author-1/books', '', 'a//b']) {
+            expect(
+              () => firestore.pipeline().documents([path]),
+              throwsArgumentError,
+              reason: path,
+            );
+          }
+        });
+
+        test('rejects values that are neither paths nor references', () {
+          expect(
+            () => firestore.pipeline().documents([firestore.collection('a')]),
+            throwsA(
+              isA<ArgumentError>().having(
+                (e) => e.message,
+                'message',
+                contains('DocumentReference or a document path'),
+              ),
+            ),
+          );
+        });
+
+        test('rejects an empty list', () {
+          expect(
+            () => firestore.pipeline().documents(const <String>[]),
+            throwsArgumentError,
+          );
+        });
+      });
     });
 
     group('createFrom', () {

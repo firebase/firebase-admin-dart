@@ -463,6 +463,8 @@ const _notValuePositions = <String, String>{
   'PipelineResult.get(field)':
       'takes a String or a FieldPath; see the dottedPath and fieldPath shapes',
   'PipelineSource.createFrom(query)': 'takes a Query or a VectorQuery',
+  'PipelineSource.documents(documents)':
+      'takes DocumentReferences and document path Strings',
   'constant(value)': 'wraps a literal value; an expression is not a constant',
   'field(fieldPath)':
       'takes a String or a FieldPath; see the dottedPath and fieldPath shapes',

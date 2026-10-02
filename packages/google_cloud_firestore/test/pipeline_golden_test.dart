@@ -689,11 +689,9 @@ void _registerSources(_Registry r) {
     'sources/database/raw-options',
     (db) => db.pipeline().database(rawOptions: const {'foo': 'bar'}),
   );
-  // Dart only takes references; Node turns its paths into references.
   r.pipeline(
     'sources/documents/paths',
-    (db) =>
-        db.pipeline().documents([db.doc('books/book1'), db.doc('books/book2')]),
+    (db) => db.pipeline().documents(['books/book1', 'books/book2']),
   );
   r.pipeline(
     'sources/documents/references',
@@ -710,6 +708,18 @@ void _registerSources(_Registry r) {
       [db.doc('books/book1')],
       rawOptions: const {'foo': 'bar'},
     ),
+  );
+  r.pipeline(
+    'sources/documents/nested-path',
+    (db) => db.pipeline().documents(['authors/author1/books/book1']),
+  );
+  r.pipeline(
+    'sources/documents/leading-slash-path',
+    (db) => db.pipeline().documents(['/books/book1']),
+  );
+  r.pipeline(
+    'sources/documents/paths-and-references',
+    (db) => db.pipeline().documents(['books/book1', db.doc('books/book2')]),
   );
 }
 
