@@ -18,6 +18,7 @@ import 'package:google_cloud_firestore/google_cloud_firestore.dart'
     hide greaterThan, lessThan;
 import 'package:google_cloud_firestore/src/firestore_http_client.dart';
 import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
+import 'package:google_cloud_firestore_v1/testing.dart';
 import 'package:google_cloud_protobuf/protobuf.dart' as protobuf_v1;
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
@@ -122,6 +123,48 @@ void main() {
 
       // Retries a bounded number of times rather than forever or exactly once.
       expect(callCount, greaterThan(1));
+    });
+  });
+
+  group('field paths in the request (unit)', () {
+    test('quotes and escapes segments that are not identifiers', () async {
+      final mockClient = MockFirestoreHttpClient();
+      final firestore = Firestore.internal(
+        settings: const Settings(projectId: mockProjectId),
+        client: mockClient,
+      );
+      when(() => mockClient.cachedProjectId).thenReturn(mockProjectId);
+
+      firestore_v1.RunQueryRequest? captured;
+      when(
+        () => mockClient.v1<Stream<firestore_v1.RunQueryResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.RunQueryResponse>> Function(
+                  firestore_v1.Firestore api,
+                  String projectId,
+                );
+        final api = FakeFirestore(
+          runQuery: (request) {
+            captured = request;
+            return const Stream.empty();
+          },
+        );
+        return callback(api, mockProjectId);
+      });
+
+      await firestore
+          .collection('books')
+          .where('a`b', WhereFilter.equal, 1)
+          .orderBy(FieldPath(const ['c.d', r'e\f']))
+          .get();
+
+      final query = captured!.structuredQuery!;
+      // Matches the Node SDK's FieldPath.formattedName: a backtick inside a
+      // segment is escaped, not replaced.
+      expect(query.where!.fieldFilter!.field!.fieldPath, r'`a\`b`');
+      expect(query.orderBy.first.field!.fieldPath, r'`c.d`.`e\\f`');
     });
   });
 
