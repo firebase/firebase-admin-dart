@@ -961,6 +961,11 @@ final _functionScenarios = <_FunctionScenario>[
       'firebase',
       'admin',
     ]),
+    _FunctionExpectation('splitStatic', PipelineFunctions.split('csv', ','), [
+      'dart',
+      'firebase',
+      'admin',
+    ]),
   ]),
   _FunctionScenario('timestamp and type functions', [
     _FunctionExpectation(

@@ -1498,6 +1498,35 @@ void main() {
         expect(fields['lang']!.functionValue!.args[1].stringValue, 'lang');
       });
 
+      test('split always sends the field and its delimiter', () async {
+        await run(
+          firestore.pipeline().collection('books').select([
+            PipelineFunctions.split('csv', ',').as('static'),
+            field('csv').split(',').as('fluent'),
+            PipelineFunctions.split('csv', null).as('nullDelimiter'),
+          ]),
+        );
+
+        final fields = stages[1].args.single.mapValue!.fields;
+        for (final alias in ['static', 'fluent']) {
+          final function = fields[alias]!.functionValue!;
+          expect(function.name, 'split');
+          expect(function.args, hasLength(2), reason: alias);
+          expect(function.args[0].fieldReferenceValue, 'csv', reason: alias);
+          expect(function.args[1].stringValue, ',', reason: alias);
+        }
+
+        // Regression: the static form made the delimiter optional and dropped
+        // a null one, emitting a one-argument `split` the backend rejects.
+        // Like Node, a null delimiter is now sent as a null constant.
+        final nullDelimiter = fields['nullDelimiter']!.functionValue!;
+        expect(nullDelimiter.args, hasLength(2));
+        expect(
+          nullDelimiter.args[1].nullValue,
+          protobuf_v1.NullValue.nullValue,
+        );
+      });
+
       test('leave value positions and variadic tails alone', () async {
         await run(
           firestore.pipeline().collection('books').select([

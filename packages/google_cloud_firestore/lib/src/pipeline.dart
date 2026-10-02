@@ -1070,11 +1070,11 @@ abstract final class PipelineFunctions {
   }
 
   /// SPLIT string function.
-  static PipelineExpression split(Object? fieldName, [Object? delimiter]) {
-    return _expr('split', [
-      _fieldOrExpression(fieldName),
-      ..._optionalArg(delimiter),
-    ]);
+  ///
+  /// Splits [fieldName] on [delimiter]. The delimiter is required, as in the
+  /// Node SDK; a string [delimiter] is sent as a literal, not a field.
+  static PipelineExpression split(Object? fieldName, Object? delimiter) {
+    return _expr('split', [_fieldOrExpression(fieldName), delimiter]);
   }
 
   /// CURRENT_TIMESTAMP function.
