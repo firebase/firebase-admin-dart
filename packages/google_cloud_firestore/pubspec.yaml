@@ -25,6 +25,9 @@ dependencies:
   retry: ^3.1.2
 
 dev_dependencies:
+  # Used by the analyzer-based Pipeline tests (API parity, single
+  # implementation, E2E coverage). Spans the releases that run on the minimum
+  # SDK (up to 13.0.0 on Dart 3.9) and the newer ones (14.x needs Dart 3.11).
   analyzer: '>=10.0.0 <15.0.0'
   build_runner: ^2.4.7
   mocktail: ^1.0.2
