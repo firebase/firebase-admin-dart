@@ -872,12 +872,12 @@ final _functionScenarios = <_FunctionScenario>[
       isNot(contains('lang')),
     ),
     _FunctionExpectation(
-      'mapRemove with an expression key',
+      'mapRemoveExpressionKey',
       Expression.field('metadata').mapRemove(Expression.constant('lang')),
       isNot(contains('lang')),
     ),
     _FunctionExpectation(
-      'chained mapRemove',
+      'mapRemoveChained',
       Expression.field('metadata').mapRemove('lang').mapRemove('category'),
       isEmpty,
     ),
