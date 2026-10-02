@@ -3191,6 +3191,55 @@ void main() {
           }
         });
       });
+
+      group('map', () {
+        test('takes a Map, encoded like alternating keys and values', () async {
+          final fields = await select([
+            PipelineFunctions.map({
+              'title': field('title'),
+              'rating': 5,
+              'nested': {'genre': field('genre')},
+              'list': [field('tags'), 1],
+            }).as('fromMap'),
+            PipelineFunctions.map([
+              'title',
+              field('title'),
+              'rating',
+              5,
+              'nested',
+              {'genre': field('genre')},
+              'list',
+              [field('tags'), 1],
+            ]).as('fromIterable'),
+          ]);
+
+          final fromMap = fields['fromMap']!.functionValue!;
+          expect(fromMap.name, 'map');
+          expect(fromMap.args[0].stringValue, 'title');
+          expect(fromMap.args[1].fieldReferenceValue, 'title');
+          expect(fromMap.args[5].functionValue!.name, 'map');
+          expect(fromMap.args[7].functionValue!.name, 'array');
+          expect(
+            fromMap.toJson(),
+            fields['fromIterable']!.functionValue!.toJson(),
+          );
+        });
+
+        test('takes an empty Map', () async {
+          final fields = await select([
+            PipelineFunctions.map(<String, Object?>{}).as('empty'),
+          ]);
+
+          final function = fields['empty']!.functionValue!;
+          expect(function.name, 'map');
+          expect(function.args, isEmpty);
+        });
+
+        test('rejects values that are neither a Map nor an Iterable', () {
+          expect(() => PipelineFunctions.map('title'), throwsArgumentError);
+          expect(() => PipelineFunctions.map(field('a')), throwsArgumentError);
+        });
+      });
     });
 
     group('createFrom', () {

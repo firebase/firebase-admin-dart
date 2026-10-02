@@ -1296,12 +1296,10 @@ void _registerStages(_Registry r) {
   stage(
     'replace-with/map-expression',
     (db) => _books(db).replaceWith(
-      PipelineFunctions.map([
-        'title',
-        field('title'),
-        'rating',
-        field('rating'),
-      ]),
+      PipelineFunctions.map({
+        'title': field('title'),
+        'rating': field('rating'),
+      }),
     ),
   );
   stage(
@@ -1848,32 +1846,20 @@ void _registerValues(_Registry r) {
       constant(_bytes).as('bytes'),
       constant(docRef).as('documentReference'),
       constant(_vector).as('vectorValue'),
-      PipelineFunctions.map([
-        'number',
-        1,
-        'string',
-        'a string',
-        'boolean',
-        true,
-        'null',
-        null,
-        'geoPoint',
-        _geoPoint,
-        'timestamp',
-        _timestamp,
-        'date',
-        _date,
-        'uint8Array',
-        _bytes,
-        'documentReference',
-        docRef,
-        'vectorValue',
-        _vector,
-        'map',
-        {'number': 2, 'string': 'b string'},
-        'array',
-        [1, 'c string'],
-      ]).as('map'),
+      PipelineFunctions.map({
+        'number': 1,
+        'string': 'a string',
+        'boolean': true,
+        'null': null,
+        'geoPoint': _geoPoint,
+        'timestamp': _timestamp,
+        'date': _date,
+        'uint8Array': _bytes,
+        'documentReference': docRef,
+        'vectorValue': _vector,
+        'map': {'number': 2, 'string': 'b string'},
+        'array': [1, 'c string'],
+      }).as('map'),
       PipelineFunctions.array([
         1,
         'a string',
@@ -1912,12 +1898,7 @@ void _registerValues(_Registry r) {
         .select(['title', 'author', 'genre', 'rating', 'published', 'tags'])
         .addFields([
           PipelineFunctions.array(metadataArray()).as('metadataArray'),
-          PipelineFunctions.map([
-            for (final MapEntry(:key, :value) in metadata().entries) ...[
-              key,
-              value,
-            ],
-          ]).as('metadata'),
+          PipelineFunctions.map(metadata()).as('metadata'),
         ])
         .where(
           and([
@@ -2885,24 +2866,42 @@ void _registerArrays(_Registry r) {
 }
 
 void _registerMaps(_Registry r) {
+  // Node's map(Record) is a Dart Map; the alternating-Iterable form must
+  // send the same request.
   r.expr(
     'functions/map/static-literals',
-    () => PipelineFunctions.map(['a', 1, 'b', 'x']),
+    () => PipelineFunctions.map({'a': 1, 'b': 'x'}),
+    [
+      () => PipelineFunctions.map(['a', 1, 'b', 'x']),
+    ],
   );
   r.expr(
     'functions/map/static-with-expressions',
-    () => PipelineFunctions.map(['a', field('title'), 'b', 1]),
+    () => PipelineFunctions.map({'a': field('title'), 'b': 1}),
+    [
+      () => PipelineFunctions.map(['a', field('title'), 'b', 1]),
+    ],
   );
   r.expr(
     'functions/map/static-nested',
-    () => PipelineFunctions.map([
-      'inner',
-      {'k': field('y')},
-      'list',
-      [field('z'), 1],
-    ]),
+    () => PipelineFunctions.map({
+      'inner': {'k': field('y')},
+      'list': [field('z'), 1],
+    }),
+    [
+      () => PipelineFunctions.map([
+        'inner',
+        {'k': field('y')},
+        'list',
+        [field('z'), 1],
+      ]),
+    ],
   );
-  r.expr('functions/map/static-empty', () => PipelineFunctions.map([]));
+  r.expr(
+    'functions/map/static-empty',
+    () => PipelineFunctions.map(<String, Object?>{}),
+    [() => PipelineFunctions.map(const [])],
+  );
 
   r.expr(
     'functions/mapGet/static-field-name',
