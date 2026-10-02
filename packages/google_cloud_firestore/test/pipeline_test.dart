@@ -1375,6 +1375,13 @@ void main() {
         );
       });
 
+      test('addFields rejects a repeated alias', () {
+        expect(
+          () => base().addFields([constant(1).as('x'), constant(2).as('x')]),
+          duplicateError('x', 'fields'),
+        );
+      });
+
       test('aggregate rejects a repeated accumulator alias', () {
         expect(
           () => base().aggregate([

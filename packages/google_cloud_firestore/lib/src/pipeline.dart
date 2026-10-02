@@ -1432,8 +1432,12 @@ final class Pipeline {
   /// Each expression is written to the field named by its alias, replacing
   /// any existing value. Like [select], the fields are sent to the backend as
   /// a single map keyed by alias.
+  ///
+  /// Throws an [ArgumentError] when two [fields] share an alias.
   Pipeline addFields(Iterable<PipelineAliasedExpression> fields) {
-    return rawStage('add_fields', [_projectionMap(fields)]);
+    return rawStage('add_fields', [
+      _projectionMap(fields, argumentName: 'fields'),
+    ]);
   }
 
   /// Aggregates inputs using aliased aggregate expressions.
