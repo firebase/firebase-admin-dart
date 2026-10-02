@@ -22,9 +22,6 @@ sealed class _FilterInternal {
   /// Returns a list of all filters that are contained within this filter
   List<_FilterInternal> get filters;
 
-  /// Returns the field of the first filter that's an inequality, or null if none.
-  FieldPath? get firstInequalityField;
-
   /// Returns the proto representation of this filter
   firestore_v1.StructuredQuery_Filter toProto();
 

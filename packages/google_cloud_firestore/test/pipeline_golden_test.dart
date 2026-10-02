@@ -93,16 +93,6 @@ final _knownDivergences = <String, _Divergence>{
 const _pendingFixes = <String, String>{
   // Ordering helpers.
   // Query to Pipeline conversion.
-  'queries/where/not-equal':
-      "createFrom(query) leaves '!=' fields out of the implicit sort; "
-      'Node sorts by them before __name__ (isInequalityFilter omits '
-      'notEqual).',
-  'queries/where/not-equal-null':
-      "createFrom(query) leaves '!= null' fields out of the implicit sort; "
-      'Node sorts by them before __name__.',
-  'queries/where/not-in':
-      "createFrom(query) leaves 'not-in' fields out of the implicit sort; "
-      'Node sorts by them before __name__ (isInequalityFilter omits notIn).',
   'queries/vector/distance-result-field':
       'createFrom(vectorQuery) sends a distance_field option; Node drops '
       'distanceResultField. Dart keeps the query semantics: decide whether '
@@ -742,6 +732,11 @@ void _registerQueries(_Registry r) {
         .collectionGroup('reviews')
         .where('rating', WhereFilter.greaterThan, 3),
   );
+  query(
+    'collection-group/not-equal',
+    (db) =>
+        db.collectionGroup('reviews').where('rating', WhereFilter.notEqual, 3),
+  );
 
   query(
     'where/less-than',
@@ -892,12 +887,76 @@ void _registerQueries(_Registry r) {
         .where('rating', WhereFilter.greaterThan, 4)
         .orderBy('title', descending: true),
   );
+  query(
+    'order-by/implicit-from-mixed-inequalities',
+    (db) => col(db)
+        .where('rating', WhereFilter.greaterThan, 4)
+        .where('genre', WhereFilter.notEqual, 'Horror'),
+  );
+  query(
+    'order-by/implicit-from-repeated-field',
+    (db) => col(db)
+        .where('rating', WhereFilter.greaterThan, 2)
+        .where('rating', WhereFilter.lessThan, 5),
+  );
+  query(
+    'order-by/implicit-from-composite-or',
+    (db) => col(db).whereFilter(
+      Filter.or([
+        Filter.where('rating', WhereFilter.greaterThan, 4),
+        Filter.where('genre', WhereFilter.notIn, ['Horror', 'Romance']),
+      ]),
+    ),
+  );
+  query(
+    'order-by/implicit-field-path-order',
+    (db) => col(db)
+        .where('price-tier', WhereFilter.lessThan, 3)
+        .where('price.amount', WhereFilter.greaterThan, 1),
+  );
+  query(
+    'order-by/implicit-quoted-segments',
+    (db) => col(db)
+        .where('field', WhereFilter.greaterThanOrEqual, 'field 100')
+        .where(FieldPath(const ['field.dot']), WhereFilter.notEqual, 300)
+        .where(r'field\slash', WhereFilter.lessThan, 400)
+        .orderBy('name', descending: true),
+  );
+  query(
+    'order-by/not-equal-explicitly-ordered',
+    (db) => col(db)
+        .where('genre', WhereFilter.notEqual, 'Horror')
+        .orderBy('genre', descending: true),
+  );
+  query(
+    'order-by/not-in-and-descending',
+    (db) => col(db)
+        .where('genre', WhereFilter.notIn, ['Horror', 'Romance'])
+        .orderBy('rating', descending: true),
+  );
+  query(
+    'order-by/document-id-and-inequality',
+    (db) => col(db)
+        .where(
+          FieldPath.documentId,
+          WhereFilter.greaterThan,
+          col(db).doc('book1'),
+        )
+        .where('rating', WhereFilter.lessThan, 5),
+  );
 
   query('limit/with-order-by', (db) => col(db).orderBy('rating').limit(5));
   query('limit/without-order-by', (db) => col(db).limit(5));
   query(
     'limit-to-last/plain',
     (db) => col(db).orderBy('rating').limitToLast(5),
+  );
+  query(
+    'limit-to-last/with-inequality',
+    (db) => col(db)
+        .where('genre', WhereFilter.notEqual, 'Horror')
+        .orderBy('rating')
+        .limitToLast(2),
   );
   query('offset/plain', (db) => col(db).offset(10));
   query(
@@ -924,6 +983,22 @@ void _registerQueries(_Registry r) {
     'cursor/limit-to-last',
     (db) =>
         col(db).orderBy('rating').startAt([2]).endBefore([5]).limitToLast(3),
+  );
+  query(
+    'cursor/with-inequality',
+    (db) => col(db)
+        .where('genre', WhereFilter.notEqual, 'Horror')
+        .orderBy('rating')
+        .startAfter([4]),
+  );
+  query(
+    'cursor/with-inequality-and-limit-to-last',
+    (db) => col(db)
+        .where('genre', WhereFilter.notIn, ['Horror'])
+        .orderBy('rating')
+        .startAfter([2])
+        .endAt([4])
+        .limitToLast(3),
   );
 
   query(

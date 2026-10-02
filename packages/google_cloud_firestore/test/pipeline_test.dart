@@ -3342,6 +3342,77 @@ void main() {
         expect(orderings, ['__name__']);
       });
 
+      /// The (field, direction) pairs of the last sort stage.
+      List<(String?, String?)> sortOrder() => [
+        for (final arg in stages.lastWhere((s) => s.name == 'sort').args)
+          (
+            arg.mapValue!.fields['expression']!.fieldReferenceValue,
+            arg.mapValue!.fields['direction']!.stringValue,
+          ),
+      ];
+
+      test('orders by != and not-in fields like range fields', () async {
+        // Regression: '!=' and 'not-in' fields were left out of the implicit
+        // ordering, so the Pipeline sorted only by the document key.
+        await run(
+          firestore
+              .collection('books')
+              .where('rating', WhereFilter.greaterThan, 4)
+              .where('genre', WhereFilter.notEqual, 'Horror')
+              .where('author', WhereFilter.notIn, ['Anonymous']),
+        );
+
+        // Inequality fields in field path order, then the document key.
+        expect(sortOrder(), [
+          ('author', 'ascending'),
+          ('genre', 'ascending'),
+          ('rating', 'ascending'),
+          ('__name__', 'ascending'),
+        ]);
+      });
+
+      test('sorts inequality fields by segment, not quoted path', () async {
+        await run(
+          firestore
+              .collection('books')
+              .where('price-tier', WhereFilter.lessThan, 3)
+              .where('price.amount', WhereFilter.greaterThan, 1),
+        );
+
+        // `price-tier` is quoted on the wire, but `price` sorts first.
+        expect(sortOrder().map((order) => order.$1), [
+          'price.amount',
+          '`price-tier`',
+          '__name__',
+        ]);
+      });
+
+      test('implicit orderings take the last explicit direction', () async {
+        await run(
+          firestore
+              .collection('books')
+              .where('genre', WhereFilter.notIn, ['Horror'])
+              .orderBy('rating', descending: true),
+        );
+
+        expect(sortOrder(), [
+          ('rating', 'descending'),
+          ('genre', 'descending'),
+          ('__name__', 'descending'),
+        ]);
+
+        // Existence checks cover the explicit ordering and the key; the
+        // inequality filter brings its own (none, for not-in).
+        final exists = stages[2].args.single.functionValue!;
+        expect(exists.name, 'and');
+        expect(
+          exists.args.map(
+            (arg) => arg.functionValue!.args.single.fieldReferenceValue,
+          ),
+          ['rating', '__name__'],
+        );
+      });
+
       test('converts composite filters', () async {
         await run(
           firestore

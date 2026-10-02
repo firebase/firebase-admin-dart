@@ -206,6 +206,9 @@ module.exports = function buildCases(sdk, db) {
   query('collection-group/where', () =>
     db.collectionGroup('reviews').where('rating', '>', 3),
   );
+  query('collection-group/not-equal', () =>
+    db.collectionGroup('reviews').where('rating', '!=', 3),
+  );
 
   query('where/less-than', () => col().where('rating', '<', 4));
   query('where/less-than-or-equal', () => col().where('rating', '<=', 4));
@@ -290,10 +293,51 @@ module.exports = function buildCases(sdk, db) {
   query('order-by/explicit-and-inequality', () =>
     col().where('rating', '>', 4).orderBy('title', 'desc'),
   );
+  // '!=' and 'not-in' are inequalities too: the backend orders by their
+  // fields, together with the range fields, in field path order.
+  query('order-by/implicit-from-mixed-inequalities', () =>
+    col().where('rating', '>', 4).where('genre', '!=', 'Horror'),
+  );
+  query('order-by/implicit-from-repeated-field', () =>
+    col().where('rating', '>', 2).where('rating', '<', 5),
+  );
+  query('order-by/implicit-from-composite-or', () =>
+    col().where(
+      Filter.or(
+        Filter.where('rating', '>', 4),
+        Filter.where('genre', 'not-in', ['Horror', 'Romance']),
+      ),
+    ),
+  );
+  // Field paths sort segment by segment, not by their quoted form.
+  query('order-by/implicit-field-path-order', () =>
+    col().where('price-tier', '<', 3).where('price.amount', '>', 1),
+  );
+  query('order-by/implicit-quoted-segments', () =>
+    col()
+      .where('field', '>=', 'field 100')
+      .where(new FieldPath('field.dot'), '!=', 300)
+      .where('field\\slash', '<', 400)
+      .orderBy('name', 'desc'),
+  );
+  query('order-by/not-equal-explicitly-ordered', () =>
+    col().where('genre', '!=', 'Horror').orderBy('genre', 'desc'),
+  );
+  query('order-by/not-in-and-descending', () =>
+    col()
+      .where('genre', 'not-in', ['Horror', 'Romance'])
+      .orderBy('rating', 'desc'),
+  );
+  query('order-by/document-id-and-inequality', () =>
+    col().where(FieldPath.documentId(), '>', 'book1').where('rating', '<', 5),
+  );
 
   query('limit/with-order-by', () => col().orderBy('rating').limit(5));
   query('limit/without-order-by', () => col().limit(5));
   query('limit-to-last/plain', () => col().orderBy('rating').limitToLast(5));
+  query('limit-to-last/with-inequality', () =>
+    col().where('genre', '!=', 'Horror').orderBy('rating').limitToLast(2),
+  );
   query('offset/plain', () => col().offset(10));
   query('offset/with-limit', () => col().orderBy('rating').limit(5).offset(10));
 
@@ -309,6 +353,17 @@ module.exports = function buildCases(sdk, db) {
   );
   query('cursor/limit-to-last', () =>
     col().orderBy('rating').startAt(2).endBefore(5).limitToLast(3),
+  );
+  query('cursor/with-inequality', () =>
+    col().where('genre', '!=', 'Horror').orderBy('rating').startAfter(4),
+  );
+  query('cursor/with-inequality-and-limit-to-last', () =>
+    col()
+      .where('genre', 'not-in', ['Horror'])
+      .orderBy('rating')
+      .startAfter(2)
+      .endAt(4)
+      .limitToLast(3),
   );
 
   query('select/fields', () => col().select('title', 'author'));
