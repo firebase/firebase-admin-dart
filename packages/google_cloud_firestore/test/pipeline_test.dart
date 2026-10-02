@@ -1311,6 +1311,33 @@ void main() {
         expect(stage.args, hasLength(1));
         expect(stage.args.single.mapValue!.fields.keys, ['title', 'rating']);
       });
+
+      test('top-level variable() encodes a variable reference', () async {
+        // Uses the barrel's top-level `variable`, so dropping it from the
+        // public exports fails compilation here.
+        final kept = variable('tag').notEqual('draft');
+        final aliased = Expression.variable('tag').notEqual('draft');
+        await capture(
+          base().select([
+            field('tags').arrayFilter('tag', kept).as('kept'),
+            field('tags').arrayFilter('tag', aliased).as('aliased'),
+          ]),
+        );
+
+        final fields = stage.args.single.mapValue!.fields;
+        final filter = fields['kept']!.functionValue!;
+        expect(filter.name, 'array_filter');
+        expect(filter.args[0].fieldReferenceValue, 'tags');
+        expect(filter.args[1].stringValue, 'tag');
+        final predicate = filter.args[2].functionValue!;
+        expect(predicate.name, 'not_equal');
+        expect(predicate.args[0].variableReferenceValue, 'tag');
+        expect(predicate.args[0].fieldReferenceValue, isNull);
+        expect(predicate.args[1].stringValue, 'draft');
+
+        // `variable` and `Expression.variable` are interchangeable.
+        expect(fields['aliased']!.toJson(), fields['kept']!.toJson());
+      });
     });
 
     // Mirrors the Node SDK's `selectablesToObject` / `aliasedAggregateToMap`,

@@ -343,8 +343,16 @@ field('title').toUpperCase();
 PipelineFunctions.toUpper('title');
 ```
 
-`Expression.field` / `Expression.constant` are aliases for the top-level
-`field` / `constant`, for callers who prefer a namespaced entry point.
+`Expression.field` / `Expression.constant` / `Expression.variable` are aliases
+for the top-level `field` / `constant` / `variable`, for callers who prefer a
+namespaced entry point.
+
+`variable` references a name bound by the enclosing expression, such as the
+element alias of `arrayFilter` / `arrayTransform`:
+
+```dart
+field('tags').arrayFilter('tag', variable('tag').notEqual('draft'));
+```
 
 **Field arguments vs value arguments.** A `String` in a *field* position means a
 field reference; in a *value* position it stays a string literal. The field
