@@ -906,7 +906,7 @@ void main() {
               Expression.field('path').referenceSlice(0, 2).as('slice'),
               Expression.field('metadata').mapKeys().as('keys'),
               Expression.field('metadata').mapValues().as('values'),
-              Expression.field('metadata').mapRemove(['draft']).as('removed'),
+              Expression.field('metadata').mapRemove('draft').as('removed'),
               Expression.field('metadata')
                   .mapMerge([
                     {'lang': 'dart'},
@@ -1555,6 +1555,53 @@ void main() {
         expect(
           fields['id']!.functionValue!.args.single.stringValue,
           'books/book-1',
+        );
+      });
+
+      test('map_remove sends exactly one key per call', () async {
+        await run(
+          firestore.pipeline().collection('books').select([
+            PipelineFunctions.mapRemove('metadata', 'lang').as('static'),
+            field('metadata').mapRemove(constant('lang')).as('expressionKey'),
+            field('metadata').mapRemove('lang').mapRemove('draft').as('chain'),
+          ]),
+        );
+
+        final fields = stages[1].args.single.mapValue!.fields;
+
+        // Regression: the key used to be an Iterable spread into a variadic
+        // `map_remove(map, ...keys)`; the backend contract is (map, key).
+        final static = fields['static']!.functionValue!;
+        expect(static.name, 'map_remove');
+        expect(static.args, hasLength(2));
+        expect(static.args[0].fieldReferenceValue, 'metadata');
+        // A String key is a literal, not a field reference, as in Node.
+        expect(static.args[1].stringValue, 'lang');
+        expect(static.args[1].fieldReferenceValue, isNull);
+
+        final expressionKey = fields['expressionKey']!.functionValue!;
+        expect(expressionKey.args, hasLength(2));
+        expect(expressionKey.args[1].stringValue, 'lang');
+
+        final outer = fields['chain']!.functionValue!;
+        expect(outer.name, 'map_remove');
+        expect(outer.args, hasLength(2));
+        expect(outer.args[1].stringValue, 'draft');
+        final inner = outer.args[0].functionValue!;
+        expect(inner.name, 'map_remove');
+        expect(inner.args, hasLength(2));
+        expect(inner.args[0].fieldReferenceValue, 'metadata');
+        expect(inner.args[1].stringValue, 'lang');
+      });
+
+      test('map_remove rejects an Iterable of keys', () {
+        expect(
+          () => field('metadata').mapRemove(['lang', 'draft']),
+          throwsArgumentError,
+        );
+        expect(
+          () => PipelineFunctions.mapRemove('metadata', ['lang']),
+          throwsArgumentError,
         );
       });
     });

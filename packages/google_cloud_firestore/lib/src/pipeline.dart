@@ -848,8 +848,22 @@ abstract final class PipelineFunctions {
   }
 
   /// MAP_REMOVE function.
-  static PipelineExpression mapRemove(Object? map, Iterable<Object?> keys) {
-    return _expr('map_remove', [_fieldOrExpression(map), ...keys]);
+  ///
+  /// Removes [key] from [map]. A [String] [map] names a field; [key] is the
+  /// key itself (a [String] literal) or an expression producing it. Each call
+  /// removes exactly one key, so chain calls to remove several:
+  /// `mapRemove(mapRemove('address', 'city'), 'zip')`.
+  ///
+  /// Throws an [ArgumentError] when [key] is an [Iterable].
+  static PipelineExpression mapRemove(Object? map, Object? key) {
+    if (key is Iterable) {
+      throw ArgumentError.value(
+        key,
+        'key',
+        'Must be a single key. Chain mapRemove calls to remove several keys.',
+      );
+    }
+    return _expr('map_remove', [_fieldOrExpression(map), key]);
   }
 
   /// MAP_MERGE function.
@@ -2513,9 +2527,15 @@ sealed class PipelineExpression {
   /// Returns this map expression's entries.
   PipelineExpression mapEntries() => PipelineFunctions.mapEntries(this);
 
-  /// Removes [keys] from this map expression.
-  PipelineExpression mapRemove(Iterable<Object?> keys) {
-    return PipelineFunctions.mapRemove(this, keys);
+  /// Removes [key] from this map expression.
+  ///
+  /// [key] is the key itself (a [String] literal) or an expression producing
+  /// it. Each call removes exactly one key, so chain calls to remove several:
+  /// `field('address').mapRemove('city').mapRemove('zip')`.
+  ///
+  /// Throws an [ArgumentError] when [key] is an [Iterable].
+  PipelineExpression mapRemove(Object? key) {
+    return PipelineFunctions.mapRemove(this, key);
   }
 
   /// Merges this map expression with [maps].

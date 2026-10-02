@@ -823,8 +823,18 @@ final _functionScenarios = <_FunctionScenario>[
     ),
     _FunctionExpectation(
       'mapRemove',
-      Expression.field('metadata').mapRemove(['lang']),
+      Expression.field('metadata').mapRemove('lang'),
       isNot(contains('lang')),
+    ),
+    _FunctionExpectation(
+      'mapRemove with an expression key',
+      Expression.field('metadata').mapRemove(Expression.constant('lang')),
+      isNot(contains('lang')),
+    ),
+    _FunctionExpectation(
+      'chained mapRemove',
+      Expression.field('metadata').mapRemove('lang').mapRemove('category'),
+      isEmpty,
     ),
     _FunctionExpectation(
       'mapMerge',
