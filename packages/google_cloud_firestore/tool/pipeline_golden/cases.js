@@ -354,6 +354,20 @@ module.exports = function buildCases(sdk, db) {
   query('cursor/limit-to-last', () =>
     col().orderBy('rating').startAt(2).endBefore(5).limitToLast(3),
   );
+  // A cursor is a position in the query's order: on a descending ordering,
+  // startAt keeps the smaller values.
+  query('cursor/start-at-descending', () =>
+    col().orderBy('rating', 'desc').startAt(4),
+  );
+  query('cursor/end-before-descending', () =>
+    col().orderBy('rating', 'desc').endBefore(2),
+  );
+  query('cursor/mixed-directions', () =>
+    col().orderBy('rating', 'desc').orderBy('title').startAfter(4, 'M'),
+  );
+  query('cursor/descending-limit-to-last', () =>
+    col().orderBy('rating', 'desc').startAt(4).endAt(1).limitToLast(2),
+  );
   query('cursor/with-inequality', () =>
     col().where('genre', '!=', 'Horror').orderBy('rating').startAfter(4),
   );

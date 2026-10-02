@@ -85,6 +85,20 @@ final _knownDivergences = <String, _Divergence>{
       '`...others` at runtime: they only forward `second` to the method.',
       _selectsThreeOperands,
     ),
+  for (final (id, comparisons) in [
+    ('start-at-descending', ['less_than']),
+    ('end-before-descending', ['greater_than']),
+    ('mixed-directions', ['less_than', 'greater_than']),
+    ('descending-limit-to-last', ['less_than', 'greater_than']),
+  ])
+    'queries/cursor/$id': _Divergence(
+      'A cursor on a descending ordering keeps the values on the descending '
+      'side of the bound, as the Query does (startAt(4) keeps ratings up to '
+      "4). Node's whereConditionsFromCursor ignores the direction and keeps "
+      'the ascending side.',
+      (request) =>
+          _cursorComparisons(request).join(',') == comparisons.join(','),
+    ),
   'queries/vector/distance-result-field': _Divergence(
     _distanceResultFieldReason,
     (request) => _findNearestDistanceField(request) == 'distance',
@@ -489,6 +503,33 @@ bool _searchSpaceIsArrayFunction(Object? request) {
   if (stages is! List || stages.length != 2) return false;
   final searchSpace = _path(stages[1], ['args', 0, 'functionValue', 'args', 1]);
   return _path(searchSpace, ['functionValue', 'name']) == 'array';
+}
+
+/// The `less_than` and `greater_than` comparisons of the cursor filters, the
+/// `where` stages after the first `sort`, in order.
+List<String> _cursorComparisons(Object? request) {
+  final stages = _path(request, ['structuredPipeline', 'pipeline', 'stages']);
+  if (stages is! List) return const [];
+  final sort = stages.indexWhere((stage) => _path(stage, ['name']) == 'sort');
+  if (sort < 0) return const [];
+
+  final comparisons = <String>[];
+  void visit(Object? value) {
+    final function = _path(value, ['functionValue']);
+    final name = _path(function, ['name']);
+    if (name == 'less_than' || name == 'greater_than') {
+      comparisons.add(name! as String);
+    }
+    final args = _path(function, ['args']);
+    if (args is List) args.forEach(visit);
+  }
+
+  for (final stage in stages.skip(sort + 1)) {
+    if (_path(stage, ['name']) != 'where') continue;
+    final args = _path(stage, ['args']);
+    if (args is List) args.forEach(visit);
+  }
+  return comparisons;
 }
 
 /// The field the find_nearest stage writes the distance to, if any.
@@ -1076,6 +1117,28 @@ void _registerQueries(_Registry r) {
     'cursor/limit-to-last',
     (db) =>
         col(db).orderBy('rating').startAt([2]).endBefore([5]).limitToLast(3),
+  );
+  query(
+    'cursor/start-at-descending',
+    (db) => col(db).orderBy('rating', descending: true).startAt([4]),
+  );
+  query(
+    'cursor/end-before-descending',
+    (db) => col(db).orderBy('rating', descending: true).endBefore([2]),
+  );
+  query(
+    'cursor/mixed-directions',
+    (db) => col(
+      db,
+    ).orderBy('rating', descending: true).orderBy('title').startAfter([4, 'M']),
+  );
+  query(
+    'cursor/descending-limit-to-last',
+    (db) => col(db)
+        .orderBy('rating', descending: true)
+        .startAt([4])
+        .endAt([1])
+        .limitToLast(2),
   );
   query(
     'cursor/with-inequality',
