@@ -22,6 +22,17 @@
 - `PipelineFunctions.arraySlice` now takes an optional `length`, like `PipelineExpression.arraySlice` and the Node Admin SDK.
 - `PipelineFunctions.raw` now accepts `options`, like `Expression.raw`.
 - `PipelineExpression.arrayContainsAll` and `arrayContainsAny` now also accept an array expression, like their `PipelineFunctions` forms and the Node Admin SDK.
+- Fixed Pipeline field names that are not simple identifiers being sent unquoted. They are now backtick-quoted like the Node Admin SDK, so `field('first-name')` sends `` `first-name` ``. `field()` and `Expression.field()` also accept a `FieldPath`. `PipelineField.path` returns the quoted path, and `field('')` and `field('a..b')` now throw.
+- Fixed field paths containing a backtick being escaped as a lone backslash, which named a different field, in queries, field masks and Pipelines.
+- Fixed `Pipeline.createFrom()` and `DocumentSnapshot` query cursors leaving `!=` and `not-in` fields out of the implicit ordering, and ordering inequality fields by their quoted names instead of segment by segment, unlike the backend and the Node Admin SDK. A snapshot cursor now needs a value for every inequality field.
+- Fixed `Pipeline.createFrom()` of a query with a cursor on a descending ordering keeping the wrong side of the bound.
+- Fixed `Pipeline.createFrom()` of a `VectorQuery` sending its `distanceThreshold` as an undocumented `find_nearest` option. It is now applied as a filter on the distance.
+- Fixed Pipeline results failing to decode when a reference that names no document, such as the database root returned by `parent()`, is nested in a map or array. It now decodes to its resource name at every depth, as it already did for top-level fields.
+- Pipeline raw options now match the Node Admin SDK. Every stage and source takes an optional `rawOptions`. Keys in `rawOptions` and `rawStage(options:)` are dot-separated paths merged into the typed options, and keys with an empty segment throw an `ArgumentError`. `rawStage` sends collections nested in a `Map` argument as `map(...)` / `array(...)` functions.
+- `PipelineFunctions.add` and `multiply` take an optional trailing list of further operands, and `PipelineExpression.add` and `multiply` take `(second, [others])`, like the variadic Node Admin SDK functions.
+- `PipelineSource.documents()` also accepts document paths such as `'books/book1'`, validated like `Firestore.doc()`.
+- `PipelineFunctions.map()` also accepts a Dart `Map`, as in `map({'title': field('title')})`.
+- Added the `PipelineOrdering.expr` and `PipelineOrdering.direction` getters.
 
 ## 0.5.5
 
