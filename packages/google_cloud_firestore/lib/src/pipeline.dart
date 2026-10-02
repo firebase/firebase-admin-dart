@@ -725,21 +725,38 @@ abstract final class PipelineFunctions {
   }
 
   /// ARRAY_TRANSFORM function.
+  ///
+  /// Evaluates [transform] for each element of [array], with the element
+  /// bound to the variable [elementAlias]. To also bind the element's index,
+  /// use [arrayTransformWithIndex].
   static PipelineExpression arrayTransform(
     Object? array,
-    String variableName,
-    Object? expression, [
-    String? indexVariableName,
-  ]) {
-    final target = _fieldOrExpression(array);
-    return indexVariableName == null
-        ? _expr('array_transform', [target, variableName, expression])
-        : _expr('array_transform', [
-            target,
-            variableName,
-            indexVariableName,
-            expression,
-          ]);
+    String elementAlias,
+    Object? transform,
+  ) {
+    return _expr('array_transform', [
+      _fieldOrExpression(array),
+      elementAlias,
+      transform,
+    ]);
+  }
+
+  /// ARRAY_TRANSFORM function, binding each element's index too.
+  ///
+  /// Like [arrayTransform], with the element's zero-based index bound to the
+  /// variable [indexAlias].
+  static PipelineExpression arrayTransformWithIndex(
+    Object? array,
+    String elementAlias,
+    String indexAlias,
+    Object? transform,
+  ) {
+    return _expr('array_transform', [
+      _fieldOrExpression(array),
+      elementAlias,
+      indexAlias,
+      transform,
+    ]);
   }
 
   /// MAXIMUM_N array function.
@@ -2561,11 +2578,11 @@ sealed class PipelineExpression {
     String indexAlias,
     Object? transform,
   ) {
-    return PipelineFunctions.arrayTransform(
+    return PipelineFunctions.arrayTransformWithIndex(
       this,
       elementAlias,
-      transform,
       indexAlias,
+      transform,
     );
   }
 
