@@ -2182,7 +2182,7 @@ final class PipelineResult {
   Object? get(Object field) {
     Object? value = _data;
     for (final segment in FieldPath.from(field).segments) {
-      if (value is! Map<String, Object?>) return null;
+      if (value is! Map) return null;
       value = value[segment];
     }
     return value;
