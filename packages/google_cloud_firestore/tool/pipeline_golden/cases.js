@@ -992,11 +992,13 @@ module.exports = function buildCases(sdk, db) {
   fn('functions', 'add', {
     'method-double': () => field('rating').add(0.5),
     'method-variadic': () => field('rating').add(1, field('bonus')),
+    'static-variadic': () => P.add('rating', 1, field('bonus')),
   });
   binary('subtract', 'rating', 1, () => field('penalty'));
   binary('multiply', 'rating', 2, () => field('weight'));
   fn('functions', 'multiply', {
     'method-variadic': () => field('rating').multiply(2, field('weight')),
+    'static-variadic': () => P.multiply('rating', 2, field('weight')),
   });
   binary('divide', 'rating', 2, () => field('count'));
   binary('mod', 'rating', 2, () => field('divisor'));

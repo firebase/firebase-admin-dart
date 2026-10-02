@@ -3005,6 +3005,104 @@ void main() {
       expect(fields['minN']!.functionValue!.args[1].integerValue, 2);
     });
 
+    group('Node SDK signatures', () {
+      late List<firestore_v1.Pipeline_Stage> stages;
+
+      Future<void> run(Pipeline pipeline) async {
+        firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+        when(
+          () => mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(
+            any(),
+          ),
+        ).thenAnswer((invocation) async {
+          final callback =
+              invocation.positionalArguments.single
+                  as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                  Function(firestore_v1.Firestore api, String projectId);
+
+          final api = FakeFirestore(
+            executePipeline: (firestore_v1.ExecutePipelineRequest request) {
+              capturedRequest = request;
+              return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+            },
+          );
+
+          return callback(api, _projectId);
+        });
+
+        await pipeline.execute();
+        stages = capturedRequest!.structuredPipeline!.pipeline!.stages;
+      }
+
+      Future<Map<String, firestore_v1.Value>> select(
+        Iterable<PipelineAliasedExpression> selections,
+      ) async {
+        await run(firestore.pipeline().collection('books').select(selections));
+        return stages[1].args.single.mapValue!.fields;
+      }
+
+      group('variadic add and multiply', () {
+        for (final (name, static, fluent) in [
+          (
+            'add',
+            PipelineFunctions.add,
+            (PipelineExpression e, Object? second, Iterable<Object?> others) =>
+                e.add(second, others),
+          ),
+          (
+            'multiply',
+            PipelineFunctions.multiply,
+            (PipelineExpression e, Object? second, Iterable<Object?> others) =>
+                e.multiply(second, others),
+          ),
+        ]) {
+          test('$name sends every operand to one $name call', () async {
+            final fields = await select([
+              static('rating', 2, [field('bonus'), 3]).as('static'),
+              fluent(field('rating'), 2, [field('bonus'), 3]).as('fluent'),
+            ]);
+
+            for (final alias in ['static', 'fluent']) {
+              final function = fields[alias]!.functionValue!;
+              expect(function.name, name, reason: alias);
+              expect(function.args.map((arg) => arg.toJson()), [
+                {'fieldReferenceValue': 'rating'},
+                {'integerValue': '2'},
+                {'fieldReferenceValue': 'bonus'},
+                {'integerValue': '3'},
+              ], reason: alias);
+            }
+          });
+
+          test('$name still takes exactly two operands', () async {
+            final fields = await select([
+              static('rating', 2).as('static'),
+              fluent(field('rating'), 2, const []).as('fluent'),
+            ]);
+
+            for (final alias in ['static', 'fluent']) {
+              final function = fields[alias]!.functionValue!;
+              expect(function.name, name, reason: alias);
+              expect(function.args, hasLength(2), reason: alias);
+            }
+          });
+        }
+
+        test('collections among the operands are built as functions', () async {
+          final fields = await select([
+            PipelineFunctions.add('a', 1, [
+              [field('b')],
+            ]).as('sum'),
+          ]);
+
+          final operand = fields['sum']!.functionValue!.args[2];
+          expect(operand.functionValue!.name, 'array');
+          expect(operand.functionValue!.args.single.fieldReferenceValue, 'b');
+        });
+      });
+    });
+
     group('createFrom', () {
       late List<firestore_v1.Pipeline_Stage> stages;
 

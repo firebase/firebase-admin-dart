@@ -324,6 +324,36 @@
         }
       }
     },
+    "functions/add/static-variadic": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "add",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "1"}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
     "functions/and/static-three": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
@@ -11474,6 +11504,36 @@
       }
     },
     "functions/multiply/static-field-name-literal": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "multiply",
+                          "args": [
+                            {"fieldReferenceValue": "rating"},
+                            {"integerValue": "2"}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "functions/multiply/static-variadic": {
       "database": "projects/test-project/databases/(default)",
       "structuredPipeline": {
         "pipeline": {

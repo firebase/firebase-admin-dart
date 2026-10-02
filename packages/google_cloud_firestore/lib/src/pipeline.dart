@@ -548,8 +548,14 @@ abstract final class PipelineFunctions {
   }
 
   /// ADD arithmetic function.
-  static PipelineExpression add(Object? left, Object? right) {
-    return _expr('add', [_fieldOrExpression(left), right]);
+  ///
+  /// Adds [first], [second] and any [others], sent as a single `add` call.
+  static PipelineExpression add(
+    Object? first,
+    Object? second, [
+    Iterable<Object?> others = const [],
+  ]) {
+    return _expr('add', [_fieldOrExpression(first), second, ...others]);
   }
 
   /// SUBTRACT arithmetic function.
@@ -558,8 +564,15 @@ abstract final class PipelineFunctions {
   }
 
   /// MULTIPLY arithmetic function.
-  static PipelineExpression multiply(Object? left, Object? right) {
-    return _expr('multiply', [_fieldOrExpression(left), right]);
+  ///
+  /// Multiplies [first], [second] and any [others], sent as a single
+  /// `multiply` call.
+  static PipelineExpression multiply(
+    Object? first,
+    Object? second, [
+    Iterable<Object?> others = const [],
+  ]) {
+    return _expr('multiply', [_fieldOrExpression(first), second, ...others]);
   }
 
   /// DIVIDE arithmetic function.
@@ -2625,9 +2638,12 @@ sealed class PipelineExpression {
     return PipelineFunctions.greaterThanOrEqual(this, other);
   }
 
-  /// Creates an addition expression.
-  PipelineExpression add(Object? other) {
-    return PipelineFunctions.add(this, other);
+  /// Adds [second] and any [others] to this expression.
+  PipelineExpression add(
+    Object? second, [
+    Iterable<Object?> others = const [],
+  ]) {
+    return PipelineFunctions.add(this, second, others);
   }
 
   /// Creates a subtraction expression.
@@ -2635,9 +2651,12 @@ sealed class PipelineExpression {
     return PipelineFunctions.subtract(this, other);
   }
 
-  /// Creates a multiplication expression.
-  PipelineExpression multiply(Object? other) {
-    return PipelineFunctions.multiply(this, other);
+  /// Multiplies this expression by [second] and any [others].
+  PipelineExpression multiply(
+    Object? second, [
+    Iterable<Object?> others = const [],
+  ]) {
+    return PipelineFunctions.multiply(this, second, others);
   }
 
   /// Creates a division expression.

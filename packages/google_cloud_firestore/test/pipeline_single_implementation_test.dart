@@ -837,9 +837,23 @@ final _behaviour = <String, List<_Call>>{
   ],
 
   // Arithmetic.
-  'add': _binary(PipelineFunctions.add, (e, v) => e.add(v)),
+  'add': [
+    ..._binary(PipelineFunctions.add, (e, v) => e.add(v)),
+    ..._on(
+      'with more operands',
+      static: (r) => PipelineFunctions.add(r, 1, [field('b'), 3]),
+      fluent: (e) => e.add(1, [field('b'), 3]),
+    ),
+  ],
   'subtract': _binary(PipelineFunctions.subtract, (e, v) => e.subtract(v)),
-  'multiply': _binary(PipelineFunctions.multiply, (e, v) => e.multiply(v)),
+  'multiply': [
+    ..._binary(PipelineFunctions.multiply, (e, v) => e.multiply(v)),
+    ..._on(
+      'with more operands',
+      static: (r) => PipelineFunctions.multiply(r, 2, [field('b'), 3]),
+      fluent: (e) => e.multiply(2, [field('b'), 3]),
+    ),
+  ],
   'divide': _binary(PipelineFunctions.divide, (e, v) => e.divide(v)),
   'mod': _binary(PipelineFunctions.mod, (e, v) => e.mod(v)),
   'pow': _binary(PipelineFunctions.pow, (e, v) => e.pow(v)),

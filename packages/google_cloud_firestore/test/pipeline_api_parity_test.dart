@@ -200,15 +200,6 @@ const _knownDifferences = <String, String>{
 /// Remove an entry once its fix lands; the test fails while it is stale.
 const _pendingFixes = <String, String>{
   // Signatures.
-  'PipelineFunctions.add#arity':
-      'Node add(first, second, ...others) is variadic; Dart add(left, right) '
-      'takes exactly two.',
-  'PipelineFunctions.multiply#arity':
-      'Node multiply(first, second, ...others) is variadic; Dart takes two.',
-  'PipelineExpression.add#arity':
-      'Node add(second, ...others) is variadic; Dart add(other) takes one.',
-  'PipelineExpression.multiply#arity':
-      'Node multiply(second, ...others) is variadic; Dart takes one.',
   'PipelineFunctions.map#keyValues':
       'Takes an Iterable of alternating keys and values; Node '
       'map(elements: Record<string, unknown>) takes a map, which Dart '
