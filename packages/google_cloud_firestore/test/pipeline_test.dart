@@ -3165,6 +3165,32 @@ void main() {
           );
         });
       });
+
+      group('PipelineOrdering', () {
+        test('exposes its expression and direction', () {
+          final rating = field('rating');
+          final ascendingOrdering = rating.ascending();
+          final descendingOrdering = rating.descending();
+
+          expect(ascendingOrdering.expr, same(rating));
+          expect(ascendingOrdering.direction, 'ascending');
+          expect(descendingOrdering.expr, same(rating));
+          expect(descendingOrdering.direction, 'descending');
+        });
+
+        test('reads a field name passed to the top-level helpers', () {
+          for (final (ordering, direction) in [
+            (ascending('rating'), 'ascending'),
+            (descending('rating'), 'descending'),
+          ]) {
+            expect(
+              ordering.expr,
+              isA<PipelineField>().having((f) => f.path, 'path', 'rating'),
+            );
+            expect(ordering.direction, direction);
+          }
+        });
+      });
     });
 
     group('createFrom', () {

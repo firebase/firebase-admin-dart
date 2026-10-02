@@ -240,10 +240,6 @@ const _pendingFixes = <String, String>{
   'Pipeline.toScalarExpression':
       'Missing: Node turns a Pipeline into a scalar subquery expression.',
   'Pipeline.stream': 'Missing: Node streams results; Dart only has execute().',
-  'PipelineOrdering.expr':
-      'Missing getter: Node Ordering exposes its expression.',
-  'PipelineOrdering.direction':
-      "Missing getter: Node Ordering exposes 'ascending' | 'descending'.",
 };
 
 void main() {
