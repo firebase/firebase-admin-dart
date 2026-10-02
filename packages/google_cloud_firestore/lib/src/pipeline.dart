@@ -268,6 +268,27 @@ List<Object?> _fieldOrExpressionFirst(Iterable<Object?> values) {
   return list;
 }
 
+/// Interprets a list of numbers in a vector position as a [VectorValue].
+///
+/// Mirrors the Node SDK's `vectorToExpr`: the vector distance functions and
+/// the `find_nearest` stage take a [VectorValue], an expression, or a plain
+/// list of numbers. Left to [_encodePipelineValue], a list would encode as an
+/// `ARRAY`, which the backend rejects where it expects a `Vector`.
+Object? _vectorOrExpression(Object? value, String name) {
+  if (value is! Iterable<Object?>) return value;
+  return FieldValue.vector([
+    for (final element in value)
+      switch (element) {
+        num() => element.toDouble(),
+        _ => throw ArgumentError.value(
+          value,
+          name,
+          'Expected a VectorValue, a list of numbers, or an expression.',
+        ),
+      },
+  ]);
+}
+
 /// Creates a logical AND expression.
 PipelineBooleanExpression and(Iterable<PipelineBooleanExpression> expressions) {
   return _PipelineBooleanExpression('and', expressions.toList());
@@ -1202,18 +1223,33 @@ abstract final class PipelineFunctions {
   }
 
   /// COSINE_DISTANCE vector function.
+  ///
+  /// [right] is a [VectorValue], a list of numbers, or an expression.
   static PipelineExpression cosineDistance(Object? left, Object? right) {
-    return _expr('cosine_distance', [_fieldOrExpression(left), right]);
+    return _expr('cosine_distance', [
+      _fieldOrExpression(left),
+      _vectorOrExpression(right, 'right'),
+    ]);
   }
 
   /// DOT_PRODUCT vector function.
+  ///
+  /// [right] is a [VectorValue], a list of numbers, or an expression.
   static PipelineExpression dotProduct(Object? left, Object? right) {
-    return _expr('dot_product', [_fieldOrExpression(left), right]);
+    return _expr('dot_product', [
+      _fieldOrExpression(left),
+      _vectorOrExpression(right, 'right'),
+    ]);
   }
 
   /// EUCLIDEAN_DISTANCE vector function.
+  ///
+  /// [right] is a [VectorValue], a list of numbers, or an expression.
   static PipelineExpression euclideanDistance(Object? left, Object? right) {
-    return _expr('euclidean_distance', [_fieldOrExpression(left), right]);
+    return _expr('euclidean_distance', [
+      _fieldOrExpression(left),
+      _vectorOrExpression(right, 'right'),
+    ]);
   }
 
   /// VECTOR_LENGTH vector function.
@@ -1540,6 +1576,8 @@ final class Pipeline {
   }
 
   /// Performs vector nearest-neighbor search.
+  ///
+  /// [queryVector] is a [VectorValue], a list of numbers, or an expression.
   Pipeline findNearest({
     required Object vectorField,
     required Object queryVector,
@@ -1552,7 +1590,7 @@ final class Pipeline {
       'find_nearest',
       [
         if (vectorField is String) field(vectorField) else vectorField,
-        queryVector,
+        _vectorOrExpression(queryVector, 'queryVector'),
         distanceMeasure.value.toLowerCase(),
       ],
       options: _compactOptions({
@@ -2777,16 +2815,22 @@ sealed class PipelineExpression {
   }
 
   /// Computes cosine distance between this vector and [other].
+  ///
+  /// [other] is a [VectorValue], a list of numbers, or an expression.
   PipelineExpression cosineDistance(Object? other) {
     return PipelineFunctions.cosineDistance(this, other);
   }
 
   /// Computes dot product between this vector and [other].
+  ///
+  /// [other] is a [VectorValue], a list of numbers, or an expression.
   PipelineExpression dotProduct(Object? other) {
     return PipelineFunctions.dotProduct(this, other);
   }
 
   /// Computes Euclidean distance between this vector and [other].
+  ///
+  /// [other] is a [VectorValue], a list of numbers, or an expression.
   PipelineExpression euclideanDistance(Object? other) {
     return PipelineFunctions.euclideanDistance(this, other);
   }

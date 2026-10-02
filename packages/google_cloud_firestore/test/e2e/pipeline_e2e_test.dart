@@ -400,6 +400,24 @@ void main() {
       expect(vectorSnapshot.results.single.get('title'), 'Dart Pipelines');
       expect(vectorSnapshot.results.single.get('distance'), isNotNull);
     });
+
+    test('executes vector nearest-neighbor stage with a list', () async {
+      final vectorSnapshot = await firestore
+          .pipeline()
+          .collection(_collectionPath)
+          .where(Expression.field('runId').equal(runId))
+          .findNearest(
+            vectorField: 'embedding',
+            queryVector: const [1.0, 0.0, 0.0],
+            distanceMeasure: DistanceMeasure.cosine,
+            limit: 1,
+            distanceResultField: 'distance',
+          )
+          .execute();
+
+      expect(vectorSnapshot.results, hasLength(1));
+      expect(vectorSnapshot.results.single.get('title'), 'Dart Pipelines');
+    });
   });
 }
 
@@ -1092,6 +1110,24 @@ final _functionScenarios = <_FunctionScenario>[
       'vectorLength',
       Expression.field('embedding').vectorLength(),
       3,
+    ),
+  ]),
+  // A plain list of numbers must reach the backend as a vector, not an array.
+  _FunctionScenario('vector functions with list arguments', [
+    _FunctionExpectation(
+      'cosineDistance',
+      Expression.field('embedding').cosineDistance(const [1.0, 0.0, 0.0]),
+      closeTo(0, 0.0001),
+    ),
+    _FunctionExpectation(
+      'dotProduct',
+      PipelineFunctions.dotProduct('embedding', const [1, 0, 0]),
+      closeTo(1, 0.0001),
+    ),
+    _FunctionExpectation(
+      'euclideanDistance',
+      Expression.field('embedding').euclideanDistance(const [1.0, 0.0, 0.0]),
+      closeTo(0, 0.0001),
     ),
   ]),
 ];

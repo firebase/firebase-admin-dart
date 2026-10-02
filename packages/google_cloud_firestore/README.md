@@ -307,6 +307,10 @@ proportion between 0 and 1. Exactly one of the two must be given.
 )
 ```
 
+`queryVector` takes a `VectorValue`, a plain list of numbers, or an
+expression. So does the second argument of `cosineDistance`, `dotProduct` and
+`euclideanDistance`; either way it is sent as a vector.
+
 **`rawStage`** — escape hatch for preview stages this SDK does not yet wrap.
 `search` is a thin wrapper over the same mechanism.
 

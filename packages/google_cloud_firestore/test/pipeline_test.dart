@@ -1606,6 +1606,187 @@ void main() {
       });
     });
 
+    group('vector arguments', () {
+      late List<firestore_v1.Pipeline_Stage> stages;
+
+      Future<void> run(Pipeline pipeline) async {
+        firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+        when(
+          () => mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(
+            any(),
+          ),
+        ).thenAnswer((invocation) async {
+          final callback =
+              invocation.positionalArguments.single
+                  as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                  Function(firestore_v1.Firestore api, String projectId);
+
+          final api = FakeFirestore(
+            executePipeline: (firestore_v1.ExecutePipelineRequest request) {
+              capturedRequest = request;
+              return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+            },
+          );
+
+          return callback(api, _projectId);
+        });
+
+        await pipeline.execute();
+        stages = capturedRequest!.structuredPipeline!.pipeline!.stages;
+      }
+
+      Pipeline base() => firestore.pipeline().collection('books');
+
+      void expectVector(firestore_v1.Value value, List<double> expected) {
+        expect(value.arrayValue, isNull, reason: 'a vector is not an ARRAY');
+        final fields = value.mapValue!.fields;
+        expect(fields['__type__']!.stringValue, '__vector__');
+        expect(
+          fields['value']!.arrayValue!.values.map((v) => v.doubleValue),
+          expected,
+        );
+      }
+
+      Future<Map<String, firestore_v1.Value>> selectAll(
+        Object? Function() vector,
+      ) async {
+        await run(
+          base().select([
+            PipelineFunctions.cosineDistance(
+              'embedding',
+              vector(),
+            ).as('cosine'),
+            PipelineFunctions.dotProduct('embedding', vector()).as('dot'),
+            PipelineFunctions.euclideanDistance(
+              'embedding',
+              vector(),
+            ).as('euclidean'),
+            field('embedding').cosineDistance(vector()).as('fluentCosine'),
+            field('embedding').dotProduct(vector()).as('fluentDot'),
+            field(
+              'embedding',
+            ).euclideanDistance(vector()).as('fluentEuclidean'),
+          ]),
+        );
+        return stages[1].args.single.mapValue!.fields;
+      }
+
+      test('encode a List<double> as a vector', () async {
+        // Regression: a plain list used to encode as an ARRAY, which the
+        // backend rejects with "requires `Vector` but got `ARRAY`".
+        final fields = await selectAll(() => const [1.0, 0.0, 0.5]);
+
+        expect(fields, hasLength(6));
+        for (final entry in fields.entries) {
+          final function = entry.value.functionValue!;
+          expect(function.args[0].fieldReferenceValue, 'embedding');
+          expectVector(function.args[1], [1.0, 0.0, 0.5]);
+        }
+      });
+
+      test('encode a List<int> as a vector of doubles', () async {
+        final fields = await selectAll(() => const [1, 2, 3]);
+
+        for (final function in fields.values) {
+          expectVector(function.functionValue!.args[1], [1.0, 2.0, 3.0]);
+        }
+      });
+
+      test('encode an untyped list of numbers as a vector', () async {
+        // As decoded from JSON, for instance.
+        final fields = await selectAll(() => <dynamic>[1, 2.5]);
+
+        for (final function in fields.values) {
+          expectVector(function.functionValue!.args[1], [1.0, 2.5]);
+        }
+      });
+
+      test('keep a VectorValue as a vector', () async {
+        final fields = await selectAll(() => FieldValue.vector([1, 2, 3]));
+
+        for (final function in fields.values) {
+          expectVector(function.functionValue!.args[1], [1.0, 2.0, 3.0]);
+        }
+      });
+
+      test('pass expressions through', () async {
+        final fieldFunctions = await selectAll(() => field('other'));
+        for (final function in fieldFunctions.values) {
+          expect(function.functionValue!.args[1].fieldReferenceValue, 'other');
+        }
+
+        final constantFunctions = await selectAll(
+          () => Expression.vector([1, 2, 3]),
+        );
+        for (final function in constantFunctions.values) {
+          expectVector(function.functionValue!.args[1], [1.0, 2.0, 3.0]);
+        }
+      });
+
+      test('reject a list that is not all numbers', () {
+        expect(
+          () => PipelineFunctions.cosineDistance('embedding', [1, 'two']),
+          throwsA(isA<ArgumentError>()),
+        );
+        expect(
+          () => field('embedding').dotProduct([field('x')]),
+          throwsA(isA<ArgumentError>()),
+        );
+        expect(
+          () => base().findNearest(
+            vectorField: 'embedding',
+            queryVector: ['1'],
+            distanceMeasure: DistanceMeasure.cosine,
+          ),
+          throwsA(isA<ArgumentError>()),
+        );
+      });
+
+      group('findNearest', () {
+        Future<firestore_v1.Value> queryVectorOf(Object queryVector) async {
+          await run(
+            base().findNearest(
+              vectorField: 'embedding',
+              queryVector: queryVector,
+              distanceMeasure: DistanceMeasure.euclidean,
+            ),
+          );
+          final stage = stages.last;
+          expect(stage.name, 'find_nearest');
+          expect(stage.args[0].fieldReferenceValue, 'embedding');
+          expect(stage.args[2].stringValue, 'euclidean');
+          return stage.args[1];
+        }
+
+        test('encodes a List<double> as a vector', () async {
+          expectVector(await queryVectorOf(const [1.0, 2.0]), [1.0, 2.0]);
+        });
+
+        test('encodes a List<int> as a vector of doubles', () async {
+          expectVector(await queryVectorOf(const [1, 2]), [1.0, 2.0]);
+        });
+
+        test('keeps a VectorValue as a vector', () async {
+          expectVector(await queryVectorOf(FieldValue.vector([1, 2])), [
+            1.0,
+            2.0,
+          ]);
+        });
+
+        test('passes expressions through', () async {
+          expectVector(await queryVectorOf(Expression.vector([1, 2])), [
+            1.0,
+            2.0,
+          ]);
+          expect(
+            (await queryVectorOf(field('target'))).fieldReferenceValue,
+            'target',
+          );
+        });
+      });
+    });
+
     test('serializes newly added expressions', () async {
       firestore_v1.ExecutePipelineRequest? capturedRequest;
 
@@ -2189,6 +2370,12 @@ void main() {
 
         final findNearest = stages.last;
         expect(findNearest.args[0].fieldReferenceValue, 'embedding');
+        final queryVector = findNearest.args[1].mapValue!.fields;
+        expect(queryVector['__type__']!.stringValue, '__vector__');
+        expect(
+          queryVector['value']!.arrayValue!.values.map((v) => v.doubleValue),
+          [1.0, 2.0, 3.0],
+        );
         // Pipelines take a lowercase distance measure even though the
         // DistanceMeasure enum keeps the uppercase proto values.
         expect(findNearest.args[2].stringValue, 'cosine');
