@@ -213,10 +213,6 @@ const _pendingFixes = <String, String>{
       'Takes an Iterable of alternating keys and values; Node '
       'map(elements: Record<string, unknown>) takes a map, which Dart '
       'callers cannot pass.',
-  'field#fieldPath':
-      'Only takes a String; Node field() also takes a FieldPath.',
-  'Expression.field#fieldPath':
-      'Only takes a String; Node field() also takes a FieldPath.',
   'PipelineSource.documents#documents':
       'Only takes DocumentReferences; Node documents() also takes document '
       'path strings.',
