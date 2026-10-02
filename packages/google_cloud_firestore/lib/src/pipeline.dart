@@ -201,6 +201,10 @@ final class PipelineExplainOptions {
 }
 
 /// Creates a raw Pipeline function expression.
+///
+/// [args] are sent as-is: a [List] or [Map] is a literal value, which cannot
+/// hold expressions. Build those with [PipelineFunctions.array] or
+/// [PipelineFunctions.map].
 PipelineExpression pipelineFunction(
   String name,
   Iterable<Object?> args, {
@@ -244,7 +248,7 @@ PipelineBooleanExpression _comparison(
   Object? left,
   Object? right,
 ) {
-  return _PipelineBooleanExpression(name, [_fieldOrExpression(left), right]);
+  return PipelineFunctions._bool(name, [_fieldOrExpression(left), right]);
 }
 
 /// Interprets a [String] in a field position as a field reference.
@@ -289,6 +293,40 @@ Object? _vectorOrExpression(Object? value, String name) {
   ]);
 }
 
+/// Converts a Dart collection in a value position to the function that builds
+/// it.
+///
+/// Mirrors the Node SDK's `valueToDefaultExpr`: an [Iterable] becomes an
+/// `array(...)` function and a [Map] a `map(...)` function, with their entries
+/// converted the same way. The backend rejects expressions nested inside a
+/// literal array or map value, so this is what lets a collection such as
+/// `[field('a'), 1]` hold expressions. Other values are returned unchanged;
+/// wrap a collection in [constant] to send it as a literal value instead.
+Object? _valueToDefaultExpr(Object? value) {
+  return switch (value) {
+    Uint8List() => value,
+    Iterable() => PipelineFunctions.array(value),
+    Map() => PipelineFunctions.map([
+      for (final entry in value.entries) ...[entry.key.toString(), entry.value],
+    ]),
+    _ => value,
+  };
+}
+
+/// Whether [value] is, or holds, an expression the backend has to evaluate.
+///
+/// Constants already encode to plain values, so they don't count.
+bool _containsExpression(Object? value) {
+  return switch (value) {
+    _PipelineConstant() || _PipelineProtoValue() => false,
+    PipelineExpression() || Pipeline() => true,
+    Uint8List() => false,
+    Iterable() => value.any(_containsExpression),
+    Map() => value.values.any(_containsExpression),
+    _ => false,
+  };
+}
+
 /// Creates a logical AND expression.
 PipelineBooleanExpression and(Iterable<PipelineBooleanExpression> expressions) {
   return _PipelineBooleanExpression('and', expressions.toList());
@@ -320,18 +358,46 @@ PipelineBooleanExpression documentMatches(Object? rquery) {
 /// These helpers encode to the backend function names documented in the
 /// Firestore Pipeline functions reference. String arguments are encoded as
 /// string literals; use [field] when you want to reference a document field.
+///
+/// A [List] or [Map] argument may hold expressions, as in `[field('a'), 1]`:
+/// it is sent as an [array] or [map] function so the backend evaluates them.
+/// Wrap a collection in [constant] to send it as a literal value instead.
 abstract final class PipelineFunctions {
   static PipelineExpression _expr(String name, Iterable<Object?> args) {
-    return pipelineFunction(name, args);
+    return pipelineFunction(name, args.map(_valueToDefaultExpr));
   }
 
   static PipelineBooleanExpression _bool(String name, Iterable<Object?> args) {
-    return _PipelineBooleanExpression(name, args.toList());
+    return _PipelineBooleanExpression(name, [...args.map(_valueToDefaultExpr)]);
+  }
+
+  /// Tests [target] against the values in [searchSpace].
+  ///
+  /// Like the Node SDK, a list of plain values is sent as a literal array
+  /// value. A list holding expressions is built with [array] instead, since the
+  /// backend rejects expressions nested inside a literal array value.
+  static PipelineBooleanExpression _searchSpaceFunction(
+    String name,
+    Object? target,
+    Object? searchSpace,
+  ) {
+    final values = switch (searchSpace) {
+      Iterable() when !_containsExpression(searchSpace) => searchSpace.toList(),
+      _ => _valueToDefaultExpr(searchSpace),
+    };
+    return _PipelineBooleanExpression(name, [
+      _valueToDefaultExpr(_fieldOrExpression(target)),
+      values,
+    ]);
   }
 
   /// Creates a raw Pipeline function expression.
+  ///
+  /// Unlike the other helpers, [args] are sent as-is: a [List] or [Map] is a
+  /// literal value, which cannot hold expressions. Build those with [array]
+  /// or [map].
   static PipelineExpression raw(String name, Iterable<Object?> args) {
-    return _expr(name, args);
+    return pipelineFunction(name, args);
   }
 
   /// COUNT aggregate function.
@@ -507,6 +573,8 @@ abstract final class PipelineFunctions {
   static PipelineExpression rand() => _expr('rand', const []);
 
   /// ARRAY construction function.
+  ///
+  /// [values] may mix literals and expressions, as in `[field('a'), 1]`.
   static PipelineExpression array(Iterable<Object?> values) {
     return _expr('array', values);
   }
@@ -522,25 +590,23 @@ abstract final class PipelineFunctions {
   }
 
   /// ARRAY_CONTAINS_ALL function.
+  ///
+  /// [searchValues] is a list of values or an array expression.
   static PipelineBooleanExpression arrayContainsAll(
     Object? array,
     Object? searchValues,
   ) {
-    return _bool('array_contains_all', [
-      _fieldOrExpression(array),
-      searchValues,
-    ]);
+    return _searchSpaceFunction('array_contains_all', array, searchValues);
   }
 
   /// ARRAY_CONTAINS_ANY function.
+  ///
+  /// [searchValues] is a list of values or an array expression.
   static PipelineBooleanExpression arrayContainsAny(
     Object? array,
     Object? searchValues,
   ) {
-    return _bool('array_contains_any', [
-      _fieldOrExpression(array),
-      searchValues,
-    ]);
+    return _searchSpaceFunction('array_contains_any', array, searchValues);
   }
 
   /// ARRAY_FILTER function.
@@ -831,22 +897,28 @@ abstract final class PipelineFunctions {
   }
 
   /// EQUAL_ANY logical function.
+  ///
+  /// [searchSpace] is a list of values or an array expression.
   static PipelineBooleanExpression equalAny(
     Object? fieldName,
     Object? searchSpace,
   ) {
-    return _bool('equal_any', [_fieldOrExpression(fieldName), searchSpace]);
+    return _searchSpaceFunction('equal_any', fieldName, searchSpace);
   }
 
   /// NOT_EQUAL_ANY logical function.
+  ///
+  /// [searchSpace] is a list of values or an array expression.
   static PipelineBooleanExpression notEqualAny(
     Object? fieldName,
     Object? searchSpace,
   ) {
-    return _bool('not_equal_any', [_fieldOrExpression(fieldName), searchSpace]);
+    return _searchSpaceFunction('not_equal_any', fieldName, searchSpace);
   }
 
   /// MAP construction function.
+  ///
+  /// [keyValues] alternates keys and values; values may be expressions.
   static PipelineExpression map(Iterable<Object?> keyValues) {
     return _expr('map', keyValues);
   }
@@ -2216,52 +2288,52 @@ sealed class PipelineExpression {
 
   /// Creates an equality expression.
   PipelineBooleanExpression equal(Object? other) {
-    return _PipelineBooleanExpression('equal', [this, other]);
+    return PipelineFunctions.equal(this, other);
   }
 
   /// Creates a not-equal expression.
   PipelineBooleanExpression notEqual(Object? other) {
-    return _PipelineBooleanExpression('not_equal', [this, other]);
+    return PipelineFunctions.notEqual(this, other);
   }
 
   /// Creates a less-than expression.
   PipelineBooleanExpression lessThan(Object? other) {
-    return _PipelineBooleanExpression('less_than', [this, other]);
+    return PipelineFunctions.lessThan(this, other);
   }
 
   /// Creates a less-than-or-equal expression.
   PipelineBooleanExpression lessThanOrEqual(Object? other) {
-    return _PipelineBooleanExpression('less_than_or_equal', [this, other]);
+    return PipelineFunctions.lessThanOrEqual(this, other);
   }
 
   /// Creates a greater-than expression.
   PipelineBooleanExpression greaterThan(Object? other) {
-    return _PipelineBooleanExpression('greater_than', [this, other]);
+    return PipelineFunctions.greaterThan(this, other);
   }
 
   /// Creates a greater-than-or-equal expression.
   PipelineBooleanExpression greaterThanOrEqual(Object? other) {
-    return _PipelineBooleanExpression('greater_than_or_equal', [this, other]);
+    return PipelineFunctions.greaterThanOrEqual(this, other);
   }
 
   /// Creates an addition expression.
   PipelineExpression add(Object? other) {
-    return _PipelineFunctionExpression('add', [this, other], const {});
+    return PipelineFunctions.add(this, other);
   }
 
   /// Creates a subtraction expression.
   PipelineExpression subtract(Object? other) {
-    return _PipelineFunctionExpression('subtract', [this, other], const {});
+    return PipelineFunctions.subtract(this, other);
   }
 
   /// Creates a multiplication expression.
   PipelineExpression multiply(Object? other) {
-    return _PipelineFunctionExpression('multiply', [this, other], const {});
+    return PipelineFunctions.multiply(this, other);
   }
 
   /// Creates a division expression.
   PipelineExpression divide(Object? other) {
-    return _PipelineFunctionExpression('divide', [this, other], const {});
+    return PipelineFunctions.divide(this, other);
   }
 
   /// Returns the absolute value of this expression.
@@ -2379,10 +2451,7 @@ sealed class PipelineExpression {
 
   /// Checks if this array contains all [values].
   PipelineBooleanExpression arrayContainsAll(Iterable<Object?> values) {
-    return PipelineFunctions.arrayContainsAll(
-      this,
-      PipelineFunctions.array(values),
-    );
+    return PipelineFunctions.arrayContainsAll(this, values);
   }
 
   /// Checks if this array contains all values from [arrayExpression].
@@ -2392,10 +2461,7 @@ sealed class PipelineExpression {
 
   /// Checks if this array contains any [values].
   PipelineBooleanExpression arrayContainsAny(Iterable<Object?> values) {
-    return PipelineFunctions.arrayContainsAny(
-      this,
-      PipelineFunctions.array(values),
-    );
+    return PipelineFunctions.arrayContainsAny(this, values);
   }
 
   /// Filters this array expression.

@@ -370,6 +370,15 @@ PipelineFunctions.startsWith('title', 'Harry');
 PipelineFunctions.startsWith('title', field('prefix'));
 ```
 
+A `List` or `Map` argument may mix literals and expressions. It is sent as an
+`array(...)` / `map(...)` function so the backend evaluates the expressions
+inside it; wrap it in `constant` to send a literal value instead:
+
+```dart
+PipelineFunctions.equalAny('rating', [field('score'), 5]);
+field('metadata').mapMerge([{'reviewer': field('editor')}]);
+```
+
 Selected expressions must be aliased with `as` (or `alias`):
 
 ```dart
@@ -405,7 +414,8 @@ maps; `charLength`/`stringReverse`/`stringConcat` and
 `logicalMaximum` to compare several operands element-wise.
 
 Anything not yet wrapped is reachable via `PipelineFunctions.raw` or
-`pipelineFunction`:
+`pipelineFunction`. Their arguments are sent as-is, so build a collection that
+holds expressions with `PipelineFunctions.array` / `PipelineFunctions.map`:
 
 ```dart
 PipelineFunctions.raw('some_new_function', [field('x'), 42]);

@@ -291,6 +291,33 @@ void main() {
       ]);
     });
 
+    test('filters with a search space holding expressions', () async {
+      // Regression: the list was sent as a literal array value, which the
+      // backend rejected with "Value type is not supported:
+      // FIELD_REFERENCE_VALUE".
+      final snapshot = await firestore
+          .pipeline()
+          .collection(_collectionPath)
+          .where(
+            _runFilter(
+              runId,
+              PipelineFunctions.equalAny('discount', [
+                Expression.field('flags'),
+                2,
+              ]),
+            ),
+          )
+          .sort([Expression.field('price').ascending()])
+          .select([Expression.field('title')])
+          .execute();
+
+      // Book 1 matches the literal 2, book 2 its own `flags` (3).
+      expect(snapshot.results.map((result) => result.get('title')), [
+        'Dart Pipelines',
+        'Firestore Admin',
+      ]);
+    });
+
     test('executes a collection group source stage', () async {
       final snapshot = await firestore
           .pipeline()
@@ -880,6 +907,83 @@ final _functionScenarios = <_FunctionScenario>[
       'mapEntries',
       Expression.field('metadata').mapEntries(),
       isA<List<Object?>>(),
+    ),
+  ]),
+  // Collections that hold expressions must be built with array(...) /
+  // map(...); the backend rejects them inside a literal array or map value.
+  _FunctionScenario('collections holding expressions', [
+    _FunctionExpectation(
+      'equalAny',
+      PipelineFunctions.equalAny('rating', [Expression.field('score'), 5]),
+      true,
+    ),
+    _FunctionExpectation(
+      'equalAnyMatchesExpression',
+      Expression.field(
+        'price',
+      ).equalAny([Expression.field('rating').multiply(2), 3]),
+      true,
+    ),
+    _FunctionExpectation(
+      'notEqualAny',
+      PipelineFunctions.notEqualAny('rating', [Expression.field('price'), 4]),
+      true,
+    ),
+    _FunctionExpectation(
+      'arrayContainsAll',
+      PipelineFunctions.arrayContainsAll('tags', [
+        Expression.field('metadata').mapGetLiteral('lang'),
+        'firebase',
+      ]),
+      true,
+    ),
+    _FunctionExpectation(
+      'arrayContainsAny',
+      Expression.field('tags').arrayContainsAny([
+        Expression.field('metadata').mapGetLiteral('lang'),
+        'missing',
+      ]),
+      true,
+    ),
+    _FunctionExpectation(
+      'arrayConcat',
+      Expression.field('tags').arrayConcat([Expression.field('title')]),
+      ['dart', 'firebase', 'Dart Pipelines'],
+    ),
+    _FunctionExpectation(
+      'mapMerge',
+      Expression.field('metadata').mapMerge([
+        {'title': Expression.field('title')},
+      ]),
+      containsPair('title', 'Dart Pipelines'),
+    ),
+    _FunctionExpectation(
+      'equal',
+      Expression.field(
+        'tags',
+      ).equal([Expression.field('metadata').mapGetLiteral('lang'), 'firebase']),
+      true,
+    ),
+    _FunctionExpectation(
+      'nestedArray',
+      Expression.array([
+        1,
+        [Expression.field('price')],
+      ]),
+      [
+        1,
+        [10],
+      ],
+    ),
+    _FunctionExpectation(
+      'nestedMap',
+      PipelineFunctions.map([
+        'nested',
+        {'price': Expression.field('price')},
+      ]),
+      {
+        'nested': {'price': 10},
+      },
     ),
   ]),
   _FunctionScenario('string functions', [

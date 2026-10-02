@@ -1794,6 +1794,274 @@ void main() {
       });
     });
 
+    // The backend rejects expressions nested inside a literal array or map
+    // value ("Value type is not supported: FIELD_REFERENCE_VALUE"), so
+    // collections holding them must be built with array(...) / map(...).
+    group('Collections holding expressions', () {
+      late Map<String, firestore_v1.Value> fields;
+
+      Future<void> run(Iterable<PipelineAliasedExpression> selections) async {
+        firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+        when(
+          () => mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(
+            any(),
+          ),
+        ).thenAnswer((invocation) async {
+          final callback =
+              invocation.positionalArguments.single
+                  as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                  Function(firestore_v1.Firestore api, String projectId);
+
+          final api = FakeFirestore(
+            executePipeline: (firestore_v1.ExecutePipelineRequest request) {
+              capturedRequest = request;
+              return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+            },
+          );
+
+          return callback(api, _projectId);
+        });
+
+        await firestore
+            .pipeline()
+            .collection('books')
+            .select(selections)
+            .execute();
+        final stages = capturedRequest!.structuredPipeline!.pipeline!.stages;
+        fields = stages[1].args.single.mapValue!.fields;
+      }
+
+      firestore_v1.Function$ function(String alias) {
+        return fields[alias]!.functionValue!;
+      }
+
+      /// Expects [value] to be `array(field(score), 5)`.
+      void expectMixedArray(firestore_v1.Value value) {
+        final array = value.functionValue!;
+        expect(array.name, 'array');
+        expect(array.args, hasLength(2));
+        expect(array.args[0].fieldReferenceValue, 'score');
+        expect(array.args[1].integerValue, 5);
+        expect(value.arrayValue, isNull);
+      }
+
+      test('equalAny and notEqualAny build an array function', () async {
+        final values = [field('score'), 5];
+        await run([
+          PipelineFunctions.equalAny('rating', values).as('static'),
+          field('rating').equalAny(values).as('fluent'),
+          PipelineFunctions.notEqualAny('rating', values).as('notStatic'),
+          field('rating').notEqualAny(values).as('notFluent'),
+        ]);
+
+        for (final alias in ['static', 'fluent']) {
+          expect(function(alias).name, 'equal_any');
+          expect(function(alias).args[0].fieldReferenceValue, 'rating');
+          expectMixedArray(function(alias).args[1]);
+        }
+        for (final alias in ['notStatic', 'notFluent']) {
+          expect(function(alias).name, 'not_equal_any');
+          expect(function(alias).args[0].fieldReferenceValue, 'rating');
+          expectMixedArray(function(alias).args[1]);
+        }
+      });
+
+      test(
+        'arrayContainsAll and arrayContainsAny build an array function',
+        () async {
+          final values = [field('score'), 5];
+          await run([
+            PipelineFunctions.arrayContainsAll('tags', values).as('allStatic'),
+            field('tags').arrayContainsAll(values).as('allFluent'),
+            PipelineFunctions.arrayContainsAny('tags', values).as('anyStatic'),
+            field('tags').arrayContainsAny(values).as('anyFluent'),
+          ]);
+
+          for (final alias in ['allStatic', 'allFluent']) {
+            expect(function(alias).name, 'array_contains_all');
+            expectMixedArray(function(alias).args[1]);
+          }
+          for (final alias in ['anyStatic', 'anyFluent']) {
+            expect(function(alias).name, 'array_contains_any');
+            expectMixedArray(function(alias).args[1]);
+          }
+        },
+      );
+
+      test('search spaces of plain values stay literal arrays', () async {
+        // Matches the Node SDK, which sends these as a literal array value.
+        await run([
+          PipelineFunctions.equalAny('genre', ['fiction', 'poetry']).as('eq'),
+          field('genre').notEqualAny(['fiction']).as('notEq'),
+          PipelineFunctions.arrayContainsAll('tags', ['a', 'b']).as('all'),
+          field('tags').arrayContainsAny(['a', constant('b')]).as('any'),
+          field('genre').equalAny(field('genres')).as('expression'),
+        ]);
+
+        for (final alias in ['eq', 'notEq', 'all', 'any']) {
+          final searchSpace = function(alias).args[1];
+          expect(searchSpace.functionValue, isNull, reason: alias);
+          expect(searchSpace.arrayValue, isNotNull, reason: alias);
+        }
+        expect(
+          function('any').args[1].arrayValue!.values.map((v) => v.stringValue),
+          ['a', 'b'],
+        );
+        expect(function('expression').args[1].fieldReferenceValue, 'genres');
+      });
+
+      test('static and fluent forms encode identically', () async {
+        final values = [field('score'), 5, 'x'];
+        await run([
+          PipelineFunctions.equalAny('rating', values).as('a'),
+          field('rating').equalAny(values).as('b'),
+          PipelineFunctions.arrayContainsAll('tags', values).as('c'),
+          field('tags').arrayContainsAll(values).as('d'),
+          PipelineFunctions.arrayContainsAll('tags', ['x']).as('e'),
+          field('tags').arrayContainsAll(['x']).as('f'),
+        ]);
+
+        expect(fields['a']!.toJson(), fields['b']!.toJson());
+        expect(fields['c']!.toJson(), fields['d']!.toJson());
+        expect(fields['e']!.toJson(), fields['f']!.toJson());
+      });
+
+      test('mapMerge builds a map function', () async {
+        await run([
+          PipelineFunctions.mapMerge([
+            'metadata',
+            {'reviewer': field('editor'), 'lang': 'dart'},
+          ]).as('static'),
+          field('metadata')
+              .mapMerge([
+                {'reviewer': field('editor'), 'lang': 'dart'},
+              ])
+              .as('fluent'),
+          field('metadata').mapMerge([<String, Object?>{}]).as('empty'),
+        ]);
+
+        for (final alias in ['static', 'fluent']) {
+          final merge = function(alias);
+          expect(merge.name, 'map_merge');
+          expect(merge.args[0].fieldReferenceValue, 'metadata');
+          final map = merge.args[1].functionValue!;
+          expect(map.name, 'map');
+          expect(map.args.map((arg) => arg.toJson()), [
+            {'stringValue': 'reviewer'},
+            {'fieldReferenceValue': 'editor'},
+            {'stringValue': 'lang'},
+            {'stringValue': 'dart'},
+          ]);
+        }
+
+        final empty = function('empty').args[1].functionValue!;
+        expect(empty.name, 'map');
+        expect(empty.args, isEmpty);
+      });
+
+      test('nested collections are built recursively', () async {
+        await run([
+          PipelineFunctions.array([
+            1,
+            [field('title')],
+            {'published': field('published')},
+          ]).as('array'),
+          PipelineFunctions.map([
+            'nested',
+            {'price': field('price')},
+          ]).as('map'),
+        ]);
+
+        final array = function('array');
+        expect(array.name, 'array');
+        expect(array.args[0].integerValue, 1);
+        final inner = array.args[1].functionValue!;
+        expect(inner.name, 'array');
+        expect(inner.args.single.fieldReferenceValue, 'title');
+        final innerMap = array.args[2].functionValue!;
+        expect(innerMap.name, 'map');
+        expect(innerMap.args[0].stringValue, 'published');
+        expect(innerMap.args[1].fieldReferenceValue, 'published');
+
+        final map = function('map');
+        expect(map.args[0].stringValue, 'nested');
+        final nested = map.args[1].functionValue!;
+        expect(nested.name, 'map');
+        expect(nested.args[1].fieldReferenceValue, 'price');
+      });
+
+      test('apply to every value position', () async {
+        await run([
+          PipelineFunctions.arrayConcat([
+            'tags',
+            [field('title')],
+          ]).as('concat'),
+          field('tags').arrayConcat([field('title')]).as('fluentConcat'),
+          field('tags').arrayContains([field('title')]).as('contains'),
+          equal('tags', [field('title')]).as('topLevelEqual'),
+          PipelineFunctions.equal('tags', [field('title')]).as('staticEqual'),
+          field('tags').equal([field('title')]).as('fluentEqual'),
+          field(
+            'metadata',
+          ).mapSet('reviewer', {'name': field('editor')}).as('mapSet'),
+          PipelineFunctions.conditional(field('active'), [
+            field('title'),
+          ], const <Object?>[]).as('conditional'),
+          field('tags').ifAbsent([field('title')]).as('ifAbsent'),
+          PipelineFunctions.logicalMaximum('tags', [field('title')]).as('max'),
+        ]);
+
+        for (final alias in [
+          'concat',
+          'fluentConcat',
+          'contains',
+          'topLevelEqual',
+          'staticEqual',
+          'fluentEqual',
+          'ifAbsent',
+          'max',
+        ]) {
+          final array = function(alias).args[1].functionValue;
+          expect(array?.name, 'array', reason: alias);
+          expect(array!.args.single.fieldReferenceValue, 'title');
+        }
+
+        final mapSet = function('mapSet');
+        expect(mapSet.args[1].stringValue, 'reviewer');
+        expect(mapSet.args[2].functionValue!.name, 'map');
+
+        final conditional = function('conditional');
+        expect(conditional.args[1].functionValue!.name, 'array');
+        expect(conditional.args[2].functionValue!.name, 'array');
+        expect(conditional.args[2].functionValue!.args, isEmpty);
+      });
+
+      test('constant and raw keep collections literal', () async {
+        await run([
+          field('tags').equal(constant(['a', 'b'])).as('constant'),
+          PipelineFunctions.raw('array_length', [
+            ['a', 'b'],
+          ]).as('raw'),
+          field('bytes').equal(Uint8List.fromList([1, 2])).as('bytes'),
+        ]);
+
+        expect(
+          function(
+            'constant',
+          ).args[1].arrayValue!.values.map((v) => v.stringValue),
+          ['a', 'b'],
+        );
+        expect(
+          function(
+            'raw',
+          ).args.single.arrayValue!.values.map((v) => v.stringValue),
+          ['a', 'b'],
+        );
+        expect(function('bytes').args[1].bytesValue, isNotNull);
+      });
+    });
+
     test('serializes newly added expressions', () async {
       firestore_v1.ExecutePipelineRequest? capturedRequest;
 
