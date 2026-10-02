@@ -3619,6 +3619,86 @@ void main() {
         );
       });
 
+      group('applies a VectorQuery distanceThreshold as a filter', () {
+        Future<firestore_v1.Function$> runThreshold(
+          DistanceMeasure distanceMeasure, {
+          String? distanceResultField,
+        }) async {
+          await run(
+            firestore
+                .collection('books')
+                .findNearest(
+                  vectorField: 'embedding',
+                  queryVector: [1.0, 2.0, 3.0],
+                  limit: 5,
+                  distanceMeasure: distanceMeasure,
+                  distanceResultField: distanceResultField,
+                  distanceThreshold: 0.5,
+                ),
+          );
+
+          // find_nearest documents no threshold option, so none is sent.
+          final findNearest = stages[stages.length - 2];
+          expect(findNearest.name, 'find_nearest');
+          expect(
+            findNearest.options.keys,
+            isNot(contains('distance_threshold')),
+          );
+
+          final where = stages.last;
+          expect(where.name, 'where');
+          final condition = where.args.single.functionValue!;
+          expect(condition.args[1].doubleValue, 0.5);
+          return condition;
+        }
+
+        test('keeps euclidean distances at most the threshold', () async {
+          final condition = await runThreshold(DistanceMeasure.euclidean);
+
+          expect(condition.name, 'less_than_or_equal');
+          final distance = condition.args[0].functionValue!;
+          expect(distance.name, 'euclidean_distance');
+          expect(distance.args[0].fieldReferenceValue, 'embedding');
+          expect(
+            distance.args[1].mapValue!.fields['value']!.arrayValue!.values.map(
+              (v) => v.doubleValue,
+            ),
+            [1.0, 2.0, 3.0],
+          );
+        });
+
+        test('keeps cosine distances at most the threshold', () async {
+          final condition = await runThreshold(DistanceMeasure.cosine);
+
+          expect(condition.name, 'less_than_or_equal');
+          expect(condition.args[0].functionValue!.name, 'cosine_distance');
+        });
+
+        test('keeps dot products at least the threshold', () async {
+          // A larger dot product means more similar vectors.
+          final condition = await runThreshold(DistanceMeasure.dotProduct);
+
+          expect(condition.name, 'greater_than_or_equal');
+          expect(condition.args[0].functionValue!.name, 'dot_product');
+        });
+
+        test('reads the distance result field when there is one', () async {
+          final condition = await runThreshold(
+            DistanceMeasure.euclidean,
+            distanceResultField: 'distance',
+          );
+
+          expect(condition.name, 'less_than_or_equal');
+          expect(condition.args[0].fieldReferenceValue, 'distance');
+          expect(
+            stages[stages.length - 2]
+                .options['distance_field']!
+                .fieldReferenceValue,
+            'distance',
+          );
+        });
+      });
+
       test('rejects a query from a different database', () {
         final other = Firestore.internal(
           settings: const Settings(

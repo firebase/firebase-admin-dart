@@ -1608,7 +1608,9 @@ final class PipelineSource {
   ///
   /// [query] must be a [Query] or a [VectorQuery]. Its filters, projections,
   /// orderings, cursors, limit and offset are all translated into the
-  /// corresponding Pipeline stages.
+  /// corresponding Pipeline stages. A [VectorQuery] becomes a find_nearest
+  /// stage, followed by a where stage on the distance when it has a
+  /// distance threshold.
   ///
   /// Throws an [ArgumentError] when [query] targets a different database than
   /// this Pipeline.
@@ -2387,24 +2389,54 @@ PipelineBooleanExpression _cursorCondition(
 }
 
 /// Translates the [VectorQuery] surface onto Pipeline stages.
+///
+/// Mirrors the Node SDK's `VectorQuery._pipeline()`, except that it keeps the
+/// options Node drops: the distance result field becomes find_nearest's
+/// `distance_field`, and the distance threshold a filter on the distance.
 extension _VectorQueryToPipeline<T> on VectorQuery<T> {
   Pipeline _toPipeline(Firestore firestore) {
     // Both fields are a String or a FieldPath; field() reads either.
     final vectorField = field(_options.vectorField);
+    final queryVector = FieldValue.vector(_rawQueryVector);
     final distanceResultField = _options.distanceResultField;
-    return _query
+    final distanceMeasure = _options.distanceMeasure;
+
+    final pipeline = _query
         ._toPipeline(firestore)
         .where(vectorField.exists())
         ._findNearest(
           vectorField: vectorField,
-          queryVector: FieldValue.vector(_rawQueryVector),
-          distanceMeasure: _options.distanceMeasure,
+          queryVector: queryVector,
+          distanceMeasure: distanceMeasure,
           limit: _options.limit,
           distanceField: distanceResultField == null
               ? null
               : field(distanceResultField),
-          distanceThreshold: _options.distanceThreshold,
+          distanceThreshold: null,
         );
+
+    final threshold = _options.distanceThreshold;
+    if (threshold == null) return pipeline;
+
+    // The find_nearest stage documents no threshold option, so the threshold
+    // filters the nearest neighbors instead. The documents within the
+    // threshold are the nearest ones, so filtering the `limit` nearest
+    // neighbors keeps exactly the documents the query returns.
+    final distance = distanceResultField != null
+        ? field(distanceResultField)
+        : switch (distanceMeasure) {
+            DistanceMeasure.euclidean => vectorField.euclideanDistance(
+              queryVector,
+            ),
+            DistanceMeasure.cosine => vectorField.cosineDistance(queryVector),
+            DistanceMeasure.dotProduct => vectorField.dotProduct(queryVector),
+          };
+    // A larger dot product means more similar vectors.
+    return pipeline.where(
+      distanceMeasure == DistanceMeasure.dotProduct
+          ? distance.greaterThanOrEqual(threshold)
+          : distance.lessThanOrEqual(threshold),
+    );
   }
 }
 
