@@ -3,6 +3,19 @@
 - Added `CollectionReference.listDocumentsPages()`, which lists a collection's documents, including missing documents, one `DocumentReferencePage` at a time. It takes an optional `pageSize` and a `pageToken` to resume from a previous page's `nextPageToken`, so large collections can be walked without holding every reference in memory.
 - Fixed `CollectionReference.listDocuments()` returning only the first page of results. It now follows `nextPageToken` until the collection is exhausted, matching the Node Admin SDK, so large collections and missing documents past the first page are no longer silently dropped.
 - Fixed `DocumentReference.listCollections()` and `Firestore.listCollections()` returning only the first page of collection IDs. They now follow `nextPageToken` until every collection has been returned.
+- **Breaking:** `PipelineFunctions.join` and `PipelineFunctions.split` now require their delimiter, matching `PipelineExpression` and the Node Admin SDK. A one-argument call was always rejected by the backend with `INVALID_ARGUMENT`.
+- **Breaking:** `PipelineFunctions.mapRemove` and `PipelineExpression.mapRemove` take a single key (a `String` or an expression) and send `map_remove(map, key)`, like the Node Admin SDK, instead of an `Iterable` of keys. Chain `.mapRemove('a').mapRemove('b')` to remove several keys.
+- Fixed `PipelineFunctions.arrayMaximum`, `arrayMaximumN`, `arrayMinimum`, `arrayMinimumN` and `arraySum` sending function names (`array_maximum`, ...) that the backend rejects. They now send `maximum`, `maximum_n`, `minimum`, `minimum_n` and `sum`, like their `PipelineExpression` counterparts.
+- Fixed `Pipeline.addFields` sending one `alias` function per field instead of a single map keyed by alias, which the backend rejected.
+- Fixed `PipelineSource.collectionGroup()`, and `createFrom()` on a collection group query, omitting the leading root ancestor argument of the `collection_group` stage.
+- Fixed `PipelineValueType.double` sending `'double'` instead of `'float64'`, which made `isType` fail. Added the `int32`, `decimal128`, `maxKey`, `minKey`, `objectId` and `regex` value types.
+- Fixed `cosineDistance`, `dotProduct`, `euclideanDistance` and `Pipeline.findNearest` sending a plain list of numbers as an array instead of a vector.
+- Fixed Pipeline functions such as `equalAny`, `notEqualAny`, `arrayContainsAll`, `arrayContainsAny` and `mapMerge` failing when a `List` or `Map` argument holds expressions. Collection arguments are now sent as `array(...)` / `map(...)` functions, like the Node Admin SDK, and the static and fluent forms encode identically.
+- Fixed `PipelineResult.get` ignoring nested paths. It now accepts a `String` or a `FieldPath` and resolves dot-separated paths such as `'metadata.lang'`, like `DocumentSnapshot.get`.
+- `Pipeline.select`, `addFields`, `aggregate` and `distinct` now throw an `ArgumentError` on a duplicate field name or alias instead of silently keeping the last one, like the Node Admin SDK.
+- `PipelineExpression.substring` and `substringLiteral` now take `(position, [length])` like `PipelineFunctions.substring`: the second argument is a length, not an end index, and can be omitted.
+- `PipelineExpression.round` now accepts the optional `decimalPlaces` argument.
+- Exported the top-level `variable()` Pipeline helper.
 
 ## 0.5.5
 
