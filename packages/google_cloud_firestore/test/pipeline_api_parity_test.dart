@@ -200,10 +200,6 @@ const _knownDifferences = <String, String>{
 /// Remove an entry once its fix lands; the test fails while it is stale.
 const _pendingFixes = <String, String>{
   // Signatures.
-  'PipelineFunctions.map#keyValues':
-      'Takes an Iterable of alternating keys and values; Node '
-      'map(elements: Record<string, unknown>) takes a map, which Dart '
-      'callers cannot pass.',
   'Pipeline.findNearest#distanceThreshold':
       'Dart-only option, sent as `distance_threshold`: Node has no such '
       'find_nearest option and its createFrom(vectorQuery) drops '

@@ -442,10 +442,11 @@ maps; `charLength`/`stringReverse`/`stringConcat` and
 `logicalMaximum` to compare several operands element-wise.
 
 `add` and `multiply` take extra operands as a trailing list, sent as a single
-backend call:
+backend call, and `map` takes a `Map` or a list alternating keys and values:
 
 ```dart
 field('price').add(field('tax'), [field('shipping')]);
+PipelineFunctions.map({'title': field('title'), 'rating': 5});
 ```
 
 Anything not yet wrapped is reachable via `PipelineFunctions.raw` or

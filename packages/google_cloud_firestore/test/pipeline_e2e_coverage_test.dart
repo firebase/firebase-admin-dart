@@ -461,6 +461,9 @@ const _notValuePositions = <String, String>{
       'wraps a literal value; an expression is not a constant',
   'Expression.field(fieldPath)':
       'takes a String or a FieldPath; see the fieldPath shape',
+  'PipelineFunctions.map(keyValues)':
+      'takes the Map or alternating key/value Iterable itself; expressions go '
+      'in its values (see the nestedCollectionWithExpression shape)',
   'PipelineResult.get(field)':
       'takes a String or a FieldPath; see the dottedPath and fieldPath shapes',
   'PipelineSource.createFrom(query)': 'takes a Query or a VectorQuery',

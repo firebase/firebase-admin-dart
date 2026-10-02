@@ -342,9 +342,7 @@ Object? _valueToDefaultExpr(Object? value) {
   return switch (value) {
     Uint8List() => value,
     Iterable() => PipelineFunctions.array(value),
-    Map() => PipelineFunctions.map([
-      for (final entry in value.entries) ...[entry.key.toString(), entry.value],
-    ]),
+    Map() => PipelineFunctions.map(value),
     _ => value,
   };
 }
@@ -1020,9 +1018,27 @@ abstract final class PipelineFunctions {
 
   /// MAP construction function.
   ///
-  /// [keyValues] alternates keys and values; values may be expressions.
-  static PipelineExpression map(Iterable<Object?> keyValues) {
-    return _expr('map', keyValues);
+  /// [keyValues] is either a [Map], as in `map({'title': field('title')})`,
+  /// or an [Iterable] alternating keys and values, as in
+  /// `map(['title', field('title')])`. Values may be expressions; a [Map]'s
+  /// keys are sent as strings.
+  ///
+  /// Throws an [ArgumentError] when [keyValues] is neither.
+  static PipelineExpression map(Object keyValues) {
+    return _expr('map', switch (keyValues) {
+      Map() => [
+        for (final MapEntry(:key, :value) in keyValues.entries) ...[
+          key.toString(),
+          value,
+        ],
+      ],
+      Iterable() => keyValues,
+      _ => throw ArgumentError.value(
+        keyValues,
+        'keyValues',
+        'Expected a Map, or an Iterable alternating keys and values.',
+      ),
+    });
   }
 
   /// MAP_GET function.
