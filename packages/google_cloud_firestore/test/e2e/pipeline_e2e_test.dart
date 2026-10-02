@@ -662,6 +662,11 @@ final _functionScenarios = <_FunctionScenario>[
       Expression.field('words').joinLiteral('-'),
       'dart-firebase',
     ),
+    _FunctionExpectation(
+      'joinStatic',
+      PipelineFunctions.join('words', ', '),
+      'dart, firebase',
+    ),
   ]),
   _FunctionScenario('comparison functions', [
     _FunctionExpectation('equal', Expression.field('price').equal(10), true),

@@ -644,12 +644,10 @@ abstract final class PipelineFunctions {
     return _expr('minimum_n', [_fieldOrExpression(array), n]);
   }
 
-  /// JOIN function.
-  static PipelineExpression join(Object? array, [Object? separator]) {
-    return _expr('join', [
-      _fieldOrExpression(array),
-      ..._optionalArg(separator),
-    ]);
+  /// JOIN function: joins the elements of [array] into a string separated by
+  /// [delimiter].
+  static PipelineExpression join(Object? array, Object? delimiter) {
+    return _expr('join', [_fieldOrExpression(array), delimiter]);
   }
 
   /// EQUAL comparison function.

@@ -652,6 +652,63 @@ void main() {
       expect(whereFunction.args[1].functionValue!.name, 'is_type');
     });
 
+    test('join always sends the array and the delimiter', () async {
+      firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+      when(
+        () =>
+            mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                Function(firestore_v1.Firestore api, String projectId);
+
+        final api = FakeFirestore(
+          executePipeline: (firestore_v1.ExecutePipelineRequest request) {
+            capturedRequest = request;
+            return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+          },
+        );
+
+        return callback(api, _projectId);
+      });
+
+      // The backend only accepts `join(array, delimiter)`: a one-argument
+      // `join` is rejected with INVALID_ARGUMENT, so the delimiter is required.
+      await firestore.pipeline().collection('books').select([
+        PipelineFunctions.join('tags', ', ').as('staticJoin'),
+        PipelineFunctions.join(
+          field('tags'),
+          field('separator'),
+        ).as('expressionJoin'),
+        field('tags').join(', ').as('fluentJoin'),
+      ]).execute();
+
+      final fields = capturedRequest!
+          .structuredPipeline!
+          .pipeline!
+          .stages[1]
+          .args
+          .single
+          .mapValue!
+          .fields;
+
+      for (final alias in ['staticJoin', 'fluentJoin']) {
+        final join = fields[alias]!.functionValue!;
+        expect(join.name, 'join', reason: alias);
+        expect(join.args, hasLength(2), reason: alias);
+        expect(join.args[0].fieldReferenceValue, 'tags', reason: alias);
+        expect(join.args[1].stringValue, ', ', reason: alias);
+      }
+
+      final expressionJoin = fields['expressionJoin']!.functionValue!;
+      expect(expressionJoin.name, 'join');
+      expect(expressionJoin.args, hasLength(2));
+      expect(expressionJoin.args[0].fieldReferenceValue, 'tags');
+      expect(expressionJoin.args[1].fieldReferenceValue, 'separator');
+    });
+
     test('serializes FlutterFire-style expression and stage APIs', () async {
       firestore_v1.ExecutePipelineRequest? capturedRequest;
 
