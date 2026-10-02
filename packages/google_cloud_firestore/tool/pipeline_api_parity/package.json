@@ -1,0 +1,17 @@
+{
+  "name": "pipeline-api-parity",
+  "private": true,
+  "description": "Extracts the Node.js Firestore Pipelines API into test/fixtures/node_pipeline_api.json.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "extract": "node extract_node_api.mjs"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "9.3.1",
+    "typescript": "5.9.3"
+  }
+}
