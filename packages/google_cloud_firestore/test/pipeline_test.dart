@@ -1972,8 +1972,11 @@ void main() {
           },
         );
 
+        // The backend reads select keys as field paths and rejects an
+        // unquoted `last name` ("Invalid property path"), so a String is keyed
+        // by its quoted path, like a PipelineField.
         test(
-          'select keys a String by itself and a PipelineField by its path',
+          'select keys a String and a PipelineField by their quoted path',
           () async {
             await run(
               base().select([
@@ -1986,7 +1989,7 @@ void main() {
 
             final fields = stages[1].args.single.mapValue!.fields;
             expect(fields.map((key, value) => MapEntry(key, json(value))), {
-              'first-name': ref('`first-name`'),
+              '`first-name`': ref('`first-name`'),
               '`last name`': ref('`last name`'),
               'metadata.lang': ref('metadata.lang'),
               '`a.b`': ref('`a.b`'),
@@ -2005,7 +2008,7 @@ void main() {
           );
 
           final expected = {
-            'first-name': ref('`first-name`'),
+            '`first-name`': ref('`first-name`'),
             '`last name`': ref('`last name`'),
           };
           final distinct = stages[1].args.single.mapValue!.fields;
@@ -2172,6 +2175,14 @@ void main() {
         expect(
           () => base().select(['title', field('title')]),
           duplicateError('title', 'selections'),
+        );
+      });
+
+      test('select rejects a String and a field with the same quoted path', () {
+        // Both are keyed by `x-y`.
+        expect(
+          () => base().select(['x-y', field('x-y')]),
+          duplicateError('`x-y`', 'selections'),
         );
       });
 
