@@ -3348,6 +3348,20 @@ final class PipelineOrdering {
   final String _name;
   final Object _expression;
 
+  /// The expression this ordering sorts by.
+  ///
+  /// A field name passed to [ascending] or [descending] reads back as a
+  /// [PipelineField].
+  PipelineExpression get expr {
+    return switch (_expression) {
+      final PipelineExpression expression => expression,
+      final value => constant(value),
+    };
+  }
+
+  /// The sort direction: `'ascending'` or `'descending'`.
+  String get direction => _name;
+
   firestore_v1.Value _toValue(Firestore firestore) {
     return firestore_v1.Value(
       mapValue: firestore_v1.MapValue(

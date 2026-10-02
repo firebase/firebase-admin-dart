@@ -135,6 +135,7 @@ const _familyByClass = <String, String>{
   'PipelineExplainOptions': 'execute',
   'PipelineExplainOutputFormat': 'execute',
   'PipelineIndexMode': 'execute',
+  'PipelineOrdering': 'stages',
   'PipelineResult': 'results',
   'PipelineSnapshot': 'results',
   'PipelineSource': 'sources',
