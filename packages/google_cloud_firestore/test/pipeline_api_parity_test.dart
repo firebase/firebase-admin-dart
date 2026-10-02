@@ -186,6 +186,13 @@ const _knownDifferences = <String, String>{
       'passes a read time internally.',
   'Transaction.executePipeline':
       'Takes the same execute options as Pipeline.execute; Node takes none.',
+  'Pipeline.findNearest#distanceThreshold':
+      'Dart-only convenience, mirroring VectorQuery: applied as a where stage '
+      'filtering the distance after find_nearest, as createFrom(vectorQuery) '
+      'does, and never sent as an option. The backend rejects one: "Stage '
+      "'find_nearest(field: FieldReference, vector: Vector, distance_measure: "
+      "DistanceMeasure, limit: Int64?, distance_field: FieldPath?)' does not "
+      'support option(s) [distance_threshold]."',
   'PipelineValueType#request_timestamp':
       "The backend's is_type rejects it: its list of accepted types does not "
       "include 'request_timestamp'.",
@@ -199,11 +206,6 @@ const _knownDifferences = <String, String>{
 ///
 /// Remove an entry once its fix lands; the test fails while it is stale.
 const _pendingFixes = <String, String>{
-  // Signatures.
-  'Pipeline.findNearest#distanceThreshold':
-      'Dart-only option, sent as `distance_threshold`: Node has no such '
-      'find_nearest option and its createFrom(vectorQuery) drops '
-      'distanceThreshold. Confirm the backend accepts it.',
   // Options.
   'PipelineSource.collection#forceIndex':
       'Node collection({collection, forceIndex}) can force an index; Dart '

@@ -2596,6 +2596,82 @@ void main() {
             'target',
           );
         });
+
+        // The backend rejects a distance_threshold option on find_nearest,
+        // so the threshold is applied as createFrom(vectorQuery) applies it.
+        group('applies distanceThreshold as a filter', () {
+          for (final (measure, comparison, distanceFunction) in [
+            (
+              DistanceMeasure.euclidean,
+              'less_than_or_equal',
+              'euclidean_distance',
+            ),
+            (DistanceMeasure.cosine, 'less_than_or_equal', 'cosine_distance'),
+            // A larger dot product means more similar vectors.
+            (
+              DistanceMeasure.dotProduct,
+              'greater_than_or_equal',
+              'dot_product',
+            ),
+          ]) {
+            test('${measure.name} keeps $comparison the threshold', () async {
+              await run(
+                base().findNearest(
+                  vectorField: 'embedding',
+                  queryVector: const [1.0, 2.0],
+                  distanceMeasure: measure,
+                  limit: 3,
+                  distanceThreshold: 0.5,
+                ),
+              );
+
+              final [_, findNearest, where] = stages;
+              expect(findNearest.name, 'find_nearest');
+              expect(findNearest.options.keys, ['limit']);
+              expect(where.name, 'where');
+              final condition = where.args.single.functionValue!;
+              expect(condition.name, comparison);
+              expect(condition.args[1].doubleValue, 0.5);
+              final distance = condition.args[0].functionValue!;
+              expect(distance.name, distanceFunction);
+              expect(distance.args[0].fieldReferenceValue, 'embedding');
+              expectVector(distance.args[1], [1.0, 2.0]);
+            });
+          }
+
+          test('reads distanceResultField when given', () async {
+            await run(
+              base().findNearest(
+                vectorField: 'embedding',
+                queryVector: const [1.0, 2.0],
+                distanceMeasure: DistanceMeasure.euclidean,
+                distanceResultField: 'distance',
+                distanceThreshold: 0.5,
+              ),
+            );
+
+            final [_, findNearest, where] = stages;
+            expect(findNearest.options.keys, ['distance_field']);
+            final condition = where.args.single.functionValue!;
+            expect(condition.name, 'less_than_or_equal');
+            expect(condition.args[0].fieldReferenceValue, 'distance');
+          });
+
+          test('adds no stage without a threshold', () async {
+            await run(
+              base().findNearest(
+                vectorField: 'embedding',
+                queryVector: const [1.0, 2.0],
+                distanceMeasure: DistanceMeasure.euclidean,
+              ),
+            );
+
+            expect(stages.map((stage) => stage.name), [
+              'collection',
+              'find_nearest',
+            ]);
+          });
+        });
       });
     });
 
@@ -3844,7 +3920,8 @@ void main() {
                 ),
           );
 
-          // find_nearest documents no threshold option, so none is sent.
+          // The backend rejects a threshold option on find_nearest, so none is
+          // sent.
           final findNearest = stages[stages.length - 2];
           expect(findNearest.name, 'find_nearest');
           expect(
