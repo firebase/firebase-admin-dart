@@ -197,7 +197,7 @@ A pipeline starts from exactly one source, via `firestore.pipeline()`.
 | `collectionReference(ref)` | Same, from a `CollectionReference`. |
 | `collectionGroup(id)` | Every collection with the given ID. |
 | `database()` | Every document in the database. |
-| `documents([refs])` | An explicit set of documents. |
+| `documents([refsOrPaths])` | An explicit set of documents, as references or paths. |
 | `createFrom(query)` | An existing `Query` or `VectorQuery`. |
 
 ```dart
@@ -206,6 +206,7 @@ firestore.pipeline().collectionReference(firestore.collection('books'));
 firestore.pipeline().collectionGroup('books');
 firestore.pipeline().database();
 firestore.pipeline().documents([firestore.doc('books/book-1')]);
+firestore.pipeline().documents(['books/book-1', 'books/book-2']);
 ```
 
 #### Stages

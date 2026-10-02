@@ -1545,18 +1545,35 @@ final class PipelineSource {
     return _start('collection', [collectionReference], rawOptions: rawOptions);
   }
 
-  /// Starts a Pipeline over the provided document references.
+  /// Starts a Pipeline over the provided documents.
+  ///
+  /// Each of [documents] is a [DocumentReference] or a slash-separated
+  /// document path, such as `'books/book1'`, read like [Firestore.doc] reads
+  /// it.
   ///
   /// [rawOptions] sets stage options this SDK does not wrap yet, as
   /// [Pipeline.rawStage]'s `options` do.
   ///
-  /// Throws an [ArgumentError] when any of [documents] targets a different
-  /// database than this Pipeline.
+  /// Throws an [ArgumentError] when [documents] is empty, when an entry is
+  /// neither a reference nor a path, when a path does not point to a
+  /// document, or when a reference targets a different database than this
+  /// Pipeline.
   Pipeline documents(
-    Iterable<DocumentReference<dynamic>> documents, {
+    Iterable<Object> documents, {
     Map<String, Object?> rawOptions = const {},
   }) {
-    final refs = documents.toList();
+    final refs = [
+      for (final document in documents)
+        switch (document) {
+          String() => _firestore.doc(document),
+          DocumentReference() => document,
+          _ => throw ArgumentError.value(
+            document,
+            'documents',
+            'Expected a DocumentReference or a document path.',
+          ),
+        },
+    ];
     if (refs.isEmpty) {
       throw ArgumentError.value(documents, 'documents', 'Must not be empty.');
     }

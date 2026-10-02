@@ -171,6 +171,15 @@ module.exports = function buildCases(sdk, db) {
       rawOptions: {foo: 'bar'},
     }),
   );
+  add('sources/documents/nested-path', () =>
+    db.pipeline().documents(['authors/author1/books/book1']),
+  );
+  add('sources/documents/leading-slash-path', () =>
+    db.pipeline().documents(['/books/book1']),
+  );
+  add('sources/documents/paths-and-references', () =>
+    db.pipeline().documents(['books/book1', db.doc('books/book2')]),
+  );
   add('sources/subcollection/as-array-expression', () =>
     db
       .pipeline()
