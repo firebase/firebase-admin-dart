@@ -131,7 +131,25 @@ class Serializer {
   }
 
   /// Decodes a single Firestore 'Value' Protobuf.
-  Object? decodeValue(Object? proto) {
+  ///
+  /// A reference value must name a document and decodes to a
+  /// [DocumentReference]; any other reference throws an [ArgumentError].
+  Object? decodeValue(Object? proto) => _decodeValue(proto, _decodeReference);
+
+  /// Decodes a document reference value, as [decodeValue] does.
+  DocumentReference<DocumentData> _decodeReference(String referenceValue) {
+    final resourcePath = _QualifiedResourcePath.fromSlashSeparatedString(
+      referenceValue,
+    );
+    return firestore.doc(resourcePath.relativeName);
+  }
+
+  /// Decodes [proto] like [decodeValue], but hands every reference value, at
+  /// any depth, to [decodeReference].
+  Object? _decodeValue(
+    Object? proto,
+    Object? Function(String referenceValue) decodeReference,
+  ) {
     if (proto is! firestore_v1.Value) {
       throw ArgumentError.value(
         proto,
@@ -153,13 +171,12 @@ class Serializer {
       case firestore_v1.Value(:final timestampValue?):
         return Timestamp._fromProto(timestampValue);
       case firestore_v1.Value(:final referenceValue?):
-        final resourcePath = _QualifiedResourcePath.fromSlashSeparatedString(
-          referenceValue,
-        );
-        return firestore.doc(resourcePath.relativeName);
+        return decodeReference(referenceValue);
       case firestore_v1.Value(:final arrayValue?):
         final values = arrayValue.values;
-        return <Object?>[for (final value in values) decodeValue(value)];
+        return <Object?>[
+          for (final value in values) _decodeValue(value, decodeReference),
+        ];
       case firestore_v1.Value(nullValue: != null):
         return null;
       case firestore_v1.Value(:final mapValue?):
@@ -176,7 +193,7 @@ class Serializer {
         }
         return <String, Object?>{
           for (final entry in fields.entries)
-            entry.key: decodeValue(entry.value),
+            entry.key: _decodeValue(entry.value, decodeReference),
         };
       case firestore_v1.Value(:final geoPointValue?):
         return GeoPoint._fromProto(geoPointValue);

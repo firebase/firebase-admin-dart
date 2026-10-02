@@ -128,6 +128,50 @@ void main() {
       expect(() => data['title'] = 'changed', throwsUnsupportedError);
     });
 
+    test('decodes a non-document reference the same at every depth', () async {
+      // Book 1's `pathRef` is book 2, a top-level document, so its parent is
+      // the database root: a reference that names no document, which decodes
+      // to its resource name rather than to a DocumentReference.
+      final root = Expression.field('pathRef').parent();
+      final document = Expression.field('pathRef');
+      final snapshot = await ctx
+          .book1Pipeline()
+          .select([
+            root.as('root'),
+            PipelineFunctions.map([
+              'root',
+              root,
+              'document',
+              document,
+            ]).as('inMap'),
+            PipelineFunctions.array([root, document]).as('inArray'),
+            PipelineFunctions.map([
+              'list',
+              PipelineFunctions.array([
+                PipelineFunctions.map(['root', root]),
+              ]),
+            ]).as('nested'),
+          ])
+          .limit(1)
+          .execute();
+      final result = snapshot.results.single;
+      final isBook2 = isA<DocumentReference<DocumentData>>().having(
+        (reference) => reference.path,
+        'path',
+        ctx.book2Ref.path,
+      );
+
+      final rootValue = result.get('root');
+      expect(rootValue, isA<String>());
+      expect(result.get('inMap'), {'root': rootValue, 'document': isBook2});
+      expect(result.get('inArray'), [rootValue, isBook2]);
+      expect(result.get('nested'), {
+        'list': [
+          {'root': rootValue},
+        ],
+      });
+    });
+
     test('snapshot exposes its pipeline, size and execution time', () async {
       final pipeline = ctx.runPipeline().sort([ascending('price')]);
       final before = DateTime.now();
