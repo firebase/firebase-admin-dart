@@ -154,8 +154,9 @@ const _distanceThresholdReason =
     'createFrom(vectorQuery) applies distanceThreshold as a where stage on '
     'the distance after find_nearest (<= for euclidean and cosine, >= for '
     'dot product), keeping the VectorQuery results. Node drops the threshold '
-    'and returns documents beyond it; find_nearest documents no threshold '
-    'option.';
+    'and returns documents beyond it. find_nearest takes no threshold option: '
+    'the backend rejects one ("does not support option(s) '
+    '[distance_threshold]").';
 
 /// Differences from the Node SDK that are not intended, awaiting a fix.
 ///
