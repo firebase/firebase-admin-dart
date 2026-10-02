@@ -72,6 +72,10 @@ typedef Selectable = PipelineExpression;
 typedef PipelineAggregateFunction = PipelineExpression;
 
 /// Firestore Pipeline backend value types used with [PipelineExpression.isType].
+///
+/// Each member encodes as the type name the backend expects, matching the
+/// Node.js SDK's `Type` union. [PipelineExpression.isType] also accepts a raw
+/// type name string for backend types not listed here.
 enum PipelineValueType {
   /// Null values.
   nullValue('null'),
@@ -82,11 +86,17 @@ enum PipelineValueType {
   /// Any numeric value.
   number('number'),
 
-  /// Integer numeric values.
+  /// 32-bit integer values.
+  int32('int32'),
+
+  /// 64-bit integer values.
   int64('int64'),
 
-  /// Double numeric values.
-  double('double'),
+  /// 64-bit floating point values, sent to the backend as `float64`.
+  double('float64'),
+
+  /// 128-bit decimal values.
+  decimal128('decimal128'),
 
   /// Timestamp values.
   timestamp('timestamp'),
@@ -110,7 +120,19 @@ enum PipelineValueType {
   map('map'),
 
   /// Vector values.
-  vector('vector');
+  vector('vector'),
+
+  /// Max key values.
+  maxKey('max_key'),
+
+  /// Min key values.
+  minKey('min_key'),
+
+  /// Object ID values.
+  objectId('object_id'),
+
+  /// Regular expression values.
+  regex('regex');
 
   const PipelineValueType(this.value);
 

@@ -879,6 +879,76 @@ void main() {
       },
     );
 
+    test('isType encodes PipelineValueType as backend type names', () async {
+      firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+      when(
+        () =>
+            mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                Function(firestore_v1.Firestore api, String projectId);
+
+        final api = FakeFirestore(
+          executePipeline: (firestore_v1.ExecutePipelineRequest request) {
+            capturedRequest = request;
+            return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+          },
+        );
+
+        return callback(api, _projectId);
+      });
+
+      // The names the backend accepts for `is_type` (and the Node SDK's `Type`
+      // union). Covers every member so a new one can't ship unchecked.
+      const expected = {
+        PipelineValueType.nullValue: 'null',
+        PipelineValueType.boolean: 'boolean',
+        PipelineValueType.number: 'number',
+        PipelineValueType.int32: 'int32',
+        PipelineValueType.int64: 'int64',
+        PipelineValueType.double: 'float64',
+        PipelineValueType.decimal128: 'decimal128',
+        PipelineValueType.timestamp: 'timestamp',
+        PipelineValueType.string: 'string',
+        PipelineValueType.bytes: 'bytes',
+        PipelineValueType.reference: 'reference',
+        PipelineValueType.geoPoint: 'geo_point',
+        PipelineValueType.array: 'array',
+        PipelineValueType.map: 'map',
+        PipelineValueType.vector: 'vector',
+        PipelineValueType.maxKey: 'max_key',
+        PipelineValueType.minKey: 'min_key',
+        PipelineValueType.objectId: 'object_id',
+        PipelineValueType.regex: 'regex',
+      };
+      expect(expected.keys, unorderedEquals(PipelineValueType.values));
+
+      await firestore.pipeline().collection('books').select([
+        for (final type in PipelineValueType.values)
+          Expression.field('value').isType(type).as(type.name),
+      ]).execute();
+
+      final fields = capturedRequest!
+          .structuredPipeline!
+          .pipeline!
+          .stages[1]
+          .args
+          .single
+          .mapValue!
+          .fields;
+      for (final MapEntry(key: type, value: wireName) in expected.entries) {
+        final function = fields[type.name]!.functionValue!;
+        expect(function.name, 'is_type');
+        expect(function.args.last.stringValue, wireName, reason: type.name);
+      }
+      // Regression: `double` used to encode as 'double', which the backend
+      // rejects with INVALID_ARGUMENT.
+      expect(fields['double']!.functionValue!.args.last.stringValue, 'float64');
+    });
+
     // Golden encodings, asserted arg-by-arg against the canonical Node SDK
     // stage definitions (`dev/src/pipelines/stage.ts`). These catch wire-format
     // drift without needing an Enterprise database.

@@ -1002,6 +1002,21 @@ final _functionScenarios = <_FunctionScenario>[
       Expression.field('price').isType(PipelineValueType.number),
       true,
     ),
+    _FunctionExpectation(
+      'isTypeInt64',
+      Expression.field('price').isType(PipelineValueType.int64),
+      true,
+    ),
+    _FunctionExpectation(
+      'isTypeFloat64',
+      Expression.field('score').isType(PipelineValueType.double),
+      true,
+    ),
+    _FunctionExpectation(
+      'isTypeNotFloat64',
+      Expression.field('price').isType(PipelineValueType.double),
+      false,
+    ),
   ]),
   _FunctionScenario('vector functions', [
     _FunctionExpectation(
