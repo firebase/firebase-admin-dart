@@ -433,6 +433,8 @@ Matcher isNumber(num value, {double tolerance = 1e-9}) {
 /// | `pathRef` (reference) | book 2 | book 1 | book 1 |
 /// | `embedding` (vector) | `[1, 0, 0]` | `[0, 1, 0]` | `[0, 0, 1]` |
 /// | `sparse` | `'book 1 only'` | absent | absent |
+/// | `first-name` | `'Ada'` | same | same |
+/// | `last name` | `'Lovelace'` | same | same |
 ///
 /// Document IDs are `<runId>_book_1`, `<runId>_book_2` and `<runId>_book_3`.
 List<DocumentData> buildSeed(
@@ -470,6 +472,9 @@ List<DocumentData> buildSeed(
       'list': [1, 2],
     },
     'emptyMap': <String, Object?>{},
+    // Names that are not identifiers, which field paths must quote.
+    'first-name': 'Ada',
+    'last name': 'Lovelace',
   };
 
   return [

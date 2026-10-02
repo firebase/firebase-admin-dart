@@ -81,6 +81,25 @@ void main() {
       ]);
     });
 
+    test('select keeps field names that are not identifiers', () async {
+      // A String names its output field as given. A PipelineField is keyed by
+      // its quoted path ("`first-name`"), as in the Node SDK, and the backend
+      // takes select keys verbatim (Node's system tests read `awards.hugo`
+      // back as one key), so the field's value is read through whichever key
+      // comes back.
+      final data = await _dataOf(
+        ctx.book1Pipeline().select([field('first-name'), 'last name']),
+      );
+
+      expect(data, hasLength(1));
+      final result = data.single;
+      expect(result, hasLength(2));
+      expect(result['last name'], 'Lovelace');
+      final firstNameKey = result.keys.singleWhere((key) => key != 'last name');
+      expect(firstNameKey, anyOf('first-name', '`first-name`'));
+      expect(result[firstNameKey], 'Ada');
+    });
+
     test('an alias names the field its expression lands on', () async {
       final aliased = Expression.field('price').as('cost');
 
@@ -160,6 +179,36 @@ void main() {
         ),
         ['Firestore Admin', 'Inactive Draft', 'Dart Pipelines'],
       );
+    });
+
+    test('an ordering exposes its expression and direction', () async {
+      final orderings = [
+        descending('active'),
+        Expression.field('price').ascending(),
+      ];
+
+      expect(
+        [for (final ordering in orderings) ordering.direction],
+        ['descending', 'ascending'],
+      );
+      // A field name given to descending() reads back as a field.
+      expect(
+        [
+          for (final ordering in orderings)
+            (ordering.expr as PipelineField).path,
+        ],
+        ['active', 'price'],
+      );
+
+      // Orderings rebuilt from expr and direction sort the same way: the two
+      // active books first, by ascending price.
+      final rebuilt = [
+        for (final ordering in orderings)
+          ordering.direction == 'ascending'
+              ? ordering.expr.ascending()
+              : ordering.expr.descending(),
+      ];
+      expect(await ctx.titlesOf(ctx.runPipeline().sort(rebuilt)), _allTitles);
     });
 
     test('offset skips sorted inputs before limit', () async {
@@ -254,6 +303,27 @@ void main() {
           {'title': 'Firestore Admin', 'tag': 'firebase', 'tagIndex': 0},
           {'title': 'Dart Pipelines', 'tag': 'firebase', 'tagIndex': 1},
         ],
+      );
+    });
+
+    test('unnest rawOptions take precedence over indexField', () async {
+      // The raw index_field replaces the typed one, so only rawIndex is set.
+      final data = await _dataOf(
+        ctx
+            .book1Pipeline()
+            .unnest(
+              Expression.field('tags').as('tag'),
+              indexField: 'typedIndex',
+              rawOptions: {'index_field': Expression.field('rawIndex')},
+            )
+            .sort([ascending('rawIndex')]),
+      );
+
+      expect([for (final result in data) result['tag']], ['dart', 'firebase']);
+      expect([for (final result in data) result['rawIndex']], [0, 1]);
+      expect(
+        [for (final result in data) result.containsKey('typedIndex')],
+        [false, false],
       );
     });
 
@@ -449,6 +519,28 @@ void main() {
         ),
         ['Dart Pipelines', 'Firestore Admin'],
       );
+    });
+
+    test('findNearest rawOptions take precedence over its options', () async {
+      // The raw limit replaces the typed one, and the raw distance_field sets
+      // the result field distanceResultField would.
+      final snapshot = await ctx
+          .runPipeline()
+          .findNearest(
+            vectorField: 'embedding',
+            queryVector: const [3.0, 2.0, 1.0],
+            distanceMeasure: DistanceMeasure.euclidean,
+            limit: 3,
+            rawOptions: {
+              'limit': 1,
+              'distance_field': Expression.field('rawDistance'),
+            },
+          )
+          .execute();
+
+      expect(snapshot.results, hasLength(1));
+      expect(snapshot.results.single.get('title'), 'Dart Pipelines');
+      expect(snapshot.results.single.get('rawDistance'), isNumber(3));
     });
 
     test('rawStage sends stages by their backend name', () async {

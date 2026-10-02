@@ -80,6 +80,27 @@ void main() {
         field('nested.level1.level2.value'),
         isInt(42),
       ),
+      // A FieldPath segment is one field name, even when it holds a dot.
+      FunctionCase(
+        'field with a FieldPath',
+        field(FieldPath(const ['nested', 'dotted.key'])),
+        'dot',
+      ),
+      FunctionCase(
+        'field with a FieldPath to a name that is not an identifier',
+        field(FieldPath(const ['first-name'])),
+        'Ada',
+      ),
+      FunctionCase(
+        'field with a name that is not an identifier',
+        field('last name'),
+        'Lovelace',
+      ),
+      FunctionCase(
+        'Expression.field with a FieldPath',
+        Expression.field(FieldPath(const ['metadata', 'lang'])),
+        'dart',
+      ),
       FunctionCase('constant', constant('literal'), 'literal'),
     ]);
 

@@ -428,11 +428,45 @@ const _requiredShapes = <String, List<_Shape>>{
   'PipelineResult.get(field)': [_Shape.dottedPath, _Shape.fieldPath],
 };
 
+/// Why a stage with no backend options has no live `rawOptions` case.
+const _noStageOptions =
+    'the stage has no backend options (the Node SDK knows none, and no SDK '
+    'system test sends raw ones), so any key would be an unknown option the '
+    'backend may reject, and an empty map equals omitting it; the '
+    'findNearest and unnest cases send real raw options through the same '
+    'encoding';
+
+/// Why a collection source has no live `rawOptions` case.
+const _forceIndexOnly =
+    "the stage's only backend option, force_index, needs a named index the "
+    'E2E database does not declare (the Node SDK system tests skip forceIndex '
+    'for the same reason), any other key would be an unknown option the '
+    'backend may reject, and an empty map equals omitting it';
+
 /// Members (`Member`) and parameters (`Member(param)`) that cannot run
 /// against the E2E database, exempt from every rule.
 ///
 /// Keep this minimal: anything the backend can execute gets a live case.
 const _notExecutable = <String, String>{
+  // Raw stage options. Pipeline.findNearest and Pipeline.unnest pass theirs
+  // live, overriding their typed options.
+  'PipelineSource.collection(rawOptions)': _forceIndexOnly,
+  'PipelineSource.collectionGroup(rawOptions)': _forceIndexOnly,
+  'PipelineSource.collectionReference(rawOptions)': _forceIndexOnly,
+  'PipelineSource.database(rawOptions)': _noStageOptions,
+  'PipelineSource.documents(rawOptions)': _noStageOptions,
+  'Pipeline.addFields(rawOptions)': _noStageOptions,
+  'Pipeline.aggregate(rawOptions)': _noStageOptions,
+  'Pipeline.distinct(rawOptions)': _noStageOptions,
+  'Pipeline.limit(rawOptions)': _noStageOptions,
+  'Pipeline.offset(rawOptions)': _noStageOptions,
+  'Pipeline.removeFields(rawOptions)': _noStageOptions,
+  'Pipeline.replaceWith(rawOptions)': _noStageOptions,
+  'Pipeline.sample(rawOptions)': _noStageOptions,
+  'Pipeline.select(rawOptions)': _noStageOptions,
+  'Pipeline.sort(rawOptions)': _noStageOptions,
+  'Pipeline.union(rawOptions)': _noStageOptions,
+  'Pipeline.where(rawOptions)': _noStageOptions,
   'Pipeline.search':
       'needs a full-text search index, which pipeline_e2e_books does not '
       'have; the Node SDK system tests do not cover search either '

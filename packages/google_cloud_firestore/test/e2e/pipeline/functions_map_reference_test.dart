@@ -51,6 +51,24 @@ void main() {
         ]),
         {'title': 'Dart Pipelines', 'rating': 5},
       ),
+      // A Map is sent like the alternating key/value form.
+      FunctionCase(
+        'map from a Map',
+        PipelineFunctions.map({
+          'title': Expression.field('title'),
+          'answer': 42,
+        }),
+        {'title': 'Dart Pipelines', 'answer': 42},
+      ),
+      FunctionCase(
+        'map from a Map holding a nested Map',
+        PipelineFunctions.map({
+          'nested': {'price': Expression.field('price')},
+        }),
+        {
+          'nested': {'price': 10},
+        },
+      ),
       FunctionCase(
         'mapGetLiteral',
         Expression.field('metadata').mapGetLiteral('category'),
