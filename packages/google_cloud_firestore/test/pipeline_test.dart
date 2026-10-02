@@ -1255,6 +1255,81 @@ void main() {
       });
     });
 
+    // Mirrors the Node SDK's `selectablesToObject` / `aliasedAggregateToMap`,
+    // which throw rather than let a later entry overwrite an earlier one.
+    group('duplicate aliases or fields', () {
+      Pipeline base() => firestore.pipeline().collection('books');
+
+      Matcher duplicateError(String key, String argumentName) {
+        return throwsA(
+          isA<ArgumentError>()
+              .having((e) => e.message, 'message', contains("'$key'"))
+              .having((e) => e.message, 'message', contains('Duplicate'))
+              .having((e) => e.name, 'name', argumentName),
+        );
+      }
+
+      test('select rejects a repeated alias', () {
+        expect(
+          () => base().select([constant(1).as('x'), constant(2).as('x')]),
+          duplicateError('x', 'selections'),
+        );
+      });
+
+      test('select rejects a repeated field name', () {
+        expect(
+          () => base().select(['title', field('title')]),
+          duplicateError('title', 'selections'),
+        );
+      });
+
+      test('select rejects an alias that collides with a field name', () {
+        expect(
+          () => base().select(['title', constant('x').as('title')]),
+          duplicateError('title', 'selections'),
+        );
+      });
+
+      test('aggregate rejects a repeated accumulator alias', () {
+        expect(
+          () => base().aggregate([
+            PipelineFunctions.countAll().as('n'),
+            field('pages').sum().as('n'),
+          ]),
+          duplicateError('n', 'accumulators'),
+        );
+      });
+
+      test('aggregate rejects a repeated group', () {
+        expect(
+          () => base().aggregate(
+            [PipelineFunctions.countAll().as('n')],
+            groups: ['genre', PipelineFunctions.toLower('genre').as('genre')],
+          ),
+          duplicateError('genre', 'groups'),
+        );
+      });
+
+      test('aggregate checks accumulators and groups separately', () {
+        // The Node SDK builds the two maps independently, so a group and an
+        // accumulator sharing a name is left for the backend to judge.
+        expect(
+          () => base().aggregate(
+            [PipelineFunctions.countAll().as('genre')],
+            groups: ['genre'],
+          ),
+          returnsNormally,
+        );
+      });
+
+      test('distinct rejects a repeated group', () {
+        expect(
+          () => base().distinct(['genre', field('genre')]),
+          duplicateError('genre', 'groups'),
+        );
+      });
+    });
+
     group('String arguments in a field position', () {
       late List<firestore_v1.Pipeline_Stage> stages;
 

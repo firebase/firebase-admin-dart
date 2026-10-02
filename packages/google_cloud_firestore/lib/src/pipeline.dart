@@ -1360,6 +1360,9 @@ final class Pipeline {
   ///
   /// Entries may be [String] field names, [PipelineField] references,
   /// [PipelineExpression] instances, or [PipelineAliasedExpression] values.
+  ///
+  /// Throws an [ArgumentError] when two [selections] land on the same field
+  /// name or alias.
   Pipeline select(Iterable<Object> selections) {
     return rawStage('select', [_projectionMap(selections)]);
   }
@@ -1374,6 +1377,9 @@ final class Pipeline {
   }
 
   /// Aggregates inputs using aliased aggregate expressions.
+  ///
+  /// Throws an [ArgumentError] when two [accumulators], or two [groups], land
+  /// on the same field name or alias.
   Pipeline aggregate(
     Iterable<PipelineAliasedExpression> accumulators, {
     Iterable<Object> groups = const [],
@@ -1387,8 +1393,8 @@ final class Pipeline {
       );
     }
     return rawStage('aggregate', [
-      _projectionMap(values),
-      _projectionMap(groups),
+      _projectionMap(values, argumentName: 'accumulators'),
+      _projectionMap(groups, argumentName: 'groups'),
     ]);
   }
 
@@ -1396,12 +1402,17 @@ final class Pipeline {
   ///
   /// Entries may be [String] field names, [PipelineField] references, or
   /// [PipelineAliasedExpression] values.
+  ///
+  /// Throws an [ArgumentError] when two [groups] land on the same field name
+  /// or alias.
   Pipeline distinct(Iterable<Object> groups) {
     final values = groups.toList();
     if (values.isEmpty) {
       throw ArgumentError.value(groups, 'groups', 'Must not be empty.');
     }
-    return rawStage('distinct', [_projectionMap(values)]);
+    return rawStage('distinct', [
+      _projectionMap(values, argumentName: 'groups'),
+    ]);
   }
 
   /// Removes fields from the inputs.
@@ -3043,8 +3054,24 @@ Map<String, Object?> _compactOptions(Map<String, Object?> options) {
   return Map.fromEntries(options.entries.where((entry) => entry.value != null));
 }
 
-Map<String, Object?> _projectionMap(Iterable<Object> selections) {
-  return Map.fromEntries(selections.map(_projectionEntry));
+/// Keys each selection's expression by the field name or alias it lands on.
+///
+/// Throws an [ArgumentError] on a repeated key instead of silently keeping the
+/// last entry. A [String] or [PipelineField] lands on its own path, so it
+/// collides with an alias of the same name, matching the Node SDK.
+Map<String, Object?> _projectionMap(
+  Iterable<Object> selections, {
+  String argumentName = 'selections',
+}) {
+  final result = <String, Object?>{};
+  for (final selection in selections) {
+    final MapEntry(:key, :value) = _projectionEntry(selection);
+    if (result.containsKey(key)) {
+      throw ArgumentError("Duplicate alias or field '$key'.", argumentName);
+    }
+    result[key] = value;
+  }
+  return result;
 }
 
 /// Splits a selectable into the expression it computes and the alias it lands
