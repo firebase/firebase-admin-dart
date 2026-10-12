@@ -1,0 +1,943 @@
+{
+  "generator": "tool/pipeline_golden (npm run generate)",
+  "sdk": "@google-cloud/firestore@9.3.1",
+  "cases": {
+    "aggregates/arrayAgg/method": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "array_agg",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/arrayAgg/static-expression": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "array_agg",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/arrayAgg/static-field-name": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "array_agg",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/arrayAggDistinct/method": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "array_agg_distinct",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/arrayAggDistinct/static-expression": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "array_agg_distinct",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/arrayAggDistinct/static-field-name": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "array_agg_distinct",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/average/method": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "average",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/average/static-expression": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "average",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/average/static-field-name": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "average",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/count/method": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "count",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/count/static-expression": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "count",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/count/static-field-name": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "count",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/countAll/static": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"functionValue": {"name": "count"}}}
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/countDistinct/method": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "count_distinct",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/countDistinct/static-expression": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "count_distinct",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/countDistinct/static-field-name": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "count_distinct",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/countIf/method": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "count_if",
+                          "args": [
+                            {
+                              "functionValue": {
+                                "name": "greater_than",
+                                "args": [
+                                  {"fieldReferenceValue": "rating"},
+                                  {"integerValue": "4"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/countIf/static": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "count_if",
+                          "args": [
+                            {
+                              "functionValue": {
+                                "name": "greater_than",
+                                "args": [
+                                  {"fieldReferenceValue": "rating"},
+                                  {"integerValue": "4"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/first/method": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "first",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/first/static-expression": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "first",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/first/static-field-name": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "first",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/last/method": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "last",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/last/static-expression": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "last",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/last/static-field-name": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "last",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/maximum/method": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "maximum",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/maximum/static-expression": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "maximum",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/maximum/static-field-name": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "maximum",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/minimum/method": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "minimum",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/minimum/static-expression": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "minimum",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/minimum/static-field-name": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "minimum",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/sum/method": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "sum",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/sum/static-expression": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "sum",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "aggregates/sum/static-field-name": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "aggregate",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "functionValue": {
+                          "name": "sum",
+                          "args": [{"fieldReferenceValue": "rating"}]
+                        }
+                      }
+                    }
+                  }
+                },
+                {"mapValue": {}}
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

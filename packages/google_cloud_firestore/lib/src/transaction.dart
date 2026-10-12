@@ -145,8 +145,9 @@ class Transaction {
 
   /// Executes a Pipeline and returns the results as part of this transaction.
   ///
-  /// The Pipeline is executed at the transaction's snapshot. [indexMode],
-  /// [explain] and [rawOptions] behave as they do on [Pipeline.execute].
+  /// The Pipeline is executed at the transaction's snapshot. [explain] and
+  /// [rawOptions] behave as they do on [Pipeline.execute]. [indexMode] is
+  /// deprecated and ignored, as it is there.
   ///
   /// ```dart
   /// firestore.runTransaction((transaction) async {
@@ -164,7 +165,7 @@ class Transaction {
   /// ```
   Future<PipelineSnapshot> executePipeline(
     Pipeline pipeline, {
-    PipelineIndexMode? indexMode,
+    @Deprecated(_indexModeDeprecation) PipelineIndexMode? indexMode,
     PipelineExplainOptions? explain,
     Map<String, Object?> rawOptions = const {},
   }) async {
@@ -182,7 +183,6 @@ class Transaction {
     );
 
     final options = Pipeline._executeOptions(
-      indexMode: indexMode,
       explain: explain,
       rawOptions: rawOptions,
     );

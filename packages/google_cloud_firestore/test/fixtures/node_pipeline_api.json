@@ -1,0 +1,5023 @@
+{
+  "classes": {
+    "AggregateFunction": {
+      "abstract": false,
+      "constructors": [
+        {
+          "params": [
+            {"kinds":["string"],"name":"name","type":"string"},
+            {"elements":{"kinds":["expression"]},"kinds":["array"],"name":"params","type":"Expression[]"}
+          ],
+          "returns": {"kinds":["any"],"type":null}
+        }
+      ],
+      "extends": null,
+      "implements": [],
+      "methods": {
+        "as": {
+          "overloads": [
+            {
+              "params": [{"kinds":["string"],"name":"name","type":"string"}],
+              "returns": {"kinds":["aliasedAggregate"],"type":"AliasedAggregate"}
+            }
+          ],
+          "static": false
+        }
+      },
+      "properties": {
+        "expressionType": {
+          "aliases": ["ExpressionType"],
+          "kinds": ["literal"],
+          "optional": false,
+          "readonly": false,
+          "static": false,
+          "type": "ExpressionType"
+        }
+      }
+    },
+    "AliasedAggregate": {"abstract":false,"extends":null,"implements":[],"methods":{},"properties":{}},
+    "AliasedExpression": {
+      "abstract": false,
+      "extends": null,
+      "implements": ["Selectable"],
+      "methods": {},
+      "properties": {
+        "expressionType": {
+          "aliases": ["ExpressionType"],
+          "kinds": ["literal"],
+          "optional": false,
+          "readonly": false,
+          "static": false,
+          "type": "ExpressionType"
+        },
+        "selectable": {"kinds":["boolean"],"optional":false,"readonly":false,"static":false,"type":"true"}
+      }
+    },
+    "BooleanExpression": {
+      "abstract": true,
+      "extends": "Expression",
+      "implements": [],
+      "methods": {
+        "conditional": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["expression"],"name":"thenExpr","type":"Expression"},
+                {"kinds":["expression"],"name":"elseExpr","type":"Expression"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "countIf": {
+          "overloads": [{"params":[],"returns":{"kinds":["aggregateFunction"],"type":"AggregateFunction"}}],
+          "static": false
+        },
+        "ifError": {
+          "overloads": [
+            {
+              "params": [{"kinds":["any"],"name":"catchValue","type":"unknown"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["boolean"],"name":"catchValue","type":"boolean"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["booleanExpression"],"name":"catchValue","type":"BooleanExpression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"catchValue","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "not": {
+          "overloads": [{"params":[],"returns":{"kinds":["booleanExpression"],"type":"BooleanExpression"}}],
+          "static": false
+        }
+      },
+      "properties": {}
+    },
+    "Constant": {
+      "abstract": false,
+      "extends": "Expression",
+      "implements": [],
+      "methods": {},
+      "properties": {
+        "expressionType": {
+          "aliases": ["ExpressionType"],
+          "kinds": ["literal"],
+          "optional": false,
+          "readonly": true,
+          "static": false,
+          "type": "ExpressionType"
+        }
+      }
+    },
+    "ExplainStats": {
+      "abstract": false,
+      "extends": null,
+      "implements": [],
+      "methods": {},
+      "properties": {
+        "rawData": {
+          "kinds": ["map"],
+          "optional": false,
+          "readonly": true,
+          "static": false,
+          "type": "{type_url?: string | null; value?: Uint8Array | null;}"
+        },
+        "text": {"kinds":["string"],"optional":false,"readonly":true,"static":false,"type":"string"}
+      }
+    },
+    "Expression": {
+      "abstract": true,
+      "extends": null,
+      "implements": [],
+      "methods": {
+        "abs": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "add": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["any","expression"],"name":"second","type":"Expression | unknown"},
+                {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arrayAgg": {
+          "overloads": [{"params":[],"returns":{"kinds":["aggregateFunction"],"type":"AggregateFunction"}}],
+          "static": false
+        },
+        "arrayAggDistinct": {
+          "overloads": [{"params":[],"returns":{"kinds":["aggregateFunction"],"type":"AggregateFunction"}}],
+          "static": false
+        },
+        "arrayConcat": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "elements": {"kinds":["any"]},
+                  "kinds": ["array","expression"],
+                  "name": "secondArray",
+                  "type": "Expression | unknown[]"
+                },
+                {
+                  "elements": {"kinds":["any"]},
+                  "kinds": ["array","expression"],
+                  "name": "otherArrays",
+                  "rest": true,
+                  "type": "Array<Expression | unknown[]>"
+                }
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arrayContains": {
+          "overloads": [
+            {
+              "params": [{"kinds":["any"],"name":"value","type":"unknown"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arrayContainsAll": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "elements": {"kinds":["any","expression"]},
+                  "kinds": ["array"],
+                  "name": "values",
+                  "type": "Array<Expression | unknown>"
+                }
+              ],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"arrayExpression","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arrayContainsAny": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "elements": {"kinds":["any","expression"]},
+                  "kinds": ["array"],
+                  "name": "values",
+                  "type": "Array<Expression | unknown>"
+                }
+              ],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"arrayExpression","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arrayFilter": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["string"],"name":"alias","type":"string"},
+                {"kinds":["booleanExpression"],"name":"filter","type":"BooleanExpression"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arrayFirst": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "arrayFirstN": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"n","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["number"],"name":"n","type":"number"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arrayGet": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"indexExpr","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["number"],"name":"index","type":"number"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arrayIndexOf": {
+          "overloads": [
+            {
+              "params": [{"kinds":["any"],"name":"search","type":"unknown"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"search","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arrayIndexOfAll": {
+          "overloads": [
+            {
+              "params": [{"kinds":["any"],"name":"search","type":"unknown"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"search","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arrayLast": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "arrayLastIndexOf": {
+          "overloads": [
+            {
+              "params": [{"kinds":["any"],"name":"search","type":"unknown"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"search","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arrayLastN": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"n","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["number"],"name":"n","type":"number"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arrayLength": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "arrayMaximum": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "arrayMaximumN": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"n","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["number"],"name":"n","type":"number"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arrayMinimum": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "arrayMinimumN": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"n","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["number"],"name":"n","type":"number"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arraySlice": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["expression","number"],"name":"offset","type":"number | Expression"},
+                {"kinds":["expression","number"],"name":"length","optional":true,"type":"number | Expression"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arraySum": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "arrayTransform": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["string"],"name":"elementAlias","type":"string"},
+                {"kinds":["expression"],"name":"transform","type":"Expression"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "arrayTransformWithIndex": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["string"],"name":"elementAlias","type":"string"},
+                {"kinds":["string"],"name":"indexAlias","type":"string"},
+                {"kinds":["expression"],"name":"transform","type":"Expression"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "as": {
+          "overloads": [
+            {
+              "params": [{"kinds":["string"],"name":"name","type":"string"}],
+              "returns": {"kinds":["aliasedExpression"],"type":"AliasedExpression"}
+            }
+          ],
+          "static": false
+        },
+        "asBoolean": {
+          "overloads": [{"params":[],"returns":{"kinds":["booleanExpression"],"type":"BooleanExpression"}}],
+          "static": false
+        },
+        "ascending": {"overloads":[{"params":[],"returns":{"kinds":["ordering"],"type":"Ordering"}}],"static":false},
+        "average": {
+          "overloads": [{"params":[],"returns":{"kinds":["aggregateFunction"],"type":"AggregateFunction"}}],
+          "static": false
+        },
+        "byteLength": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "ceil": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "charLength": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "coalesce": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["any","expression"],"name":"replacement","type":"Expression | unknown"},
+                {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "collectionId": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "cosineDistance": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "elements": {"kinds":["number"]},
+                  "kinds": ["array","vectorValue"],
+                  "name": "vector",
+                  "type": "VectorValue | number[]"
+                }
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"vectorExpression","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "count": {
+          "overloads": [{"params":[],"returns":{"kinds":["aggregateFunction"],"type":"AggregateFunction"}}],
+          "static": false
+        },
+        "countDistinct": {
+          "overloads": [{"params":[],"returns":{"kinds":["aggregateFunction"],"type":"AggregateFunction"}}],
+          "static": false
+        },
+        "descending": {"overloads":[{"params":[],"returns":{"kinds":["ordering"],"type":"Ordering"}}],"static":false},
+        "divide": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"divisor","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["number"],"name":"divisor","type":"number"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "documentId": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "dotProduct": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "elements": {"kinds":["number"]},
+                  "kinds": ["array","vectorValue"],
+                  "name": "vector",
+                  "type": "VectorValue | number[]"
+                }
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"vectorExpression","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "endsWith": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"suffix","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["string"],"name":"suffix","type":"string"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "equal": {
+          "overloads": [
+            {
+              "params": [{"kinds":["any"],"name":"value","type":"unknown"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "equalAny": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "elements": {"kinds":["any","expression"]},
+                  "kinds": ["array"],
+                  "name": "values",
+                  "type": "Array<Expression | unknown>"
+                }
+              ],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"arrayExpression","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "euclideanDistance": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "elements": {"kinds":["number"]},
+                  "kinds": ["array","vectorValue"],
+                  "name": "vector",
+                  "type": "VectorValue | number[]"
+                }
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"vectorExpression","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "exists": {
+          "overloads": [{"params":[],"returns":{"kinds":["booleanExpression"],"type":"BooleanExpression"}}],
+          "static": false
+        },
+        "exp": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "first": {
+          "overloads": [{"params":[],"returns":{"kinds":["aggregateFunction"],"type":"AggregateFunction"}}],
+          "static": false
+        },
+        "floor": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "getField": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression","string"],"name":"key","type":"string | Expression"}],
+              "returns": {"kinds":["expression"],"type":"Expression"}
+            }
+          ],
+          "static": false
+        },
+        "greaterThan": {
+          "overloads": [
+            {
+              "params": [{"kinds":["any"],"name":"value","type":"unknown"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "greaterThanOrEqual": {
+          "overloads": [
+            {
+              "params": [{"kinds":["any"],"name":"value","type":"unknown"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "ifAbsent": {
+          "overloads": [
+            {
+              "params": [{"kinds":["any","expression"],"name":"elseValueOrExpression","type":"Expression | unknown"}],
+              "returns": {"kinds":["expression"],"type":"Expression"}
+            },
+            {
+              "params": [{"kinds":["any"],"name":"elseExpression","type":"unknown"}],
+              "returns": {"kinds":["expression"],"type":"Expression"}
+            },
+            {
+              "params": [{"kinds":["any"],"name":"elseValue","type":"unknown"}],
+              "returns": {"kinds":["expression"],"type":"Expression"}
+            }
+          ],
+          "static": false
+        },
+        "ifError": {
+          "overloads": [
+            {
+              "params": [{"kinds":["any"],"name":"catchValue","type":"unknown"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"catchExpr","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "ifNull": {
+          "overloads": [
+            {
+              "params": [{"kinds":["any"],"name":"elseValue","type":"unknown"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"elseExpression","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "isAbsent": {
+          "overloads": [{"params":[],"returns":{"kinds":["booleanExpression"],"type":"BooleanExpression"}}],
+          "static": false
+        },
+        "isError": {
+          "overloads": [{"params":[],"returns":{"kinds":["booleanExpression"],"type":"BooleanExpression"}}],
+          "static": false
+        },
+        "isType": {
+          "overloads": [
+            {
+              "params": [{"kinds":["string"],"name":"type","type":"string"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "join": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression","string"],"name":"delimeterValueOrExpression","type":"string | Expression"}],
+              "returns": {"kinds":["expression"],"type":"Expression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"delimiterExpression","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"Expression"}
+            },
+            {
+              "params": [{"kinds":["string"],"name":"delimiter","type":"string"}],
+              "returns": {"kinds":["expression"],"type":"Expression"}
+            }
+          ],
+          "static": false
+        },
+        "last": {
+          "overloads": [{"params":[],"returns":{"kinds":["aggregateFunction"],"type":"AggregateFunction"}}],
+          "static": false
+        },
+        "length": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "lessThan": {
+          "overloads": [
+            {
+              "params": [{"kinds":["any"],"name":"value","type":"unknown"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "lessThanOrEqual": {
+          "overloads": [
+            {
+              "params": [{"kinds":["any"],"name":"value","type":"unknown"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "like": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"pattern","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["string"],"name":"pattern","type":"string"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "ln": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "log10": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "logicalMaximum": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["any","expression"],"name":"second","type":"Expression | unknown"},
+                {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "logicalMinimum": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["any","expression"],"name":"second","type":"Expression | unknown"},
+                {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "ltrim": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "kinds": ["bytes","expression","string"],
+                  "name": "valueToTrim",
+                  "optional": true,
+                  "type": "string | Expression | Uint8Array | Buffer"
+                }
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "mapEntries": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "mapGet": {
+          "overloads": [
+            {
+              "params": [{"kinds":["string"],"name":"subfield","type":"string"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "mapKeys": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "mapMerge": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["expression","map"],"name":"secondMap","type":"Record<string, unknown> | Expression"},
+                {
+                  "kinds": ["expression","map"],
+                  "name": "otherMaps",
+                  "rest": true,
+                  "type": "Array<Record<string, unknown> | Expression>"
+                }
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "mapRemove": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"keyExpr","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["string"],"name":"key","type":"string"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "mapSet": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["expression","string"],"name":"key","type":"string | Expression"},
+                {"kinds":["any"],"name":"value","type":"unknown"},
+                {"kinds":["any"],"name":"moreKeyValues","rest":true,"type":"unknown[]"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "mapValues": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "maximum": {
+          "overloads": [{"params":[],"returns":{"kinds":["aggregateFunction"],"type":"AggregateFunction"}}],
+          "static": false
+        },
+        "minimum": {
+          "overloads": [{"params":[],"returns":{"kinds":["aggregateFunction"],"type":"AggregateFunction"}}],
+          "static": false
+        },
+        "mod": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["number"],"name":"value","type":"number"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "multiply": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["expression","number"],"name":"second","type":"Expression | number"},
+                {"kinds":["expression","number"],"name":"others","rest":true,"type":"Array<Expression | number>"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "notEqual": {
+          "overloads": [
+            {
+              "params": [{"kinds":["any"],"name":"value","type":"unknown"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "notEqualAny": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "elements": {"kinds":["any","expression"]},
+                  "kinds": ["array"],
+                  "name": "values",
+                  "type": "Array<Expression | unknown>"
+                }
+              ],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["expression"],"name":"arrayExpression","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "parent": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "pow": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"exponent","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["number"],"name":"exponent","type":"number"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "regexContains": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"pattern","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["string"],"name":"pattern","type":"string"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "regexFind": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"pattern","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["string"],"name":"pattern","type":"string"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "regexFindAll": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"pattern","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["string"],"name":"pattern","type":"string"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "regexMatch": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"pattern","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["string"],"name":"pattern","type":"string"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "reverse": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "round": {
+          "overloads": [
+            {"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}},
+            {
+              "params": [{"kinds":["expression"],"name":"decimalPlaces","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["number"],"name":"decimalPlaces","type":"number"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "rtrim": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "kinds": ["bytes","expression","string"],
+                  "name": "valueToTrim",
+                  "optional": true,
+                  "type": "string | Expression | Uint8Array | Buffer"
+                }
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "split": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"delimiter","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["string"],"name":"delimiter","type":"string"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "sqrt": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "startsWith": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"prefix","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["string"],"name":"prefix","type":"string"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "stringConcat": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["expression","string"],"name":"secondString","type":"Expression | string"},
+                {"kinds":["expression","string"],"name":"otherStrings","rest":true,"type":"Array<Expression | string>"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "stringContains": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"expr","type":"Expression"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            },
+            {
+              "params": [{"kinds":["string"],"name":"substring","type":"string"}],
+              "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+            }
+          ],
+          "static": false
+        },
+        "stringIndexOf": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "kinds": ["bytes","expression","string"],
+                  "name": "search",
+                  "type": "string | Expression | Uint8Array | Buffer"
+                }
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "stringRepeat": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression","number"],"name":"repetitions","type":"number | Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "stringReplaceAll": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "kinds": ["bytes","expression","string"],
+                  "name": "find",
+                  "type": "string | Expression | Uint8Array | Buffer"
+                },
+                {
+                  "kinds": ["bytes","expression","string"],
+                  "name": "replacement",
+                  "type": "string | Expression | Uint8Array | Buffer"
+                }
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "stringReplaceOne": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "kinds": ["bytes","expression","string"],
+                  "name": "find",
+                  "type": "string | Expression | Uint8Array | Buffer"
+                },
+                {
+                  "kinds": ["bytes","expression","string"],
+                  "name": "replacement",
+                  "type": "string | Expression | Uint8Array | Buffer"
+                }
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "stringReverse": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "substring": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["expression"],"name":"position","type":"Expression"},
+                {"kinds":["expression"],"name":"length","optional":true,"type":"Expression"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [
+                {"kinds":["number"],"name":"position","type":"number"},
+                {"kinds":["number"],"name":"length","optional":true,"type":"number"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "subtract": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"subtrahend","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["number"],"name":"subtrahend","type":"number"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "sum": {
+          "overloads": [{"params":[],"returns":{"kinds":["aggregateFunction"],"type":"AggregateFunction"}}],
+          "static": false
+        },
+        "timestampAdd": {
+          "overloads": [
+            {
+              "params": [
+                {"aliases":["TimeUnit"],"kinds":["literal"],"name":"unit","type":"TimeUnit"},
+                {"kinds":["number"],"name":"amount","type":"number"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [
+                {"kinds":["expression"],"name":"unit","type":"Expression"},
+                {"kinds":["expression"],"name":"amount","type":"Expression"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "timestampDiff": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["expression","string"],"name":"start","type":"string | Expression"},
+                {"aliases":["TimeUnit"],"kinds":["literal"],"name":"unit","type":"TimeUnit"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [
+                {"kinds":["expression"],"name":"start","type":"Expression"},
+                {"kinds":["expression"],"name":"unit","type":"Expression"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "timestampExtract": {
+          "overloads": [
+            {
+              "params": [
+                {"aliases":["TimePart"],"kinds":["literal"],"name":"part","type":"TimePart"},
+                {"kinds":["expression","string"],"name":"timezone","optional":true,"type":"string | Expression"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [
+                {"kinds":["expression"],"name":"part","type":"Expression"},
+                {"kinds":["expression","string"],"name":"timezone","optional":true,"type":"string | Expression"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "timestampSubtract": {
+          "overloads": [
+            {
+              "params": [
+                {"aliases":["TimeUnit"],"kinds":["literal"],"name":"unit","type":"TimeUnit"},
+                {"kinds":["number"],"name":"amount","type":"number"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [
+                {"kinds":["expression"],"name":"unit","type":"Expression"},
+                {"kinds":["expression"],"name":"amount","type":"Expression"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "timestampToUnixMicros": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "timestampToUnixMillis": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "timestampToUnixSeconds": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "timestampTruncate": {
+          "overloads": [
+            {
+              "params": [
+                {"aliases":["TimeGranularity"],"kinds":["literal"],"name":"granularity","type":"TimeGranularity"},
+                {"kinds":["expression","string"],"name":"timezone","optional":true,"type":"string | Expression"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [
+                {"kinds":["expression"],"name":"granularity","type":"Expression"},
+                {"kinds":["expression","string"],"name":"timezone","optional":true,"type":"string | Expression"}
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "toLower": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "toUpper": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "trim": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "kinds": ["bytes","expression","string"],
+                  "name": "valueToTrim",
+                  "optional": true,
+                  "type": "string | Expression | Uint8Array | Buffer"
+                }
+              ],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "trunc": {
+          "overloads": [
+            {"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}},
+            {
+              "params": [{"kinds":["expression"],"name":"decimalPlaces","type":"Expression"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            },
+            {
+              "params": [{"kinds":["number"],"name":"decimalPlaces","type":"number"}],
+              "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+            }
+          ],
+          "static": false
+        },
+        "type": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "unixMicrosToTimestamp": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "unixMillisToTimestamp": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "unixSecondsToTimestamp": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false},
+        "vectorLength": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}],"static":false}
+      },
+      "properties": {
+        "expressionType": {
+          "aliases": ["ExpressionType"],
+          "kinds": ["literal"],
+          "optional": false,
+          "readonly": true,
+          "static": false,
+          "type": "ExpressionType"
+        }
+      }
+    },
+    "Field": {
+      "abstract": false,
+      "extends": "Expression",
+      "implements": ["Selectable"],
+      "methods": {
+        "geoDistance": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression","geoPoint"],"name":"location","type":"GeoPoint | Expression"}],
+              "returns": {"kinds":["expression"],"type":"Expression"}
+            }
+          ],
+          "static": false
+        }
+      },
+      "properties": {
+        "expressionType": {
+          "aliases": ["ExpressionType"],
+          "kinds": ["literal"],
+          "optional": false,
+          "readonly": true,
+          "static": false,
+          "type": "ExpressionType"
+        },
+        "fieldName": {"kinds":["string"],"optional":false,"readonly":true,"static":false,"type":"string"},
+        "selectable": {"kinds":["boolean"],"optional":false,"readonly":false,"static":false,"type":"true"}
+      }
+    },
+    "FunctionExpression": {
+      "abstract": false,
+      "constructors": [
+        {
+          "params": [
+            {"kinds":["string"],"name":"name","type":"string"},
+            {"elements":{"kinds":["expression"]},"kinds":["array"],"name":"params","type":"Expression[]"}
+          ],
+          "returns": {"kinds":["any"],"type":null}
+        }
+      ],
+      "extends": "Expression",
+      "implements": [],
+      "methods": {},
+      "properties": {
+        "expressionType": {
+          "aliases": ["ExpressionType"],
+          "kinds": ["literal"],
+          "optional": false,
+          "readonly": true,
+          "static": false,
+          "type": "ExpressionType"
+        }
+      }
+    },
+    "Ordering": {
+      "abstract": false,
+      "extends": null,
+      "implements": [],
+      "methods": {},
+      "properties": {
+        "direction": {
+          "kinds": ["literal"],
+          "literals": ["ascending","descending"],
+          "optional": false,
+          "readonly": true,
+          "static": false,
+          "type": "'ascending' | 'descending'"
+        },
+        "expr": {"kinds":["expression"],"optional":false,"readonly":true,"static":false,"type":"Expression"}
+      }
+    },
+    "Pipeline": {
+      "abstract": false,
+      "extends": null,
+      "implements": [],
+      "methods": {
+        "addFields": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "kinds": ["options"],
+                  "name": "options",
+                  "options": ["AddFieldsStageOptions"],
+                  "type": "AddFieldsStageOptions"
+                }
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [
+                {"kinds":["selectable"],"name":"field","type":"Selectable"},
+                {"kinds":["selectable"],"name":"additionalFields","rest":true,"type":"Selectable[]"}
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "aggregate": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["aliasedAggregate"],"name":"accumulator","type":"AliasedAggregate"},
+                {"kinds":["aliasedAggregate"],"name":"additionalAccumulators","rest":true,"type":"AliasedAggregate[]"}
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [
+                {
+                  "kinds": ["options"],
+                  "name": "options",
+                  "options": ["AggregateStageOptions"],
+                  "type": "AggregateStageOptions"
+                }
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "define": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["aliasedExpression"],"name":"aliasedExpression","type":"AliasedExpression"},
+                {"kinds":["aliasedExpression"],"name":"additionalExpressions","rest":true,"type":"AliasedExpression[]"}
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [{"kinds":["options"],"name":"options","options":["DefineStageOptions"],"type":"DefineStageOptions"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "delete": {"overloads":[{"params":[],"returns":{"kinds":["pipeline"],"type":"Pipeline"}}],"static":false},
+        "distinct": {
+          "overloads": [
+            {
+              "params": [{"kinds":["options"],"name":"options","options":["DistinctStageOptions"],"type":"DistinctStageOptions"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [
+                {"kinds":["selectable","string"],"name":"group","type":"string | Selectable"},
+                {
+                  "kinds": ["selectable","string"],
+                  "name": "additionalGroups",
+                  "rest": true,
+                  "type": "Array<string | Selectable>"
+                }
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "execute": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "kinds": ["options"],
+                  "name": "pipelineExecuteOptions",
+                  "optional": true,
+                  "options": ["PipelineExecuteOptions"],
+                  "type": "PipelineExecuteOptions"
+                }
+              ],
+              "returns": {"elements":{"kinds":["pipelineSnapshot"]},"kinds":["promise"],"type":"Promise<PipelineSnapshot>"}
+            }
+          ],
+          "static": false
+        },
+        "findNearest": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "kinds": ["options"],
+                  "name": "options",
+                  "options": ["FindNearestStageOptions"],
+                  "type": "FindNearestStageOptions"
+                }
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "limit": {
+          "overloads": [
+            {
+              "params": [{"kinds":["number"],"name":"limit","type":"number"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [{"kinds":["options"],"name":"options","options":["LimitStageOptions"],"type":"LimitStageOptions"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "offset": {
+          "overloads": [
+            {
+              "params": [{"kinds":["number"],"name":"offset","type":"number"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [{"kinds":["options"],"name":"options","options":["OffsetStageOptions"],"type":"OffsetStageOptions"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "rawStage": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["string"],"name":"name","type":"string"},
+                {"elements":{"kinds":["any"]},"kinds":["array"],"name":"params","type":"any[]"}
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "removeFields": {
+          "overloads": [
+            {
+              "params": [
+                {"kinds":["field","string"],"name":"fieldValue","type":"Field | string"},
+                {"kinds":["field","string"],"name":"additionalFields","rest":true,"type":"Array<Field | string>"}
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [
+                {
+                  "kinds": ["options"],
+                  "name": "options",
+                  "options": ["RemoveFieldsStageOptions"],
+                  "type": "RemoveFieldsStageOptions"
+                }
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "replaceWith": {
+          "overloads": [
+            {
+              "params": [{"kinds":["expression"],"name":"expr","type":"Expression"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [
+                {
+                  "kinds": ["options"],
+                  "name": "options",
+                  "options": ["ReplaceWithStageOptions"],
+                  "type": "ReplaceWithStageOptions"
+                }
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "sample": {
+          "overloads": [
+            {
+              "params": [{"kinds":["number"],"name":"documents","type":"number"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [{"kinds":["options"],"name":"options","options":["SampleStageOptions"],"type":"SampleStageOptions"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "search": {
+          "overloads": [
+            {
+              "params": [{"kinds":["options"],"name":"options","options":["SearchStageOptions"],"type":"SearchStageOptions"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "select": {
+          "overloads": [
+            {
+              "params": [{"kinds":["options"],"name":"options","options":["SelectStageOptions"],"type":"SelectStageOptions"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [
+                {"kinds":["selectable","string"],"name":"selection","type":"Selectable | string"},
+                {
+                  "kinds": ["selectable","string"],
+                  "name": "additionalSelections",
+                  "rest": true,
+                  "type": "Array<Selectable | string>"
+                }
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "sort": {
+          "overloads": [
+            {
+              "params": [{"kinds":["options"],"name":"options","options":["SortStageOptions"],"type":"SortStageOptions"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [
+                {"kinds":["ordering"],"name":"ordering","type":"Ordering"},
+                {"kinds":["ordering"],"name":"additionalOrderings","rest":true,"type":"Ordering[]"}
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "stream": {
+          "overloads": [{"params":[],"returns":{"kinds":["readableStream"],"type":"NodeJS.ReadableStream"}}],
+          "static": false
+        },
+        "toArrayExpression": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"Expression"}}],"static":false},
+        "toScalarExpression": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"Expression"}}],"static":false},
+        "union": {
+          "overloads": [
+            {
+              "params": [{"kinds":["options"],"name":"options","options":["UnionStageOptions"],"type":"UnionStageOptions"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [{"kinds":["pipeline"],"name":"other","type":"Pipeline"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "unnest": {
+          "overloads": [
+            {
+              "params": [{"kinds":["options"],"name":"options","options":["UnnestStageOptions"],"type":"UnnestStageOptions"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [
+                {"kinds":["selectable"],"name":"selectable","type":"Selectable"},
+                {"kinds":["string"],"name":"indexField","optional":true,"type":"string"}
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "update": {
+          "overloads": [
+            {"params":[],"returns":{"kinds":["pipeline"],"type":"Pipeline"}},
+            {
+              "params": [
+                {
+                  "elements": {"kinds":["aliasedExpression"]},
+                  "kinds": ["array"],
+                  "name": "transformedFields",
+                  "type": "AliasedExpression[]"
+                }
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "where": {
+          "overloads": [
+            {
+              "params": [{"kinds":["booleanExpression"],"name":"condition","type":"BooleanExpression"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [{"kinds":["options"],"name":"options","options":["WhereStageOptions"],"type":"WhereStageOptions"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        }
+      },
+      "properties": {}
+    },
+    "PipelineResult": {
+      "abstract": false,
+      "extends": null,
+      "implements": [],
+      "methods": {
+        "data": {"overloads":[{"params":[],"returns":{"kinds":["documentData"],"type":"DocumentData"}}],"static":false},
+        "get": {
+          "overloads": [
+            {
+              "params": [{"kinds":["fieldPath","string"],"name":"fieldPath","type":"string | FieldPath"}],
+              "returns": {"kinds":["any"],"type":"any"}
+            }
+          ],
+          "static": false
+        },
+        "isEqual": {
+          "overloads": [
+            {
+              "params": [{"kinds":["pipelineResult"],"name":"other","type":"PipelineResult"}],
+              "returns": {"kinds":["boolean"],"type":"boolean"}
+            }
+          ],
+          "static": false
+        }
+      },
+      "properties": {
+        "createTime": {
+          "kinds": ["timestamp","undefined"],
+          "optional": false,
+          "readonly": true,
+          "static": false,
+          "type": "Timestamp | undefined"
+        },
+        "id": {"kinds":["string","undefined"],"optional":false,"readonly":true,"static":false,"type":"string | undefined"},
+        "ref": {
+          "kinds": ["documentReference","undefined"],
+          "optional": false,
+          "readonly": true,
+          "static": false,
+          "type": "DocumentReference | undefined"
+        },
+        "updateTime": {
+          "kinds": ["timestamp","undefined"],
+          "optional": false,
+          "readonly": true,
+          "static": false,
+          "type": "Timestamp | undefined"
+        }
+      }
+    },
+    "PipelineSnapshot": {
+      "abstract": false,
+      "extends": null,
+      "implements": [],
+      "methods": {},
+      "properties": {
+        "executionTime": {"kinds":["timestamp"],"optional":false,"readonly":true,"static":false,"type":"Timestamp"},
+        "explainStats": {
+          "kinds": ["explainStats","undefined"],
+          "optional": false,
+          "readonly": true,
+          "static": false,
+          "type": "ExplainStats | undefined"
+        },
+        "pipeline": {"kinds":["pipeline"],"optional":false,"readonly":true,"static":false,"type":"Pipeline"},
+        "results": {
+          "elements": {"kinds":["pipelineResult"]},
+          "kinds": ["array"],
+          "optional": false,
+          "readonly": true,
+          "static": false,
+          "type": "PipelineResult[]"
+        }
+      }
+    },
+    "PipelineSource": {
+      "abstract": false,
+      "extends": null,
+      "implements": [],
+      "methods": {
+        "collection": {
+          "overloads": [
+            {
+              "params": [{"kinds":["collectionReference","string"],"name":"collectionPath","type":"string | CollectionReference"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [
+                {
+                  "kinds": ["options"],
+                  "name": "options",
+                  "options": ["CollectionStageOptions"],
+                  "type": "CollectionStageOptions"
+                }
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "collectionGroup": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "kinds": ["options"],
+                  "name": "options",
+                  "options": ["CollectionGroupStageOptions"],
+                  "type": "CollectionGroupStageOptions"
+                }
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [{"kinds":["string"],"name":"collectionId","type":"string"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "createFrom": {
+          "overloads": [
+            {
+              "params": [{"kinds":["query"],"name":"query","type":"Query"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "database": {
+          "overloads": [
+            {"params":[],"returns":{"kinds":["pipeline"],"type":"Pipeline"}},
+            {
+              "params": [{"kinds":["options"],"name":"options","options":["DatabaseStageOptions"],"type":"DatabaseStageOptions"}],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        },
+        "documents": {
+          "overloads": [
+            {
+              "params": [
+                {
+                  "elements": {"kinds":["documentReference","string"]},
+                  "kinds": ["array"],
+                  "name": "docs",
+                  "type": "Array<string | DocumentReference>"
+                }
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            },
+            {
+              "params": [
+                {
+                  "kinds": ["options"],
+                  "name": "options",
+                  "options": ["DocumentsStageOptions"],
+                  "type": "DocumentsStageOptions"
+                }
+              ],
+              "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+            }
+          ],
+          "static": false
+        }
+      },
+      "properties": {}
+    }
+  },
+  "entryPoints": {
+    "Firestore.pipeline": {"overloads":[{"params":[],"returns":{"kinds":["pipelineSource"],"type":"Pipelines.PipelineSource"}}]},
+    "Transaction.execute": {
+      "overloads": [
+        {
+          "params": [{"kinds":["pipeline"],"name":"pipeline","type":"Pipelines.Pipeline"}],
+          "returns": {"elements":{"kinds":["pipelineSnapshot"]},"kinds":["promise"],"type":"Promise<Pipelines.PipelineSnapshot>"}
+        }
+      ]
+    }
+  },
+  "formatVersion": 1,
+  "functions": {
+    "abs": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expr","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "add": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"first","type":"Expression"},
+            {"kinds":["any","expression"],"name":"second","type":"Expression | unknown"},
+            {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["any","expression"],"name":"second","type":"Expression | unknown"},
+            {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "and": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["booleanExpression"],"name":"first","type":"BooleanExpression"},
+            {"kinds":["booleanExpression"],"name":"second","type":"BooleanExpression"},
+            {"kinds":["booleanExpression"],"name":"more","rest":true,"type":"BooleanExpression[]"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "array": {
+      "overloads": [
+        {
+          "params": [{"elements":{"kinds":["any"]},"kinds":["array"],"name":"elements","type":"unknown[]"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayAgg": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        }
+      ]
+    },
+    "arrayAggDistinct": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        }
+      ]
+    },
+    "arrayConcat": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"firstArray","type":"Expression"},
+            {
+              "elements": {"kinds":["any"]},
+              "kinds": ["array","expression"],
+              "name": "secondArray",
+              "type": "Expression | unknown[]"
+            },
+            {
+              "elements": {"kinds":["any"]},
+              "kinds": ["array","expression"],
+              "name": "otherArrays",
+              "rest": true,
+              "type": "Array<Expression | unknown[]>"
+            }
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"firstArrayField","type":"string"},
+            {
+              "elements": {"kinds":["any"]},
+              "kinds": ["array","expression"],
+              "name": "secondArray",
+              "type": "Expression | unknown[]"
+            },
+            {
+              "elements": {"kinds":["any"]},
+              "kinds": ["array","expression"],
+              "name": "otherArrays",
+              "rest": true,
+              "type": "Array<Expression | unknown[]>"
+            }
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayContains": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"array","type":"Expression"},
+            {"kinds":["any"],"name":"element","type":"unknown"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"array","type":"Expression"},
+            {"kinds":["expression"],"name":"element","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["any"],"name":"element","type":"unknown"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"element","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "arrayContainsAll": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"array","type":"Expression"},
+            {
+              "elements": {"kinds":["any","expression"]},
+              "kinds": ["array"],
+              "name": "values",
+              "type": "Array<Expression | unknown>"
+            }
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"array","type":"Expression"},
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {
+              "elements": {"kinds":["any","expression"]},
+              "kinds": ["array"],
+              "name": "values",
+              "type": "Array<Expression | unknown>"
+            }
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "arrayContainsAny": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"array","type":"Expression"},
+            {
+              "elements": {"kinds":["any","expression"]},
+              "kinds": ["array"],
+              "name": "values",
+              "type": "Array<Expression | unknown>"
+            }
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"array","type":"Expression"},
+            {"kinds":["expression"],"name":"values","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {
+              "elements": {"kinds":["any","expression"]},
+              "kinds": ["array"],
+              "name": "values",
+              "type": "Array<Expression | unknown>"
+            }
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"values","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "arrayFilter": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["string"],"name":"alias","type":"string"},
+            {"kinds":["booleanExpression"],"name":"filter","type":"BooleanExpression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["string"],"name":"alias","type":"string"},
+            {"kinds":["booleanExpression"],"name":"filter","type":"BooleanExpression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayFirst": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"arrayExpression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayFirstN": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"n","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["number"],"name":"n","type":"number"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"n","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["number"],"name":"n","type":"number"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayGet": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"indexExpr","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["number"],"name":"index","type":"number"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"arrayField","type":"string"},
+            {"kinds":["expression"],"name":"indexExpr","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"arrayField","type":"string"},{"kinds":["number"],"name":"index","type":"number"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayIndexOf": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["any","expression"],"name":"search","type":"unknown | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["any","expression"],"name":"search","type":"unknown | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayIndexOfAll": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["any","expression"],"name":"search","type":"unknown | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["any","expression"],"name":"search","type":"unknown | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayLast": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"arrayExpression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayLastIndexOf": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["any","expression"],"name":"search","type":"unknown | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["any","expression"],"name":"search","type":"unknown | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayLastN": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"n","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["number"],"name":"n","type":"number"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"n","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["number"],"name":"n","type":"number"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayLength": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"array","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayMaximum": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"arrayExpression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayMaximumN": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"n","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["number"],"name":"n","type":"number"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"n","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["number"],"name":"n","type":"number"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayMinimum": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"arrayExpression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayMinimumN": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"n","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["number"],"name":"n","type":"number"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"n","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["number"],"name":"n","type":"number"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayReverse": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"arrayExpression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arraySlice": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["expression","number"],"name":"offset","type":"number | Expression"},
+            {"kinds":["expression","number"],"name":"length","optional":true,"type":"number | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"arrayName","type":"string"},
+            {"kinds":["expression","number"],"name":"offset","type":"number | Expression"},
+            {"kinds":["expression","number"],"name":"length","optional":true,"type":"number | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arraySum": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayTransform": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["string"],"name":"elementAlias","type":"string"},
+            {"kinds":["expression"],"name":"transform","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["string"],"name":"elementAlias","type":"string"},
+            {"kinds":["expression"],"name":"transform","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "arrayTransformWithIndex": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["string"],"name":"elementAlias","type":"string"},
+            {"kinds":["string"],"name":"indexAlias","type":"string"},
+            {"kinds":["expression"],"name":"transform","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["string"],"name":"elementAlias","type":"string"},
+            {"kinds":["string"],"name":"indexAlias","type":"string"},
+            {"kinds":["expression"],"name":"transform","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "ascending": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expr","type":"Expression"}],
+          "returns": {"kinds":["ordering"],"type":"Ordering"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["ordering"],"type":"Ordering"}
+        }
+      ]
+    },
+    "average": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        }
+      ]
+    },
+    "byteLength": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expr","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "ceil": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "charLength": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"stringExpression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "coalesce": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["any","expression"],"name":"replacement","type":"Expression | unknown"},
+            {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["any","expression"],"name":"replacement","type":"Expression | unknown"},
+            {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "collectionId": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "concat": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"first","type":"Expression"},
+            {"kinds":["any","expression"],"name":"second","type":"Expression | unknown"},
+            {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "conditional": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["booleanExpression"],"name":"condition","type":"BooleanExpression"},
+            {"kinds":["expression"],"name":"thenExpr","type":"Expression"},
+            {"kinds":["expression"],"name":"elseExpr","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "constant": {
+      "overloads": [
+        {
+          "params": [{"kinds":["boolean"],"name":"value","type":"boolean"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [{"kinds":["bytes"],"name":"value","type":"Buffer | Uint8Array"}],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [{"kinds":["date"],"name":"value","type":"Date"}],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [{"kinds":["documentReference"],"name":"value","type":"DocumentReference"}],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [{"kinds":["geoPoint"],"name":"value","type":"GeoPoint"}],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [{"kinds":["null"],"name":"value","type":"null"}],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [{"kinds":["number"],"name":"value","type":"number"}],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"value","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [{"kinds":["timestamp"],"name":"value","type":"Timestamp"}],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [{"kinds":["vectorValue"],"name":"value","type":"VectorValue"}],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        }
+      ]
+    },
+    "cosineDistance": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"vectorExpression","type":"Expression"},
+            {
+              "elements": {"kinds":["number"]},
+              "kinds": ["array","expression"],
+              "name": "vector",
+              "type": "number[] | Expression"
+            }
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"vectorExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"otherVectorExpression","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {
+              "elements": {"kinds":["number"]},
+              "kinds": ["array","vectorValue"],
+              "name": "vector",
+              "type": "number[] | VectorValue"
+            }
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"vectorExpression","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "count": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        }
+      ]
+    },
+    "countAll": {"overloads":[{"params":[],"returns":{"kinds":["aggregateFunction"],"type":"AggregateFunction"}}]},
+    "countDistinct": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        }
+      ]
+    },
+    "countIf": {
+      "overloads": [
+        {
+          "params": [{"kinds":["booleanExpression"],"name":"booleanExpr","type":"BooleanExpression"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        }
+      ]
+    },
+    "currentDocument": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"Expression"}}]},
+    "currentTimestamp": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}]},
+    "descending": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expr","type":"Expression"}],
+          "returns": {"kinds":["ordering"],"type":"Ordering"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["ordering"],"type":"Ordering"}
+        }
+      ]
+    },
+    "divide": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"dividend","type":"Expression"},
+            {"kinds":["any"],"name":"divisor","type":"unknown"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"dividend","type":"Expression"},
+            {"kinds":["expression"],"name":"divisor","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"dividend","type":"string"},{"kinds":["any"],"name":"divisor","type":"unknown"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"dividend","type":"string"},
+            {"kinds":["expression"],"name":"divisor","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "documentId": {
+      "overloads": [
+        {
+          "params": [{"kinds":["documentReference","string"],"name":"documentPath","type":"string | DocumentReference"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["expression"],"name":"documentPathExpr","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "documentMatches": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression","string"],"name":"rquery","type":"string | Expression"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "dotProduct": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"vectorExpression","type":"Expression"},
+            {
+              "elements": {"kinds":["number"]},
+              "kinds": ["array","vectorValue"],
+              "name": "vector",
+              "type": "number[] | VectorValue"
+            }
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"vectorExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"otherVectorExpression","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {
+              "elements": {"kinds":["number"]},
+              "kinds": ["array","vectorValue"],
+              "name": "vector",
+              "type": "number[] | VectorValue"
+            }
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"vectorExpression","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "endsWith": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"suffix","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["string"],"name":"suffix","type":"string"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"suffix","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["string"],"name":"suffix","type":"string"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "equal": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["any"],"name":"value","type":"unknown"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"left","type":"Expression"},
+            {"kinds":["expression"],"name":"right","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["any"],"name":"value","type":"unknown"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"expression","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "equalAny": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {
+              "elements": {"kinds":["any","expression"]},
+              "kinds": ["array"],
+              "name": "values",
+              "type": "Array<Expression | unknown>"
+            }
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {
+              "elements": {"kinds":["any","expression"]},
+              "kinds": ["array"],
+              "name": "values",
+              "type": "Array<Expression | unknown>"
+            }
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "euclideanDistance": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"vectorExpression","type":"Expression"},
+            {
+              "elements": {"kinds":["number"]},
+              "kinds": ["array","vectorValue"],
+              "name": "vector",
+              "type": "number[] | VectorValue"
+            }
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"vectorExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"otherVectorExpression","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {
+              "elements": {"kinds":["number"]},
+              "kinds": ["array","vectorValue"],
+              "name": "vector",
+              "type": "number[] | VectorValue"
+            }
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"vectorExpression","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "exists": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"value","type":"Expression"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "exp": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "field": {
+      "overloads": [
+        {
+          "params": [{"kinds":["fieldPath"],"name":"path","type":"FieldPath"}],
+          "returns": {"kinds":["field"],"type":"Field"}
+        },
+        {"params":[{"kinds":["string"],"name":"name","type":"string"}],"returns":{"kinds":["field"],"type":"Field"}}
+      ]
+    },
+    "first": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        }
+      ]
+    },
+    "geoDistance": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["field","string"],"name":"fieldName","type":"string | Field"},
+            {"kinds":["expression","geoPoint"],"name":"location","type":"GeoPoint | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        }
+      ]
+    },
+    "getField": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["expression"],"name":"keyExpr","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["string"],"name":"key","type":"string"}
+          ],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"keyExpr","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["string"],"name":"key","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        }
+      ]
+    },
+    "greaterThan": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["any"],"name":"value","type":"unknown"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"left","type":"Expression"},
+            {"kinds":["expression"],"name":"right","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["any"],"name":"value","type":"unknown"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"expression","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "greaterThanOrEqual": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["any"],"name":"value","type":"unknown"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"left","type":"Expression"},
+            {"kinds":["expression"],"name":"right","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["any"],"name":"value","type":"unknown"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"value","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "ifAbsent": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"ifExpr","type":"Expression"},
+            {"kinds":["any"],"name":"elseValue","type":"unknown"}
+          ],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"ifExpr","type":"Expression"},
+            {"kinds":["expression"],"name":"elseExpr","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"ifFieldName","type":"string"},
+            {"kinds":["expression"],"name":"elseExpr","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        }
+      ]
+    },
+    "ifError": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["booleanExpression"],"name":"tryExpr","type":"BooleanExpression"},
+            {"kinds":["booleanExpression"],"name":"catchExpr","type":"BooleanExpression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"tryExpr","type":"Expression"},
+            {"kinds":["any"],"name":"catchValue","type":"unknown"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"tryExpr","type":"Expression"},
+            {"kinds":["expression"],"name":"catchExpr","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "ifNull": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"ifExpr","type":"Expression"},
+            {"kinds":["any"],"name":"elseValue","type":"unknown"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"ifExpr","type":"Expression"},
+            {"kinds":["expression"],"name":"elseExpr","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"ifFieldName","type":"string"},
+            {"kinds":["any"],"name":"elseValue","type":"unknown"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"ifFieldName","type":"string"},
+            {"kinds":["expression"],"name":"elseExpr","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "isAbsent": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"value","type":"Expression"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"field","type":"string"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "isError": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"value","type":"Expression"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "isType": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["string"],"name":"type","type":"string"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["string"],"name":"type","type":"string"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "join": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"delimiterExpression","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"},
+            {"kinds":["string"],"name":"delimiter","type":"string"}
+          ],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"arrayFieldName","type":"string"},
+            {"kinds":["string"],"name":"delimiter","type":"string"}
+          ],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        }
+      ]
+    },
+    "last": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        }
+      ]
+    },
+    "length": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "lessThan": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["any"],"name":"value","type":"unknown"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"left","type":"Expression"},
+            {"kinds":["expression"],"name":"right","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["any"],"name":"value","type":"unknown"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"expression","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "lessThanOrEqual": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["any"],"name":"value","type":"unknown"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"left","type":"Expression"},
+            {"kinds":["expression"],"name":"right","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["any"],"name":"value","type":"unknown"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"expression","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "like": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"pattern","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["string"],"name":"pattern","type":"string"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"pattern","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["string"],"name":"pattern","type":"string"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "ln": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "log10": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "logicalMaximum": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"first","type":"Expression"},
+            {"kinds":["any","expression"],"name":"second","type":"Expression | unknown"},
+            {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["any","expression"],"name":"second","type":"Expression | unknown"},
+            {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "logicalMinimum": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"first","type":"Expression"},
+            {"kinds":["any","expression"],"name":"second","type":"Expression | unknown"},
+            {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["any","expression"],"name":"second","type":"Expression | unknown"},
+            {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "map": {
+      "overloads": [
+        {
+          "params": [{"kinds":["map"],"name":"elements","type":"Record<string, unknown>"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "mapEntries": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"mapExpression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"mapField","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "mapGet": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"mapExpression","type":"Expression"},
+            {"kinds":["string"],"name":"subField","type":"string"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["string"],"name":"subField","type":"string"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "mapKeys": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"mapExpression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"mapField","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "mapMerge": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression","map"],"name":"firstMap","type":"Record<string, unknown> | Expression"},
+            {"kinds":["expression","map"],"name":"secondMap","type":"Record<string, unknown> | Expression"},
+            {
+              "kinds": ["expression","map"],
+              "name": "otherMaps",
+              "rest": true,
+              "type": "Array<Record<string, unknown> | Expression>"
+            }
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"mapField","type":"string"},
+            {"kinds":["expression","map"],"name":"secondMap","type":"Record<string, unknown> | Expression"},
+            {
+              "kinds": ["expression","map"],
+              "name": "otherMaps",
+              "rest": true,
+              "type": "Array<Record<string, unknown> | Expression>"
+            }
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "mapRemove": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"mapExpr","type":"Expression"},
+            {"kinds":["expression"],"name":"keyExpr","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"mapExpr","type":"Expression"},
+            {"kinds":["string"],"name":"key","type":"string"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"mapField","type":"string"},
+            {"kinds":["expression"],"name":"keyExpr","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"mapField","type":"string"},{"kinds":["string"],"name":"key","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "mapSet": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"mapExpression","type":"Expression"},
+            {"kinds":["expression","string"],"name":"key","type":"string | Expression"},
+            {"kinds":["any"],"name":"value","type":"unknown"},
+            {"kinds":["any"],"name":"moreKeyValues","rest":true,"type":"unknown[]"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"mapField","type":"string"},
+            {"kinds":["expression","string"],"name":"key","type":"string | Expression"},
+            {"kinds":["any"],"name":"value","type":"unknown"},
+            {"kinds":["any"],"name":"moreKeyValues","rest":true,"type":"unknown[]"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "mapValues": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"mapExpression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"mapField","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "maximum": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        }
+      ]
+    },
+    "minimum": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        }
+      ]
+    },
+    "mod": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["any"],"name":"value","type":"unknown"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"left","type":"Expression"},
+            {"kinds":["expression"],"name":"right","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["any"],"name":"value","type":"unknown"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"expression","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "multiply": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"first","type":"Expression"},
+            {"kinds":["any","expression"],"name":"second","type":"Expression | unknown"},
+            {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["any","expression"],"name":"second","type":"Expression | unknown"},
+            {"kinds":["any","expression"],"name":"others","rest":true,"type":"Array<Expression | unknown>"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "nor": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["booleanExpression"],"name":"first","type":"BooleanExpression"},
+            {"kinds":["booleanExpression"],"name":"second","type":"BooleanExpression"},
+            {"kinds":["booleanExpression"],"name":"more","rest":true,"type":"BooleanExpression[]"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "not": {
+      "overloads": [
+        {
+          "params": [{"kinds":["booleanExpression"],"name":"booleanExpr","type":"BooleanExpression"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "notEqual": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["any"],"name":"value","type":"unknown"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"left","type":"Expression"},
+            {"kinds":["expression"],"name":"right","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["any"],"name":"value","type":"unknown"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"expression","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "notEqualAny": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"element","type":"Expression"},
+            {
+              "elements": {"kinds":["any","expression"]},
+              "kinds": ["array"],
+              "name": "values",
+              "type": "Array<Expression | unknown>"
+            }
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"element","type":"Expression"},
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {
+              "elements": {"kinds":["any","expression"]},
+              "kinds": ["array"],
+              "name": "values",
+              "type": "Array<Expression | unknown>"
+            }
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"arrayExpression","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "or": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["booleanExpression"],"name":"first","type":"BooleanExpression"},
+            {"kinds":["booleanExpression"],"name":"second","type":"BooleanExpression"},
+            {"kinds":["booleanExpression"],"name":"more","rest":true,"type":"BooleanExpression[]"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "parent": {
+      "overloads": [
+        {
+          "params": [{"kinds":["documentReference","string"],"name":"documentPath","type":"string | DocumentReference"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["expression"],"name":"documentPathExpr","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "pow": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"base","type":"Expression"},
+            {"kinds":["expression"],"name":"exponent","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"base","type":"Expression"},
+            {"kinds":["number"],"name":"exponent","type":"number"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"base","type":"string"},
+            {"kinds":["expression"],"name":"exponent","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"base","type":"string"},{"kinds":["number"],"name":"exponent","type":"number"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "rand": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"FunctionExpression"}}]},
+    "regexContains": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"pattern","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["string"],"name":"pattern","type":"string"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"pattern","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["string"],"name":"pattern","type":"string"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "regexFind": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"pattern","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["string"],"name":"pattern","type":"string"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"pattern","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["string"],"name":"pattern","type":"string"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "regexFindAll": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"pattern","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["string"],"name":"pattern","type":"string"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"pattern","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["string"],"name":"pattern","type":"string"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "regexMatch": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"pattern","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["string"],"name":"pattern","type":"string"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"pattern","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["string"],"name":"pattern","type":"string"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "reverse": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"stringExpression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"field","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "round": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["expression","number"],"name":"decimalPlaces","type":"number | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression","number"],"name":"decimalPlaces","type":"number | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "score": {"overloads":[{"params":[],"returns":{"kinds":["expression"],"type":"Expression"}}]},
+    "split": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["expression"],"name":"delimiter","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["string"],"name":"delimiter","type":"string"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"delimiter","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["string"],"name":"delimiter","type":"string"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "sqrt": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "startsWith": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"prefix","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["string"],"name":"prefix","type":"string"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"prefix","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"},{"kinds":["string"],"name":"prefix","type":"string"}],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "stringConcat": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"firstString","type":"Expression"},
+            {"kinds":["expression","string"],"name":"secondString","type":"Expression | string"},
+            {"kinds":["expression","string"],"name":"otherStrings","rest":true,"type":"Array<Expression | string>"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression","string"],"name":"secondString","type":"Expression | string"},
+            {"kinds":["expression","string"],"name":"otherStrings","rest":true,"type":"Array<Expression | string>"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "stringContains": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"substring","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["string"],"name":"substring","type":"string"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"substring","type":"Expression"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["string"],"name":"substring","type":"string"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    },
+    "stringReverse": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"stringExpression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"field","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "subcollection": {
+      "overloads": [
+        {
+          "params": [
+            {
+              "kinds": ["options"],
+              "name": "options",
+              "options": ["SubcollectionStageOptions"],
+              "type": "SubcollectionStageOptions"
+            }
+          ],
+          "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"path","type":"string"}],
+          "returns": {"kinds":["pipeline"],"type":"Pipeline"}
+        }
+      ]
+    },
+    "substring": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"input","type":"Expression"},
+            {"kinds":["expression"],"name":"position","type":"Expression"},
+            {"kinds":["expression"],"name":"length","optional":true,"type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"input","type":"Expression"},
+            {"kinds":["number"],"name":"position","type":"number"},
+            {"kinds":["number"],"name":"length","optional":true,"type":"number"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"field","type":"string"},
+            {"kinds":["expression"],"name":"position","type":"Expression"},
+            {"kinds":["expression"],"name":"length","optional":true,"type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"field","type":"string"},
+            {"kinds":["number"],"name":"position","type":"number"},
+            {"kinds":["number"],"name":"length","optional":true,"type":"number"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "subtract": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"minuend","type":"Expression"},
+            {"kinds":["any"],"name":"subtrahend","type":"unknown"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"minuend","type":"Expression"},
+            {"kinds":["expression"],"name":"subtrahend","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"minuendFieldName","type":"string"},
+            {"kinds":["any"],"name":"subtrahend","type":"unknown"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"minuendFieldName","type":"string"},
+            {"kinds":["expression"],"name":"subtrahend","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "sum": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["aggregateFunction"],"type":"AggregateFunction"}
+        }
+      ]
+    },
+    "switchOn": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["booleanExpression"],"name":"condition","type":"BooleanExpression"},
+            {"kinds":["expression"],"name":"result","type":"Expression"},
+            {
+              "kinds": ["booleanExpression","expression"],
+              "name": "others",
+              "rest": true,
+              "type": "Array<BooleanExpression | Expression>"
+            }
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "timestampAdd": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"timestamp","type":"Expression"},
+            {"aliases":["TimeUnit"],"kinds":["literal"],"name":"unit","type":"TimeUnit"},
+            {"kinds":["number"],"name":"amount","type":"number"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"timestamp","type":"Expression"},
+            {"kinds":["expression"],"name":"unit","type":"Expression"},
+            {"kinds":["expression"],"name":"amount","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"aliases":["TimeUnit"],"kinds":["literal"],"name":"unit","type":"TimeUnit"},
+            {"kinds":["number"],"name":"amount","type":"number"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "timestampDiff": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"endExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"startExpression","type":"Expression"},
+            {"aliases":["TimeUnit"],"kinds":["expression","literal"],"name":"unit","type":"TimeUnit | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"endExpression","type":"Expression"},
+            {"kinds":["string"],"name":"startFieldName","type":"string"},
+            {"aliases":["TimeUnit"],"kinds":["expression","literal"],"name":"unit","type":"TimeUnit | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"endFieldName","type":"string"},
+            {"kinds":["expression"],"name":"startExpression","type":"Expression"},
+            {"aliases":["TimeUnit"],"kinds":["expression","literal"],"name":"unit","type":"TimeUnit | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"endFieldName","type":"string"},
+            {"kinds":["string"],"name":"startFieldName","type":"string"},
+            {"aliases":["TimeUnit"],"kinds":["expression","literal"],"name":"unit","type":"TimeUnit | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "timestampExtract": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"timestampExpression","type":"Expression"},
+            {"aliases":["TimePart"],"kinds":["literal"],"name":"part","type":"TimePart"},
+            {"kinds":["expression","string"],"name":"timezone","optional":true,"type":"string | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"timestampExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"part","type":"Expression"},
+            {"kinds":["expression","string"],"name":"timezone","optional":true,"type":"string | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"aliases":["TimePart"],"kinds":["literal"],"name":"part","type":"TimePart"},
+            {"kinds":["expression","string"],"name":"timezone","optional":true,"type":"string | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"part","type":"Expression"},
+            {"kinds":["expression","string"],"name":"timezone","optional":true,"type":"string | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "timestampSubtract": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"timestamp","type":"Expression"},
+            {"aliases":["TimeUnit"],"kinds":["literal"],"name":"unit","type":"TimeUnit"},
+            {"kinds":["number"],"name":"amount","type":"number"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"timestamp","type":"Expression"},
+            {"kinds":["expression"],"name":"unit","type":"Expression"},
+            {"kinds":["expression"],"name":"amount","type":"Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"aliases":["TimeUnit"],"kinds":["literal"],"name":"unit","type":"TimeUnit"},
+            {"kinds":["number"],"name":"amount","type":"number"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "timestampToUnixMicros": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expr","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "timestampToUnixMillis": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expr","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "timestampToUnixSeconds": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expr","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "timestampTruncate": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"timestampExpression","type":"Expression"},
+            {"aliases":["TimeGranularity"],"kinds":["literal"],"name":"granularity","type":"TimeGranularity"},
+            {"kinds":["expression","string"],"name":"timezone","optional":true,"type":"string | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["expression"],"name":"timestampExpression","type":"Expression"},
+            {"kinds":["expression"],"name":"granularity","type":"Expression"},
+            {"kinds":["expression","string"],"name":"timezone","optional":true,"type":"string | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"aliases":["TimeGranularity"],"kinds":["literal"],"name":"granularity","type":"TimeGranularity"},
+            {"kinds":["expression","string"],"name":"timezone","optional":true,"type":"string | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression"],"name":"granularity","type":"Expression"},
+            {"kinds":["expression","string"],"name":"timezone","optional":true,"type":"string | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "toLower": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"stringExpression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "toUpper": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"stringExpression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "trim": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"stringExpression","type":"Expression"},
+            {"kinds":["expression","string"],"name":"valueToTrim","optional":true,"type":"string | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression","string"],"name":"valueToTrim","optional":true,"type":"string | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "trunc": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["expression"],"name":"expression","type":"Expression"},
+            {"kinds":["expression","number"],"name":"decimalPlaces","type":"number | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [
+            {"kinds":["string"],"name":"fieldName","type":"string"},
+            {"kinds":["expression","number"],"name":"decimalPlaces","type":"number | Expression"}
+          ],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "type": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "unixMicrosToTimestamp": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expr","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "unixMillisToTimestamp": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expr","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "unixSecondsToTimestamp": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"expr","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "variable": {
+      "overloads": [
+        {
+          "params": [{"kinds":["string"],"name":"name","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"Expression"}
+        }
+      ]
+    },
+    "vectorLength": {
+      "overloads": [
+        {
+          "params": [{"kinds":["expression"],"name":"vectorExpression","type":"Expression"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        },
+        {
+          "params": [{"kinds":["string"],"name":"fieldName","type":"string"}],
+          "returns": {"kinds":["expression"],"type":"FunctionExpression"}
+        }
+      ]
+    },
+    "xor": {
+      "overloads": [
+        {
+          "params": [
+            {"kinds":["booleanExpression"],"name":"first","type":"BooleanExpression"},
+            {"kinds":["booleanExpression"],"name":"second","type":"BooleanExpression"},
+            {"kinds":["booleanExpression"],"name":"additionalConditions","rest":true,"type":"BooleanExpression[]"}
+          ],
+          "returns": {"kinds":["booleanExpression"],"type":"BooleanExpression"}
+        }
+      ]
+    }
+  },
+  "interfaces": {
+    "Selectable": {
+      "abstract": false,
+      "extends": null,
+      "implements": [],
+      "methods": {},
+      "properties": {"selectable":{"kinds":["boolean"],"optional":false,"readonly":false,"static":false,"type":"true"}}
+    }
+  },
+  "runtimeExports": [
+    "AggregateFunction",
+    "AliasedAggregate",
+    "AliasedExpression",
+    "BooleanExpression",
+    "Constant",
+    "Expression",
+    "Field",
+    "FunctionExpression",
+    "Ordering",
+    "Pipeline",
+    "PipelineResult",
+    "PipelineSnapshot",
+    "PipelineSource",
+    "abs",
+    "add",
+    "and",
+    "array",
+    "arrayAgg",
+    "arrayAggDistinct",
+    "arrayConcat",
+    "arrayContains",
+    "arrayContainsAll",
+    "arrayContainsAny",
+    "arrayFilter",
+    "arrayFirst",
+    "arrayFirstN",
+    "arrayGet",
+    "arrayIndexOf",
+    "arrayIndexOfAll",
+    "arrayLast",
+    "arrayLastIndexOf",
+    "arrayLastN",
+    "arrayLength",
+    "arrayMaximum",
+    "arrayMaximumN",
+    "arrayMinimum",
+    "arrayMinimumN",
+    "arrayReverse",
+    "arraySlice",
+    "arraySum",
+    "arrayTransform",
+    "arrayTransformWithIndex",
+    "ascending",
+    "average",
+    "byteLength",
+    "ceil",
+    "charLength",
+    "coalesce",
+    "collectionId",
+    "concat",
+    "conditional",
+    "constant",
+    "cosineDistance",
+    "count",
+    "countAll",
+    "countDistinct",
+    "countIf",
+    "currentDocument",
+    "currentTimestamp",
+    "descending",
+    "divide",
+    "documentId",
+    "documentMatches",
+    "dotProduct",
+    "endsWith",
+    "equal",
+    "equalAny",
+    "euclideanDistance",
+    "exists",
+    "exp",
+    "field",
+    "first",
+    "floor",
+    "geoDistance",
+    "getField",
+    "greaterThan",
+    "greaterThanOrEqual",
+    "ifAbsent",
+    "ifError",
+    "ifNull",
+    "isAbsent",
+    "isError",
+    "isType",
+    "join",
+    "last",
+    "length",
+    "lessThan",
+    "lessThanOrEqual",
+    "like",
+    "ln",
+    "log10",
+    "logicalMaximum",
+    "logicalMinimum",
+    "ltrim",
+    "map",
+    "mapEntries",
+    "mapGet",
+    "mapKeys",
+    "mapMerge",
+    "mapRemove",
+    "mapSet",
+    "mapValues",
+    "maximum",
+    "minimum",
+    "mod",
+    "multiply",
+    "nor",
+    "not",
+    "notEqual",
+    "notEqualAny",
+    "or",
+    "parent",
+    "pow",
+    "rand",
+    "regexContains",
+    "regexFind",
+    "regexFindAll",
+    "regexMatch",
+    "reverse",
+    "round",
+    "rtrim",
+    "score",
+    "split",
+    "sqrt",
+    "startsWith",
+    "stringConcat",
+    "stringContains",
+    "stringIndexOf",
+    "stringRepeat",
+    "stringReplaceAll",
+    "stringReplaceOne",
+    "stringReverse",
+    "subcollection",
+    "substring",
+    "subtract",
+    "sum",
+    "switchOn",
+    "timestampAdd",
+    "timestampDiff",
+    "timestampExtract",
+    "timestampSubtract",
+    "timestampToUnixMicros",
+    "timestampToUnixMillis",
+    "timestampToUnixSeconds",
+    "timestampTruncate",
+    "toLower",
+    "toUpper",
+    "trim",
+    "trunc",
+    "type",
+    "unixMicrosToTimestamp",
+    "unixMillisToTimestamp",
+    "unixSecondsToTimestamp",
+    "variable",
+    "vectorLength",
+    "xor"
+  ],
+  "runtimeOnlyFunctions": {
+    "floor": {"module":"expression","params":[{"name":"expr"}]},
+    "ltrim": {"module":"expression","params":[{"name":"expr"},{"name":"valueToTrim"}]},
+    "rtrim": {"module":"expression","params":[{"name":"expr"},{"name":"valueToTrim"}]},
+    "stringIndexOf": {"module":"expression","params":[{"name":"expr"},{"name":"search"}]},
+    "stringRepeat": {"module":"expression","params":[{"name":"expr"},{"name":"repetitions"}]},
+    "stringReplaceAll": {"module":"expression","params":[{"name":"expr"},{"name":"find"},{"name":"replacement"}]},
+    "stringReplaceOne": {"module":"expression","params":[{"name":"expr"},{"name":"find"},{"name":"replacement"}]}
+  },
+  "runtimeOnlyMembers": {
+    "Expression": {
+      "arrayReverse": {"kind":"method","module":"expression.js","params":[]},
+      "concat": {"kind":"method","module":"expression.js","params":[{"name":"second"},{"name":"others","rest":true}]}
+    },
+    "PipelineResult": {"protoField":{"kind":"method","module":"pipelines.js","params":[{"name":"field"}]}}
+  },
+  "source": {
+    "generator": "packages/google_cloud_firestore/tool/pipeline_api_parity",
+    "namespace": "FirebaseFirestore.Pipelines",
+    "package": "@google-cloud/firestore",
+    "runtimeIndex": "build/src/pipelines/index.js",
+    "typings": "types/firestore.d.ts",
+    "version": "9.3.1"
+  },
+  "types": {
+    "AddFieldsStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {"fields":{"elements":{"kinds":["selectable"]},"kinds":["array"],"optional":false,"type":"Selectable[]"}}
+    },
+    "AggregateStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {
+        "accumulators": {"elements":{"kinds":["aliasedAggregate"]},"kinds":["array"],"optional":false,"type":"AliasedAggregate[]"},
+        "groups": {
+          "elements": {"kinds":["selectable","string"]},
+          "kinds": ["array"],
+          "optional": true,
+          "type": "Array<string | Selectable>"
+        }
+      }
+    },
+    "CollectionGroupStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {
+        "collectionId": {"kinds":["string"],"optional":false,"type":"string"},
+        "forceIndex": {"kinds":["string"],"optional":true,"type":"string"}
+      }
+    },
+    "CollectionStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {
+        "collection": {"kinds":["collectionReference","string"],"optional":false,"type":"string | CollectionReference"},
+        "forceIndex": {"kinds":["string"],"optional":true,"type":"string"}
+      }
+    },
+    "DatabaseStageOptions": {"extends":["StageOptions"],"kind":"object","properties":{}},
+    "DefineStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {
+        "variables": {"elements":{"kinds":["aliasedExpression"]},"kinds":["array"],"optional":false,"type":"AliasedExpression[]"}
+      }
+    },
+    "DistinctStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {
+        "groups": {
+          "elements": {"kinds":["selectable","string"]},
+          "kinds": ["array"],
+          "optional": false,
+          "type": "Array<string | Selectable>"
+        }
+      }
+    },
+    "DocumentsStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {
+        "docs": {
+          "elements": {"kinds":["documentReference","string"]},
+          "kinds": ["array"],
+          "optional": false,
+          "type": "Array<string | DocumentReference>"
+        }
+      }
+    },
+    "ExplainStatsFieldValue": {
+      "elements": {"kinds":["explainStatsFieldValue"]},
+      "kind": "other",
+      "kinds": ["array","boolean","map","null","number","string"],
+      "type": "null | string | number | boolean | {[key: string]: ExplainStatsFieldValue;} | ExplainStatsFieldValue[]"
+    },
+    "ExpressionType": {
+      "kind": "stringUnion",
+      "values": ["AggregateFunction","AliasedExpression","Constant","Field","Function","ListOfExprs","PipelineValue","Variable"]
+    },
+    "FindNearestStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {
+        "distanceField": {"kinds":["string"],"optional":true,"type":"string"},
+        "distanceMeasure": {
+          "kinds": ["literal"],
+          "literals": ["cosine","dot_product","euclidean"],
+          "optional": false,
+          "type": "'euclidean' | 'cosine' | 'dot_product'"
+        },
+        "field": {"kinds":["field","string"],"optional":false,"type":"Field | string"},
+        "limit": {"kinds":["number"],"optional":true,"type":"number"},
+        "vectorValue": {
+          "elements": {"kinds":["number"]},
+          "kinds": ["array","vectorValue"],
+          "optional": false,
+          "type": "VectorValue | number[]"
+        }
+      }
+    },
+    "LimitStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {"limit":{"kinds":["number"],"optional":false,"type":"number"}}
+    },
+    "OffsetStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {"offset":{"kinds":["number"],"optional":false,"type":"number"}}
+    },
+    "PipelineExecuteOptions": {
+      "kind": "object",
+      "properties": {
+        "explainOptions": {
+          "kinds": ["map"],
+          "optional": true,
+          "properties": {
+            "mode": {"kinds":["literal"],"literals":["analyze","execute"],"optional":true,"type":"'execute' | 'analyze'"},
+            "outputFormat": {"kinds":["literal"],"literals":["text"],"optional":true,"type":"'text'"}
+          },
+          "type": "{mode?: 'execute' | 'analyze'; outputFormat?: 'text';}"
+        },
+        "indexMode": {"kinds":["literal"],"literals":["recommended"],"optional":true,"type":"'recommended'"},
+        "rawOptions": {
+          "kinds": ["map"],
+          "optional": true,
+          "properties": {"[key]":{"kinds":["any"],"optional":true,"type":"unknown"}},
+          "type": "{[name: string]: unknown;}"
+        }
+      }
+    },
+    "RemoveFieldsStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {
+        "fields": {"elements":{"kinds":["field","string"]},"kinds":["array"],"optional":false,"type":"Array<Field | string>"}
+      }
+    },
+    "ReplaceWithStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {"map":{"kinds":["expression","string"],"optional":false,"type":"Expression | string"}}
+    },
+    "SampleStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "oneOf": [["documents","percentage"]],
+      "properties": {
+        "documents": {"kinds":["number"],"optional":true,"type":"number"},
+        "percentage": {"kinds":["number"],"optional":true,"type":"number"}
+      }
+    },
+    "SearchStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {
+        "addFields": {"elements":{"kinds":["selectable"]},"kinds":["array"],"optional":true,"type":"Selectable[]"},
+        "languageCode": {"kinds":["string"],"optional":true,"type":"string"},
+        "limit": {"kinds":["number"],"optional":true,"type":"number"},
+        "offset": {"kinds":["number"],"optional":true,"type":"number"},
+        "query": {"kinds":["booleanExpression","string"],"optional":false,"type":"BooleanExpression | string"},
+        "retrievalDepth": {"kinds":["number"],"optional":true,"type":"number"},
+        "sort": {"elements":{"kinds":["ordering"]},"kinds":["array","ordering"],"optional":true,"type":"Ordering | Ordering[]"}
+      }
+    },
+    "SelectStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {
+        "selections": {
+          "elements": {"kinds":["selectable","string"]},
+          "kinds": ["array"],
+          "optional": false,
+          "type": "Array<Selectable | string>"
+        }
+      }
+    },
+    "SortStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {"orderings":{"elements":{"kinds":["ordering"]},"kinds":["array"],"optional":false,"type":"Ordering[]"}}
+    },
+    "StageOptions": {
+      "kind": "object",
+      "properties": {
+        "rawOptions": {
+          "kinds": ["map"],
+          "optional": true,
+          "properties": {"[key]":{"kinds":["any"],"optional":true,"type":"unknown"}},
+          "type": "{[name: string]: unknown;}"
+        }
+      }
+    },
+    "SubcollectionStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {"path":{"kinds":["string"],"optional":false,"type":"string"}}
+    },
+    "TimeGranularity": {
+      "kind": "stringUnion",
+      "values": [
+        "day",
+        "hour",
+        "isoweek",
+        "isoyear",
+        "microsecond",
+        "millisecond",
+        "minute",
+        "month",
+        "quarter",
+        "second",
+        "week",
+        "week(friday)",
+        "week(monday)",
+        "week(saturday)",
+        "week(sunday)",
+        "week(thursday)",
+        "week(tuesday)",
+        "week(wednesday)",
+        "year"
+      ]
+    },
+    "TimePart": {
+      "kind": "stringUnion",
+      "values": [
+        "day",
+        "dayofweek",
+        "dayofyear",
+        "hour",
+        "isoweek",
+        "isoyear",
+        "microsecond",
+        "millisecond",
+        "minute",
+        "month",
+        "quarter",
+        "second",
+        "week",
+        "week(friday)",
+        "week(monday)",
+        "week(saturday)",
+        "week(sunday)",
+        "week(thursday)",
+        "week(tuesday)",
+        "week(wednesday)",
+        "year"
+      ]
+    },
+    "TimeUnit": {"kind":"stringUnion","values":["day","hour","microsecond","millisecond","minute","second"]},
+    "Type": {
+      "kind": "stringUnion",
+      "values": [
+        "array",
+        "boolean",
+        "bytes",
+        "decimal128",
+        "float64",
+        "geo_point",
+        "int32",
+        "int64",
+        "map",
+        "max_key",
+        "min_key",
+        "null",
+        "number",
+        "object_id",
+        "reference",
+        "regex",
+        "request_timestamp",
+        "string",
+        "timestamp",
+        "vector"
+      ]
+    },
+    "UnionStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {"other":{"kinds":["pipeline"],"optional":false,"type":"Pipeline"}}
+    },
+    "UnnestStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {
+        "indexField": {"kinds":["string"],"optional":true,"type":"string"},
+        "selectable": {"kinds":["selectable"],"optional":false,"type":"Selectable"}
+      }
+    },
+    "WhereStageOptions": {
+      "extends": ["StageOptions"],
+      "kind": "object",
+      "properties": {"condition":{"kinds":["booleanExpression"],"optional":false,"type":"BooleanExpression"}}
+    }
+  }
+}

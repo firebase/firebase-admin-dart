@@ -32,13 +32,6 @@ class _CompositeFilterInternal extends _FilterInternal {
   });
 
   @override
-  FieldPath? get firstInequalityField {
-    return flattenedFilters
-        .firstWhereOrNull((filter) => filter.isInequalityFilter)
-        ?.field;
-  }
-
-  @override
   firestore_v1.StructuredQuery_Filter toProto() {
     if (filters.length == 1) return filters.single.toProto();
 

@@ -1,0 +1,15 @@
+{
+  "name": "pipeline-golden",
+  "private": true,
+  "description": "Generates golden ExecutePipelineRequest fixtures for google_cloud_firestore from the Node.js Firestore SDK.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "generate": "node generate.js"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "9.3.1"
+  }
+}

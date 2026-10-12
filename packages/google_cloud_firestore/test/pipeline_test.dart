@@ -357,6 +357,161 @@ void main() {
       expect(snapshot.results.single.ref, isNull);
     });
 
+    group('reference values in results', () {
+      const documents = 'projects/$_projectId/databases/enterprise/documents';
+      // `parent()` of a top-level document returns the database root, and a
+      // reference can also name a collection; neither is a document.
+      const root = documents;
+      const collection = '$documents/books';
+      const subcollection = '$documents/books/book-1/chapters';
+      const document = '$documents/books/book-1';
+      const subcollectionDocument = '$documents/books/book-1/chapters/c1';
+
+      firestore_v1.Value ref(String name) {
+        return firestore_v1.Value(referenceValue: name);
+      }
+
+      firestore_v1.Value array(List<firestore_v1.Value> values) {
+        return firestore_v1.Value(
+          arrayValue: firestore_v1.ArrayValue(values: values),
+        );
+      }
+
+      firestore_v1.Value map(Map<String, firestore_v1.Value> fields) {
+        return firestore_v1.Value(
+          mapValue: firestore_v1.MapValue(fields: fields),
+        );
+      }
+
+      Future<PipelineResult> decode(Map<String, firestore_v1.Value> fields) {
+        when(
+          () => mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(
+            any(),
+          ),
+        ).thenAnswer((invocation) async {
+          final callback =
+              invocation.positionalArguments.single
+                  as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                  Function(firestore_v1.Firestore api, String projectId);
+          return callback(
+            FakeFirestore(
+              executePipeline: (_) => Stream.value(
+                firestore_v1.ExecutePipelineResponse(
+                  results: [firestore_v1.Document(fields: fields)],
+                ),
+              ),
+            ),
+            _projectId,
+          );
+        });
+
+        return firestore
+            .pipeline()
+            .collection('books')
+            .execute()
+            .then((snapshot) => snapshot.results.single);
+      }
+
+      // Every kind of reference, in the order the expectations below use.
+      final all = [
+        ref(document),
+        ref(subcollectionDocument),
+        ref(root),
+        ref(collection),
+        ref(subcollection),
+      ];
+      // `firestore` is only assigned in setUp, so build these per test.
+      late List<Object?> allDecoded;
+      setUp(() {
+        allDecoded = [
+          firestore.doc('books/book-1'),
+          firestore.doc('books/book-1/chapters/c1'),
+          root,
+          collection,
+          subcollection,
+        ];
+      });
+
+      test('decode the same way at the top level', () async {
+        final result = await decode({
+          'document': all[0],
+          'subcollectionDocument': all[1],
+          'root': all[2],
+          'collection': all[3],
+          'subcollection': all[4],
+        });
+
+        expect(result.data(), {
+          'document': allDecoded[0],
+          'subcollectionDocument': allDecoded[1],
+          'root': allDecoded[2],
+          'collection': allDecoded[3],
+          'subcollection': allDecoded[4],
+        });
+        expect(result.get('document'), isA<DocumentReference<DocumentData>>());
+        expect(result.get('root'), isA<String>());
+      });
+
+      test('decode the same way inside a map', () async {
+        final result = await decode({
+          'm': map({for (var i = 0; i < all.length; i++) 'r$i': all[i]}),
+        });
+
+        expect(result.get('m'), {
+          for (var i = 0; i < allDecoded.length; i++) 'r$i': allDecoded[i],
+        });
+        expect(result.get('m.r0'), firestore.doc('books/book-1'));
+        expect(result.get('m.r2'), root);
+      });
+
+      test('decode the same way inside an array', () async {
+        final result = await decode({'a': array(all)});
+
+        expect(result.get('a'), allDecoded);
+      });
+
+      test('decode the same way nested two deep', () async {
+        final result = await decode({
+          'mapInMap': map({
+            'inner': map({'root': all[2], 'document': all[0]}),
+          }),
+          'arrayInMap': map({'inner': array(all)}),
+          'mapInArray': array([
+            map({'collection': all[3], 'document': all[0]}),
+          ]),
+          'arrayInArray': array([array(all)]),
+        });
+
+        expect(result.data(), {
+          'mapInMap': {
+            'inner': {'root': root, 'document': allDecoded[0]},
+          },
+          'arrayInMap': {'inner': allDecoded},
+          'mapInArray': [
+            {'collection': collection, 'document': allDecoded[0]},
+          ],
+          'arrayInArray': [allDecoded],
+        });
+        expect(result.get('mapInMap.inner.root'), root);
+      });
+
+      test('leave regular document decoding unchanged', () {
+        // Outside Pipelines a non-document reference is still rejected, at
+        // any depth; only document references decode.
+        final serializer = firestore.serializer;
+
+        expect(serializer.decodeValue(all[0]), allDecoded[0]);
+        expect(serializer.decodeValue(map({'d': all[0]})), {
+          'd': allDecoded[0],
+        });
+        expect(() => serializer.decodeValue(all[3]), throwsArgumentError);
+        expect(
+          () => serializer.decodeValue(array([all[4]])),
+          throwsArgumentError,
+        );
+      });
+    });
+
     test('execute encodes options under their backend names', () async {
       firestore_v1.ExecutePipelineRequest? capturedRequest;
 
@@ -390,9 +545,10 @@ void main() {
             ),
           );
 
+      // The backend rejects index_mode ("Unsupported option: index_mode"), so
+      // the deprecated indexMode is not sent.
       final options = capturedRequest!.structuredPipeline!.options;
-      expect(options.keys, unorderedEquals(['index_mode', 'explain_options']));
-      expect(options['index_mode']!.stringValue, 'recommended');
+      expect(options.keys, ['explain_options']);
 
       final explain = options['explain_options']!.mapValue!.fields;
       expect(explain['mode']!.stringValue, 'analyze');
@@ -586,9 +742,10 @@ void main() {
       final request = requests.single;
 
       // Pipeline options and the transaction live on different parts of the
-      // request, so neither clobbers the other.
+      // request, so neither clobbers the other. The deprecated indexMode is
+      // not sent, as on Pipeline.execute.
       final options = request.structuredPipeline!.options;
-      expect(options['index_mode']!.stringValue, 'recommended');
+      expect(options.keys, ['explain_options']);
       expect(
         options['explain_options']!.mapValue!.fields['mode']!.stringValue,
         'analyze',
@@ -1340,6 +1497,773 @@ void main() {
       });
     });
 
+    // Mirrors the Node SDK's `OptionsUtil` and `rawStage`.
+    group('raw options and raw stages', () {
+      final requests = <firestore_v1.ExecutePipelineRequest>[];
+
+      setUp(() {
+        requests.clear();
+        when(
+          () => mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(
+            any(),
+          ),
+        ).thenAnswer((invocation) async {
+          final callback =
+              invocation.positionalArguments.single
+                  as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                  Function(firestore_v1.Firestore api, String projectId);
+
+          final api = FakeFirestore(
+            executePipeline: (request) {
+              requests.add(request);
+              return Stream.value(
+                firestore_v1.ExecutePipelineResponse(
+                  transaction: Uint8List.fromList([9, 9]),
+                ),
+              );
+            },
+          );
+
+          return callback(api, _projectId);
+        });
+      });
+
+      Pipeline base() => firestore.pipeline().collection('books');
+
+      Map<String, Object?> json(Map<String, firestore_v1.Value> options) {
+        return {
+          for (final MapEntry(:key, :value) in options.entries)
+            key: value.toJson(),
+        };
+      }
+
+      Map<String, Object?> executeOptions() {
+        return json(requests.single.structuredPipeline!.options);
+      }
+
+      List<firestore_v1.Pipeline_Stage> stages() {
+        return requests.single.structuredPipeline!.pipeline!.stages;
+      }
+
+      Map<String, Object?> string(String value) => {'stringValue': value};
+
+      Map<String, Object?> map(Map<String, Object?> fields) {
+        return {
+          'mapValue': {'fields': fields},
+        };
+      }
+
+      test(
+        'execute merges dotted rawOptions keys into typed options',
+        () async {
+          await base().execute(
+            indexMode: PipelineIndexMode.recommended,
+            explain: const PipelineExplainOptions(
+              mode: PipelineExplainMode.analyze,
+            ),
+            rawOptions: const {
+              'explain_options.output_format': 'json',
+              'index_mode': 'custom',
+              'a.b.c': 'deep',
+            },
+          );
+
+          expect(executeOptions(), {
+            // A single map: the dotted key lands next to the typed mode.
+            'explain_options': map({
+              'mode': string('analyze'),
+              'output_format': string('json'),
+            }),
+            'index_mode': string('custom'),
+            'a': map({
+              'b': map({'c': string('deep')}),
+            }),
+          });
+        },
+      );
+
+      test(
+        'a rawOptions key without a dot replaces the typed option',
+        () async {
+          await base().execute(
+            explain: const PipelineExplainOptions(
+              mode: PipelineExplainMode.analyze,
+              outputFormat: PipelineExplainOutputFormat.text,
+            ),
+            rawOptions: const {
+              'explain_options': {'mode': 'execute'},
+            },
+          );
+
+          expect(executeOptions(), {
+            'explain_options': map({'mode': string('execute')}),
+          });
+        },
+      );
+
+      test(
+        'Transaction.executePipeline merges dotted rawOptions keys',
+        () async {
+          await firestore.runTransaction(
+            (transaction) => transaction.executePipeline(
+              base(),
+              explain: const PipelineExplainOptions(
+                mode: PipelineExplainMode.analyze,
+              ),
+              rawOptions: const {'explain_options.output_format': 'text'},
+            ),
+            transactionOptions: ReadOnlyTransactionOptions(),
+          );
+
+          expect(executeOptions(), {
+            'explain_options': map({
+              'mode': string('analyze'),
+              'output_format': string('text'),
+            }),
+          });
+        },
+      );
+
+      test('raw option keys apply in order', () async {
+        await base()
+            .rawStage(
+              'custom',
+              const [],
+              options: const {
+                // A dotted key merges into an earlier map...
+                'merged': {'a': 1},
+                'merged.b': 'two',
+                // ...a key without a dot replaces what came before...
+                'replaced.a': 1,
+                'replaced': 'value',
+                // ...and a dotted key replaces a value that is not a map.
+                'promoted': 'value',
+                'promoted.a': true,
+                // Backticks are not unescaped.
+                'a.`b`': 1,
+              },
+            )
+            .execute();
+
+        expect(json(stages().last.options), {
+          'merged': map({
+            'a': {'integerValue': '1'},
+            'b': string('two'),
+          }),
+          'replaced': string('value'),
+          'promoted': map({
+            'a': {'booleanValue': true},
+          }),
+          'a': map({
+            '`b`': {'integerValue': '1'},
+          }),
+        });
+      });
+
+      test('every stage takes rawOptions', () async {
+        const raw = {'foo': 'bar', 'outer.inner': 1};
+        final other = firestore.pipeline().collection('magazines');
+
+        await firestore
+            .pipeline()
+            .collection('books', rawOptions: raw)
+            .where(field('rating').greaterThan(1), rawOptions: raw)
+            .select(['title', 'rating', 'tags'], rawOptions: raw)
+            .addFields([field('rating').as('score')], rawOptions: raw)
+            .removeFields(['score'], rawOptions: raw)
+            .sort([field('title').ascending()], rawOptions: raw)
+            .offset(1, rawOptions: raw)
+            .limit(10, rawOptions: raw)
+            .distinct(['title', 'tags'], rawOptions: raw)
+            .aggregate(
+              [PipelineFunctions.countAll().as('total')],
+              groups: ['title'],
+              rawOptions: raw,
+            )
+            .replaceWith('title', rawOptions: raw)
+            .union(other, rawOptions: raw)
+            .sample(documents: 5, rawOptions: raw)
+            .unnest('tags', rawOptions: raw)
+            .findNearest(
+              vectorField: 'embedding',
+              queryVector: const [1, 2],
+              distanceMeasure: DistanceMeasure.cosine,
+              rawOptions: raw,
+            )
+            .search({'query': documentMatches('dart')}, rawOptions: raw)
+            .execute();
+
+        final expected = {
+          'foo': string('bar'),
+          'outer': map({
+            'inner': {'integerValue': '1'},
+          }),
+        };
+        expect(stages().map((stage) => stage.name), [
+          'collection',
+          'where',
+          'select',
+          'add_fields',
+          'remove_fields',
+          'sort',
+          'offset',
+          'limit',
+          'distinct',
+          'aggregate',
+          'replace_with',
+          'union',
+          'sample',
+          'unnest',
+          'find_nearest',
+          'search',
+        ]);
+        for (final stage in stages()) {
+          final options = json(stage.options);
+          if (stage.name == 'search') options.remove('query');
+          expect(options, expected, reason: stage.name);
+        }
+        // The nested Pipeline keeps its own, empty, options.
+        final union = stages().firstWhere((stage) => stage.name == 'union');
+        expect(union.args.single.pipelineValue!.stages.single.options, isEmpty);
+      });
+
+      test('every source takes rawOptions', () async {
+        const raw = {'foo': 'bar'};
+        final source = firestore.pipeline();
+
+        for (final pipeline in [
+          source.collection('books', rawOptions: raw),
+          source.collectionReference(
+            firestore.collection('books'),
+            rawOptions: raw,
+          ),
+          source.collectionGroup('books', rawOptions: raw),
+          source.database(rawOptions: raw),
+          source.documents([firestore.doc('books/b')], rawOptions: raw),
+        ]) {
+          requests.clear();
+          await pipeline.execute();
+          expect(json(stages().single.options), {'foo': string('bar')});
+        }
+      });
+
+      test('rawOptions override typed stage options', () async {
+        await base()
+            .findNearest(
+              vectorField: 'embedding',
+              queryVector: const [1, 2],
+              distanceMeasure: DistanceMeasure.euclidean,
+              limit: 10,
+              distanceResultField: 'distance',
+              rawOptions: const {'limit': 20, 'extra.flag': true},
+            )
+            .unnest(
+              'tags',
+              indexField: 'index',
+              rawOptions: {'index_field': field('position')},
+            )
+            .search(
+              {'query': documentMatches('dart'), 'limit': 10},
+              rawOptions: const {'limit': 20},
+            )
+            .execute();
+
+        final [_, nearest, unnest, search] = stages();
+        expect(json(nearest.options), {
+          'limit': {'integerValue': '20'},
+          'distance_field': {'fieldReferenceValue': 'distance'},
+          'extra': map({
+            'flag': {'booleanValue': true},
+          }),
+        });
+        expect(json(unnest.options), {
+          'index_field': {'fieldReferenceValue': 'position'},
+        });
+        expect(search.options['limit']!.integerValue, 20);
+      });
+
+      test('rejects raw option keys with an empty segment', () async {
+        for (final key in ['', '.', 'a.', '.a', 'a..b']) {
+          final options = {key: 1};
+          final invalid = throwsA(
+            isA<ArgumentError>().having((e) => e.invalidValue, 'key', key),
+          );
+
+          expect(
+            () => base().rawStage('custom', [], options: options),
+            invalid,
+          );
+          expect(() => base().limit(1, rawOptions: options), invalid);
+          expect(
+            () => firestore.pipeline().database(rawOptions: options),
+            invalid,
+          );
+          await expectLater(base().execute(rawOptions: options), invalid);
+          await expectLater(
+            firestore.runTransaction(
+              (transaction) =>
+                  transaction.executePipeline(base(), rawOptions: options),
+              transactionOptions: ReadOnlyTransactionOptions(),
+            ),
+            invalid,
+          );
+        }
+        expect(requests, isEmpty);
+      });
+
+      test('rawStage converts collections nested in a map argument', () async {
+        await base().rawStage('custom', [
+          {
+            'field': field('f'),
+            'literal': 1,
+            'nestedMap': {'lang': field('lang')},
+            'nestedList': [field('a'), 1],
+            'literalMap': constant({'x': 1}),
+          },
+          // A list argument stays a literal value, as in Node.
+          [
+            field('b'),
+            {'c': 1},
+          ],
+        ]).execute();
+
+        final [mapArg, listArg] = stages().last.args;
+        final fields = mapArg.mapValue!.fields;
+        expect(fields['field']!.fieldReferenceValue, 'f');
+        expect(fields['literal']!.integerValue, 1);
+
+        final nestedMap = fields['nestedMap']!.functionValue!;
+        expect(nestedMap.name, 'map');
+        expect(nestedMap.args.map((arg) => arg.toJson()), [
+          string('lang'),
+          {'fieldReferenceValue': 'lang'},
+        ]);
+
+        final nestedList = fields['nestedList']!.functionValue!;
+        expect(nestedList.name, 'array');
+        expect(nestedList.args.map((arg) => arg.toJson()), [
+          {'fieldReferenceValue': 'a'},
+          {'integerValue': '1'},
+        ]);
+
+        expect(fields['literalMap']!.mapValue!.fields['x']!.integerValue, 1);
+
+        expect(listArg.arrayValue!.values.map((value) => value.toJson()), [
+          {'fieldReferenceValue': 'b'},
+          map({
+            'c': {'integerValue': '1'},
+          }),
+        ]);
+      });
+    });
+
+    // Mirrors the Node SDK's `field()`, which sends
+    // `FieldPath.fromArgument(path).formattedName`.
+    group('field paths', () {
+      group('field() canonicalizes the path', () {
+        void expectPath(Object fieldPath, String expected) {
+          expect(field(fieldPath).path, expected, reason: '$fieldPath');
+          expect(Expression.field(fieldPath).path, expected);
+        }
+
+        test('keeps simple identifiers as they are', () {
+          expectPath('title', 'title');
+          expectPath('_private', '_private');
+          expectPath('isbn13', 'isbn13');
+          expectPath('__name__', '__name__');
+        });
+
+        test('quotes segments that are not simple identifiers', () {
+          expectPath('first-name', '`first-name`');
+          expectPath('last name', '`last name`');
+          expectPath('naïve', '`naïve`');
+          expectPath('1st', '`1st`');
+          expectPath('a/b', '`a/b`');
+        });
+
+        test('escapes backticks and backslashes inside a segment', () {
+          expectPath('a`b', r'`a\`b`');
+          expectPath(r'a\b', r'`a\\b`');
+        });
+
+        test('reads a dotted String as nested segments', () {
+          expectPath('metadata.lang', 'metadata.lang');
+          expectPath('author.first-name', 'author.`first-name`');
+          expectPath('my map.key', '`my map`.key');
+        });
+
+        test('keeps each FieldPath segment whole, dots included', () {
+          expectPath(FieldPath(const ['a.b']), '`a.b`');
+          expectPath(FieldPath(const ['a.b', 'c']), '`a.b`.c');
+          expectPath(FieldPath(const ['metadata', 'lang']), 'metadata.lang');
+          expectPath(FieldPath(const ['first-name']), '`first-name`');
+          expectPath(FieldPath.documentId, '__name__');
+        });
+
+        test('rejects other types and empty segments', () {
+          for (final invalid in <Object>[42, '', 'a..b', '.a', 'a.']) {
+            expect(
+              () => field(invalid),
+              throwsArgumentError,
+              reason: '$invalid',
+            );
+            expect(() => Expression.field(invalid), throwsArgumentError);
+          }
+        });
+      });
+
+      group('on the wire', () {
+        late List<firestore_v1.Pipeline_Stage> stages;
+
+        Future<void> run(Object pipelineOrQuery) async {
+          firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+          when(
+            () => mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(
+              any(),
+            ),
+          ).thenAnswer((invocation) async {
+            final callback =
+                invocation.positionalArguments.single
+                    as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                    Function(firestore_v1.Firestore api, String projectId);
+
+            final api = FakeFirestore(
+              executePipeline: (firestore_v1.ExecutePipelineRequest request) {
+                capturedRequest = request;
+                return const Stream<
+                  firestore_v1.ExecutePipelineResponse
+                >.empty();
+              },
+            );
+
+            return callback(api, _projectId);
+          });
+
+          final pipeline = pipelineOrQuery is Pipeline
+              ? pipelineOrQuery
+              : firestore.pipeline().createFrom(pipelineOrQuery);
+          await pipeline.execute();
+          stages = capturedRequest!.structuredPipeline!.pipeline!.stages;
+        }
+
+        Pipeline base() => firestore.pipeline().collection('books');
+        Map<String, Object?> ref(String path) => {'fieldReferenceValue': path};
+        Object? json(firestore_v1.Value value) => value.toJson();
+
+        test(
+          'field() and String field arguments send the quoted path',
+          () async {
+            await run(
+              base().where(PipelineFunctions.equal('first-name', 'Ada')).select(
+                [
+                  field(FieldPath(const ['a.b'])).as('result'),
+                ],
+              ),
+            );
+
+            final equal = stages[1].args.single.functionValue!;
+            expect(json(equal.args[0]), ref('`first-name`'));
+            // The value position keeps the string as a literal.
+            expect(equal.args[1].stringValue, 'Ada');
+
+            final select = stages[2].args.single.mapValue!.fields;
+            expect(json(select['result']!), ref('`a.b`'));
+          },
+        );
+
+        // The backend reads select keys as field paths and rejects an
+        // unquoted `last name` ("Invalid property path"), so a String is keyed
+        // by its quoted path, like a PipelineField.
+        test(
+          'select keys a String and a PipelineField by their quoted path',
+          () async {
+            await run(
+              base().select([
+                'first-name',
+                field('last name'),
+                'metadata.lang',
+                field(FieldPath(const ['a.b'])),
+              ]),
+            );
+
+            final fields = stages[1].args.single.mapValue!.fields;
+            expect(fields.map((key, value) => MapEntry(key, json(value))), {
+              '`first-name`': ref('`first-name`'),
+              '`last name`': ref('`last name`'),
+              'metadata.lang': ref('metadata.lang'),
+              '`a.b`': ref('`a.b`'),
+            });
+          },
+        );
+
+        test('distinct and aggregate groups are keyed like select', () async {
+          await run(
+            base()
+                .distinct(['first-name', field('last name')])
+                .aggregate(
+                  [PipelineFunctions.countAll().as('total')],
+                  groups: ['first-name', field('last name')],
+                ),
+          );
+
+          final expected = {
+            '`first-name`': ref('`first-name`'),
+            '`last name`': ref('`last name`'),
+          };
+          final distinct = stages[1].args.single.mapValue!.fields;
+          expect(
+            distinct.map((key, value) => MapEntry(key, json(value))),
+            expected,
+          );
+          final groups = stages[2].args[1].mapValue!.fields;
+          expect(
+            groups.map((key, value) => MapEntry(key, json(value))),
+            expected,
+          );
+        });
+
+        test('removeFields and sort send quoted paths', () async {
+          await run(
+            base().removeFields(['first-name', field('last name')]).sort([
+              ascending('first-name'),
+              field('last name').descending(),
+            ]),
+          );
+
+          expect(stages[1].args.map(json), [
+            ref('`first-name`'),
+            ref('`last name`'),
+          ]);
+          expect(
+            stages[2].args.map(
+              (ordering) => json(ordering.mapValue!.fields['expression']!),
+            ),
+            [ref('`first-name`'), ref('`last name`')],
+          );
+        });
+
+        test('unnest quotes its target and index field once', () async {
+          await run(base().unnest(field('my tags')));
+          // Node quotes this target twice; see the golden corpus.
+          expect(stages[1].args.map(json), [
+            ref('`my tags`'),
+            ref('`my tags`'),
+          ]);
+
+          await run(
+            base().unnest(field('tags').as('my tag'), indexField: 'tag index'),
+          );
+          expect(stages[1].args.map(json), [ref('tags'), ref('`my tag`')]);
+          expect(json(stages[1].options['index_field']!), ref('`tag index`'));
+        });
+
+        test('findNearest quotes the vector and distance fields', () async {
+          await run(
+            base().findNearest(
+              vectorField: 'my embedding',
+              queryVector: const [1.0, 2.0],
+              distanceMeasure: DistanceMeasure.euclidean,
+              distanceResultField: 'my distance',
+            ),
+          );
+
+          expect(json(stages[1].args[0]), ref('`my embedding`'));
+          expect(
+            json(stages[1].options['distance_field']!),
+            ref('`my distance`'),
+          );
+        });
+
+        // A FieldPath is a field name wherever a String is, as in field().
+        group('a FieldPath names a field', () {
+          final dotted = FieldPath(const ['a.b', 'c']);
+          final dottedRef = ref('`a.b`.c');
+
+          test('in a function target', () async {
+            await run(
+              base().select([
+                PipelineFunctions.toUpper(dotted).as('upper'),
+                PipelineFunctions.add(dotted, 1, [2]).as('sum'),
+                PipelineFunctions.equalAny(dotted, [1, 2]).as('any'),
+                PipelineFunctions.count(dotted).as('count'),
+              ]),
+            );
+
+            final fields = stages[1].args.single.mapValue!.fields;
+            Object? target(String alias) =>
+                json(fields[alias]!.functionValue!.args.first);
+            expect(target('upper'), dottedRef);
+            expect(target('any'), dottedRef);
+            expect(target('count'), dottedRef);
+            // add nests its further operands; the field is the innermost one.
+            final inner = fields['sum']!.functionValue!.args.first;
+            expect(json(inner.functionValue!.args.first), dottedRef);
+          });
+
+          test('in ascending and descending', () async {
+            await run(base().sort([ascending(dotted), descending(dotted)]));
+
+            expect(
+              stages[1].args.map(
+                (ordering) => json(ordering.mapValue!.fields['expression']!),
+              ),
+              [dottedRef, dottedRef],
+            );
+            expect(ascending(dotted).expr, isA<PipelineField>());
+          });
+
+          test('in select, distinct and aggregate groups', () async {
+            await run(
+              base()
+                  .select([
+                    dotted,
+                    FieldPath(const ['title']),
+                  ])
+                  .distinct([dotted])
+                  .aggregate(
+                    [PipelineFunctions.countAll().as('n')],
+                    groups: [dotted],
+                  ),
+            );
+
+            Map<String, Object?> projection(firestore_v1.Value value) {
+              return value.mapValue!.fields.map(
+                (key, value) => MapEntry(key, json(value)),
+              );
+            }
+
+            expect(projection(stages[1].args.single), {
+              '`a.b`.c': dottedRef,
+              'title': ref('title'),
+            });
+            expect(projection(stages[2].args.single), {'`a.b`.c': dottedRef});
+            expect(projection(stages[3].args[1]), {'`a.b`.c': dottedRef});
+          });
+
+          test('as the same key as its String and field forms', () {
+            expect(
+              () => base().select([
+                'first-name',
+                FieldPath(const ['first-name']),
+              ]),
+              throwsA(
+                isA<ArgumentError>().having(
+                  (e) => e.message,
+                  'message',
+                  contains("'`first-name`'"),
+                ),
+              ),
+            );
+          });
+
+          test('in removeFields, unnest and replaceWith', () async {
+            await run(
+              base().removeFields([dotted]).unnest(dotted).replaceWith(dotted),
+            );
+
+            expect(stages[1].args.map(json), [dottedRef]);
+            expect(stages[2].args.map(json), [dottedRef, dottedRef]);
+            expect(json(stages[3].args.first), dottedRef);
+          });
+
+          test('in findNearest', () async {
+            await run(
+              base().findNearest(
+                vectorField: dotted,
+                queryVector: const [1.0, 2.0],
+                distanceMeasure: DistanceMeasure.euclidean,
+                distanceResultField: FieldPath(const ['my.distance']),
+                distanceThreshold: 0.5,
+              ),
+            );
+
+            final [_, nearest, where] = stages;
+            expect(json(nearest.args[0]), dottedRef);
+            expect(
+              json(nearest.options['distance_field']!),
+              ref('`my.distance`'),
+            );
+            final condition = where.args.single.functionValue!;
+            expect(json(condition.args[0]), ref('`my.distance`'));
+          });
+        });
+
+        group('createFrom', () {
+          test('quotes FieldPath filters and orderings once', () async {
+            await run(
+              firestore
+                  .collection('books')
+                  .where(FieldPath(const ['a.b']), WhereFilter.equal, 1)
+                  .where('a`b', WhereFilter.equal, 2)
+                  .orderBy(FieldPath(const ['c.d'])),
+            );
+
+            final dotted = stages[1].args.single.functionValue!;
+            expect(
+              json(dotted.args[0].functionValue!.args.single),
+              ref('`a.b`'),
+            );
+            final backtick = stages[2].args.single.functionValue!;
+            expect(
+              json(backtick.args[0].functionValue!.args.single),
+              ref(r'`a\`b`'),
+            );
+            final sort = stages.singleWhere((stage) => stage.name == 'sort');
+            expect(
+              json(sort.args.first.mapValue!.fields['expression']!),
+              ref('`c.d`'),
+            );
+          });
+
+          test('keeps the projection paths quoted once', () async {
+            await run(
+              firestore.collection('books').select([
+                FieldPath(const ['first-name']),
+                FieldPath(const ['a.b']),
+                FieldPath(const ['metadata', 'lang']),
+              ]),
+            );
+
+            final select = stages.singleWhere(
+              (stage) => stage.name == 'select',
+            );
+            final fields = select.args.single.mapValue!.fields;
+            // Node quotes these twice; see the golden corpus.
+            expect(fields.map((key, value) => MapEntry(key, json(value))), {
+              '`first-name`': ref('`first-name`'),
+              '`a.b`': ref('`a.b`'),
+              'metadata.lang': ref('metadata.lang'),
+            });
+          });
+
+          test('reads FieldPath vector and distance fields', () async {
+            await run(
+              firestore
+                  .collection('books')
+                  .findNearest(
+                    vectorField: FieldPath(const ['a.b']),
+                    queryVector: const [1.0, 2.0],
+                    limit: 3,
+                    distanceMeasure: DistanceMeasure.euclidean,
+                    distanceResultField: FieldPath(const ['my distance']),
+                  ),
+            );
+
+            final nearest = stages.last;
+            expect(nearest.name, 'find_nearest');
+            expect(json(nearest.args[0]), ref('`a.b`'));
+            expect(
+              json(nearest.options['distance_field']!),
+              ref('`my distance`'),
+            );
+            final exists = stages[stages.length - 2].args.single.functionValue!;
+            expect(json(exists.args.single), ref('`a.b`'));
+          });
+        });
+      });
+    });
+
     // Mirrors the Node SDK's `selectablesToObject` / `aliasedAggregateToMap`,
     // which throw rather than let a later entry overwrite an earlier one.
     group('duplicate aliases or fields', () {
@@ -1365,6 +2289,14 @@ void main() {
         expect(
           () => base().select(['title', field('title')]),
           duplicateError('title', 'selections'),
+        );
+      });
+
+      test('select rejects a String and a field with the same quoted path', () {
+        // Both are keyed by `x-y`.
+        expect(
+          () => base().select(['x-y', field('x-y')]),
+          duplicateError('`x-y`', 'selections'),
         );
       });
 
@@ -1790,6 +2722,82 @@ void main() {
             (await queryVectorOf(field('target'))).fieldReferenceValue,
             'target',
           );
+        });
+
+        // The backend rejects a distance_threshold option on find_nearest,
+        // so the threshold is applied as createFrom(vectorQuery) applies it.
+        group('applies distanceThreshold as a filter', () {
+          for (final (measure, comparison, distanceFunction) in [
+            (
+              DistanceMeasure.euclidean,
+              'less_than_or_equal',
+              'euclidean_distance',
+            ),
+            (DistanceMeasure.cosine, 'less_than_or_equal', 'cosine_distance'),
+            // A larger dot product means more similar vectors.
+            (
+              DistanceMeasure.dotProduct,
+              'greater_than_or_equal',
+              'dot_product',
+            ),
+          ]) {
+            test('${measure.name} keeps $comparison the threshold', () async {
+              await run(
+                base().findNearest(
+                  vectorField: 'embedding',
+                  queryVector: const [1.0, 2.0],
+                  distanceMeasure: measure,
+                  limit: 3,
+                  distanceThreshold: 0.5,
+                ),
+              );
+
+              final [_, findNearest, where] = stages;
+              expect(findNearest.name, 'find_nearest');
+              expect(findNearest.options.keys, ['limit']);
+              expect(where.name, 'where');
+              final condition = where.args.single.functionValue!;
+              expect(condition.name, comparison);
+              expect(condition.args[1].doubleValue, 0.5);
+              final distance = condition.args[0].functionValue!;
+              expect(distance.name, distanceFunction);
+              expect(distance.args[0].fieldReferenceValue, 'embedding');
+              expectVector(distance.args[1], [1.0, 2.0]);
+            });
+          }
+
+          test('reads distanceResultField when given', () async {
+            await run(
+              base().findNearest(
+                vectorField: 'embedding',
+                queryVector: const [1.0, 2.0],
+                distanceMeasure: DistanceMeasure.euclidean,
+                distanceResultField: 'distance',
+                distanceThreshold: 0.5,
+              ),
+            );
+
+            final [_, findNearest, where] = stages;
+            expect(findNearest.options.keys, ['distance_field']);
+            final condition = where.args.single.functionValue!;
+            expect(condition.name, 'less_than_or_equal');
+            expect(condition.args[0].fieldReferenceValue, 'distance');
+          });
+
+          test('adds no stage without a threshold', () async {
+            await run(
+              base().findNearest(
+                vectorField: 'embedding',
+                queryVector: const [1.0, 2.0],
+                distanceMeasure: DistanceMeasure.euclidean,
+              ),
+            );
+
+            expect(stages.map((stage) => stage.name), [
+              'collection',
+              'find_nearest',
+            ]);
+          });
         });
       });
     });
@@ -2355,6 +3363,258 @@ void main() {
       expect(fields['minN']!.functionValue!.args[1].integerValue, 2);
     });
 
+    group('Node SDK signatures', () {
+      late List<firestore_v1.Pipeline_Stage> stages;
+
+      Future<void> run(Pipeline pipeline) async {
+        firestore_v1.ExecutePipelineRequest? capturedRequest;
+
+        when(
+          () => mockClient.v1<Stream<firestore_v1.ExecutePipelineResponse>>(
+            any(),
+          ),
+        ).thenAnswer((invocation) async {
+          final callback =
+              invocation.positionalArguments.single
+                  as Future<Stream<firestore_v1.ExecutePipelineResponse>>
+                  Function(firestore_v1.Firestore api, String projectId);
+
+          final api = FakeFirestore(
+            executePipeline: (firestore_v1.ExecutePipelineRequest request) {
+              capturedRequest = request;
+              return const Stream<firestore_v1.ExecutePipelineResponse>.empty();
+            },
+          );
+
+          return callback(api, _projectId);
+        });
+
+        await pipeline.execute();
+        stages = capturedRequest!.structuredPipeline!.pipeline!.stages;
+      }
+
+      Future<Map<String, firestore_v1.Value>> select(
+        Iterable<PipelineAliasedExpression> selections,
+      ) async {
+        await run(firestore.pipeline().collection('books').select(selections));
+        return stages[1].args.single.mapValue!.fields;
+      }
+
+      group('variadic add and multiply', () {
+        for (final (name, static, fluent) in [
+          (
+            'add',
+            PipelineFunctions.add,
+            (PipelineExpression e, Object? second, Iterable<Object?> others) =>
+                e.add(second, others),
+          ),
+          (
+            'multiply',
+            PipelineFunctions.multiply,
+            (PipelineExpression e, Object? second, Iterable<Object?> others) =>
+                e.multiply(second, others),
+          ),
+        ]) {
+          test('$name nests further operands in two-operand calls', () async {
+            final fields = await select([
+              static('rating', 2, [field('bonus'), 3]).as('static'),
+              fluent(field('rating'), 2, [field('bonus'), 3]).as('fluent'),
+            ]);
+
+            // The backend's add and multiply take exactly two operands, so
+            // (rating, 2, [bonus, 3]) is sent as name(name(name(rating, 2),
+            // bonus), 3).
+            Map<String, Object?> call(Object? left, Object? right) => {
+              'functionValue': {
+                'name': name,
+                'args': [left, right],
+              },
+            };
+            for (final alias in ['static', 'fluent']) {
+              expect(
+                fields[alias]!.toJson(),
+                call(
+                  call(
+                    call(
+                      {'fieldReferenceValue': 'rating'},
+                      {'integerValue': '2'},
+                    ),
+                    {'fieldReferenceValue': 'bonus'},
+                  ),
+                  {'integerValue': '3'},
+                ),
+                reason: alias,
+              );
+            }
+          });
+
+          test('$name still takes exactly two operands', () async {
+            final fields = await select([
+              static('rating', 2).as('static'),
+              fluent(field('rating'), 2, const []).as('fluent'),
+            ]);
+
+            for (final alias in ['static', 'fluent']) {
+              final function = fields[alias]!.functionValue!;
+              expect(function.name, name, reason: alias);
+              expect(function.args, hasLength(2), reason: alias);
+            }
+          });
+        }
+
+        test('collections among the operands are built as functions', () async {
+          final fields = await select([
+            PipelineFunctions.add('a', 1, [
+              [field('b')],
+            ]).as('sum'),
+          ]);
+
+          final operand = fields['sum']!.functionValue!.args[1];
+          expect(operand.functionValue!.name, 'array');
+          expect(operand.functionValue!.args.single.fieldReferenceValue, 'b');
+        });
+      });
+
+      group('documents', () {
+        test('takes document paths', () async {
+          await run(
+            firestore.pipeline().documents([
+              'books/book-1',
+              '/books/book-2',
+              'authors/author-1/books/book-3',
+            ]),
+          );
+
+          final stage = stages.single;
+          expect(stage.name, 'documents');
+          expect(stage.args.map((arg) => arg.referenceValue), [
+            '/books/book-1',
+            '/books/book-2',
+            '/authors/author-1/books/book-3',
+          ]);
+        });
+
+        test('mixes paths and references', () async {
+          await run(
+            firestore.pipeline().documents([
+              'books/book-1',
+              firestore.doc('books/book-2'),
+            ]),
+          );
+
+          expect(stages.single.args.map((arg) => arg.referenceValue), [
+            '/books/book-1',
+            '/books/book-2',
+          ]);
+        });
+
+        test('rejects paths that do not point to a document', () {
+          for (final path in ['books', 'authors/author-1/books', '', 'a//b']) {
+            expect(
+              () => firestore.pipeline().documents([path]),
+              throwsArgumentError,
+              reason: path,
+            );
+          }
+        });
+
+        test('rejects values that are neither paths nor references', () {
+          expect(
+            () => firestore.pipeline().documents([firestore.collection('a')]),
+            throwsA(
+              isA<ArgumentError>().having(
+                (e) => e.message,
+                'message',
+                contains('DocumentReference or a document path'),
+              ),
+            ),
+          );
+        });
+
+        test('rejects an empty list', () {
+          expect(
+            () => firestore.pipeline().documents(const <String>[]),
+            throwsArgumentError,
+          );
+        });
+      });
+
+      group('PipelineOrdering', () {
+        test('exposes its expression and direction', () {
+          final rating = field('rating');
+          final ascendingOrdering = rating.ascending();
+          final descendingOrdering = rating.descending();
+
+          expect(ascendingOrdering.expr, same(rating));
+          expect(ascendingOrdering.direction, 'ascending');
+          expect(descendingOrdering.expr, same(rating));
+          expect(descendingOrdering.direction, 'descending');
+        });
+
+        test('reads a field name passed to the top-level helpers', () {
+          for (final (ordering, direction) in [
+            (ascending('rating'), 'ascending'),
+            (descending('rating'), 'descending'),
+          ]) {
+            expect(
+              ordering.expr,
+              isA<PipelineField>().having((f) => f.path, 'path', 'rating'),
+            );
+            expect(ordering.direction, direction);
+          }
+        });
+      });
+
+      group('map', () {
+        test('takes a Map, encoded like alternating keys and values', () async {
+          final fields = await select([
+            PipelineFunctions.map({
+              'title': field('title'),
+              'rating': 5,
+              'nested': {'genre': field('genre')},
+              'list': [field('tags'), 1],
+            }).as('fromMap'),
+            PipelineFunctions.map([
+              'title',
+              field('title'),
+              'rating',
+              5,
+              'nested',
+              {'genre': field('genre')},
+              'list',
+              [field('tags'), 1],
+            ]).as('fromIterable'),
+          ]);
+
+          final fromMap = fields['fromMap']!.functionValue!;
+          expect(fromMap.name, 'map');
+          expect(fromMap.args[0].stringValue, 'title');
+          expect(fromMap.args[1].fieldReferenceValue, 'title');
+          expect(fromMap.args[5].functionValue!.name, 'map');
+          expect(fromMap.args[7].functionValue!.name, 'array');
+          expect(
+            fromMap.toJson(),
+            fields['fromIterable']!.functionValue!.toJson(),
+          );
+        });
+
+        test('takes an empty Map', () async {
+          final fields = await select([
+            PipelineFunctions.map(<String, Object?>{}).as('empty'),
+          ]);
+
+          final function = fields['empty']!.functionValue!;
+          expect(function.name, 'map');
+          expect(function.args, isEmpty);
+        });
+
+        test('rejects values that are neither a Map nor an Iterable', () {
+          expect(() => PipelineFunctions.map('title'), throwsArgumentError);
+          expect(() => PipelineFunctions.map(field('a')), throwsArgumentError);
+        });
+      });
+    });
+
     group('createFrom', () {
       late List<firestore_v1.Pipeline_Stage> stages;
 
@@ -2453,6 +3713,77 @@ void main() {
             .toList();
         // The key must still be ordered exactly once, not dropped.
         expect(orderings, ['__name__']);
+      });
+
+      /// The (field, direction) pairs of the last sort stage.
+      List<(String?, String?)> sortOrder() => [
+        for (final arg in stages.lastWhere((s) => s.name == 'sort').args)
+          (
+            arg.mapValue!.fields['expression']!.fieldReferenceValue,
+            arg.mapValue!.fields['direction']!.stringValue,
+          ),
+      ];
+
+      test('orders by != and not-in fields like range fields', () async {
+        // Regression: '!=' and 'not-in' fields were left out of the implicit
+        // ordering, so the Pipeline sorted only by the document key.
+        await run(
+          firestore
+              .collection('books')
+              .where('rating', WhereFilter.greaterThan, 4)
+              .where('genre', WhereFilter.notEqual, 'Horror')
+              .where('author', WhereFilter.notIn, ['Anonymous']),
+        );
+
+        // Inequality fields in field path order, then the document key.
+        expect(sortOrder(), [
+          ('author', 'ascending'),
+          ('genre', 'ascending'),
+          ('rating', 'ascending'),
+          ('__name__', 'ascending'),
+        ]);
+      });
+
+      test('sorts inequality fields by segment, not quoted path', () async {
+        await run(
+          firestore
+              .collection('books')
+              .where('price-tier', WhereFilter.lessThan, 3)
+              .where('price.amount', WhereFilter.greaterThan, 1),
+        );
+
+        // `price-tier` is quoted on the wire, but `price` sorts first.
+        expect(sortOrder().map((order) => order.$1), [
+          'price.amount',
+          '`price-tier`',
+          '__name__',
+        ]);
+      });
+
+      test('implicit orderings take the last explicit direction', () async {
+        await run(
+          firestore
+              .collection('books')
+              .where('genre', WhereFilter.notIn, ['Horror'])
+              .orderBy('rating', descending: true),
+        );
+
+        expect(sortOrder(), [
+          ('rating', 'descending'),
+          ('genre', 'descending'),
+          ('__name__', 'descending'),
+        ]);
+
+        // Existence checks cover the explicit ordering and the key; the
+        // inequality filter brings its own (none, for not-in).
+        final exists = stages[2].args.single.functionValue!;
+        expect(exists.name, 'and');
+        expect(
+          exists.args.map(
+            (arg) => arg.functionValue!.args.single.fieldReferenceValue,
+          ),
+          ['rating', '__name__'],
+        );
       });
 
       test('converts composite filters', () async {
@@ -2599,6 +3930,43 @@ void main() {
         expect(endBefore.name, 'less_than');
       });
 
+      test('flips cursor comparisons for descending orderings', () async {
+        // Regression: cursors compared as if every ordering were ascending
+        // (as Node does), so startAt(4) on a descending rating kept ratings of
+        // 4 and more instead of 4 and less.
+        await run(
+          firestore
+              .collection('books')
+              .orderBy('rating', descending: true)
+              .orderBy('title')
+              .startAt([4, 'M'])
+              .endBefore([1]),
+        );
+
+        expect(stages.map((stage) => stage.name), [
+          'collection',
+          'where', // existence checks
+          'sort',
+          'where', // startAt
+          'where', // endBefore
+        ]);
+
+        // rating < 4 || (rating == 4 && (title > 'M' || title == 'M'))
+        final startAt = stages[3].args.single.functionValue!;
+        expect(startAt.name, 'or');
+        expect(startAt.args[0].functionValue!.name, 'less_than');
+        final tie = startAt.args[1].functionValue!;
+        expect(tie.args[0].functionValue!.name, 'equal');
+        final title = tie.args[1].functionValue!;
+        expect(title.args[0].functionValue!.name, 'greater_than');
+        expect(title.args[1].functionValue!.name, 'equal');
+
+        // endBefore(1) on the descending rating keeps ratings above 1.
+        final endBefore = stages[4].args.single.functionValue!;
+        expect(endBefore.name, 'greater_than');
+        expect(endBefore.args[1].integerValue, 1);
+      });
+
       test('sorts twice for limitToLast queries', () async {
         await run(
           firestore.collection('books').orderBy('rating').limitToLast(3),
@@ -2661,6 +4029,87 @@ void main() {
         );
       });
 
+      group('applies a VectorQuery distanceThreshold as a filter', () {
+        Future<firestore_v1.Function$> runThreshold(
+          DistanceMeasure distanceMeasure, {
+          String? distanceResultField,
+        }) async {
+          await run(
+            firestore
+                .collection('books')
+                .findNearest(
+                  vectorField: 'embedding',
+                  queryVector: [1.0, 2.0, 3.0],
+                  limit: 5,
+                  distanceMeasure: distanceMeasure,
+                  distanceResultField: distanceResultField,
+                  distanceThreshold: 0.5,
+                ),
+          );
+
+          // The backend rejects a threshold option on find_nearest, so none is
+          // sent.
+          final findNearest = stages[stages.length - 2];
+          expect(findNearest.name, 'find_nearest');
+          expect(
+            findNearest.options.keys,
+            isNot(contains('distance_threshold')),
+          );
+
+          final where = stages.last;
+          expect(where.name, 'where');
+          final condition = where.args.single.functionValue!;
+          expect(condition.args[1].doubleValue, 0.5);
+          return condition;
+        }
+
+        test('keeps euclidean distances at most the threshold', () async {
+          final condition = await runThreshold(DistanceMeasure.euclidean);
+
+          expect(condition.name, 'less_than_or_equal');
+          final distance = condition.args[0].functionValue!;
+          expect(distance.name, 'euclidean_distance');
+          expect(distance.args[0].fieldReferenceValue, 'embedding');
+          expect(
+            distance.args[1].mapValue!.fields['value']!.arrayValue!.values.map(
+              (v) => v.doubleValue,
+            ),
+            [1.0, 2.0, 3.0],
+          );
+        });
+
+        test('keeps cosine distances at most the threshold', () async {
+          final condition = await runThreshold(DistanceMeasure.cosine);
+
+          expect(condition.name, 'less_than_or_equal');
+          expect(condition.args[0].functionValue!.name, 'cosine_distance');
+        });
+
+        test('keeps dot products at least the threshold', () async {
+          // A larger dot product means more similar vectors.
+          final condition = await runThreshold(DistanceMeasure.dotProduct);
+
+          expect(condition.name, 'greater_than_or_equal');
+          expect(condition.args[0].functionValue!.name, 'dot_product');
+        });
+
+        test('reads the distance result field when there is one', () async {
+          final condition = await runThreshold(
+            DistanceMeasure.euclidean,
+            distanceResultField: 'distance',
+          );
+
+          expect(condition.name, 'less_than_or_equal');
+          expect(condition.args[0].fieldReferenceValue, 'distance');
+          expect(
+            stages[stages.length - 2]
+                .options['distance_field']!
+                .fieldReferenceValue,
+            'distance',
+          );
+        });
+      });
+
       test('rejects a query from a different database', () {
         final other = Firestore.internal(
           settings: const Settings(
@@ -2699,6 +4148,23 @@ void main() {
         expect(
           () => firestore.pipeline().documents([other.doc('books/book-1')]),
           throwsA(_crossDatabaseError),
+        );
+        // Every reference is checked, not only the first; paths resolve
+        // against this Pipeline's database.
+        expect(
+          () => firestore.pipeline().documents([
+            'books/book-1',
+            firestore.doc('books/book-2'),
+            other.doc('books/book-3'),
+          ]),
+          throwsA(_crossDatabaseError),
+        );
+        expect(
+          () => firestore.pipeline().documents([
+            'books/book-1',
+            firestore.doc('books/book-2'),
+          ]),
+          returnsNormally,
         );
       });
 
