@@ -109,7 +109,8 @@ export 'src/firestore.dart'
         or,
         pipelineFunction,
         score,
-        sum;
+        sum,
+        variable;
 export 'src/firestore_exception.dart'
     show FirestoreClientErrorCode, FirestoreException;
 export 'src/status_code.dart' show StatusCode;
