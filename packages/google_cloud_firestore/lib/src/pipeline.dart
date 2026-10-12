@@ -425,16 +425,22 @@ abstract final class PipelineFunctions {
     return _expr('average', [_fieldOrExpression(fieldName)]);
   }
 
-  /// MINIMUM aggregate function.
+  /// MINIMUM function.
   ///
-  /// For the element-wise form over several operands, use [logicalMinimum].
+  /// In an `aggregate` stage, returns the smallest value of [fieldName] across
+  /// the stage's inputs. Anywhere else, [fieldName] must be an array, and this
+  /// returns its smallest element, like [arrayMinimum]. For the element-wise
+  /// form over several operands, use [logicalMinimum].
   static PipelineExpression minimum(Object? fieldName) {
     return _expr('minimum', [_fieldOrExpression(fieldName)]);
   }
 
-  /// MAXIMUM aggregate function.
+  /// MAXIMUM function.
   ///
-  /// For the element-wise form over several operands, use [logicalMaximum].
+  /// In an `aggregate` stage, returns the largest value of [fieldName] across
+  /// the stage's inputs. Anywhere else, [fieldName] must be an array, and this
+  /// returns its largest element, like [arrayMaximum]. For the element-wise
+  /// form over several operands, use [logicalMaximum].
   static PipelineExpression maximum(Object? fieldName) {
     return _expr('maximum', [_fieldOrExpression(fieldName)]);
   }
