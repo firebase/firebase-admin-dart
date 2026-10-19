@@ -244,7 +244,19 @@ class FirestoreHttpClient {
       Environment.isFirestoreEmulatorEnabled(_settings.environmentOverride);
 
   /// Lazy-initialized HTTP client that's cached for reuse.
-  late final Future<googleapis_auth.AuthClient> _client = _createClient();
+  ///
+  /// Nullable rather than `late final` so [close] can tell whether a client
+  /// was ever created, without creating one (and resolving credentials) just
+  /// to close it.
+  Future<googleapis_auth.AuthClient>? _clientFuture;
+
+  Future<googleapis_auth.AuthClient> get _client {
+    if (_closeFuture != null) {
+      throw StateError('FirestoreHttpClient has already been closed.');
+    }
+    return _clientFuture ??= _createClient();
+  }
+
 
   // googleapis_auth never closes a caller-supplied baseClient.
   Http2WithHttp1FallbackClient? _transport;
@@ -308,9 +320,21 @@ class FirestoreHttpClient {
   /// [Http2Client.close] rejects new requests immediately and drains the
   /// in-flight ones in the background, so pooled connections may outlive
   /// this call by as long as their last response takes to finish.
-  Future<void> close() async {
-    final client = await _client;
-    client.close();
-    _transport?.close();
+  ///
+  /// Does nothing to a client that was never created, so closing an unused
+  /// Firestore performs no credential lookup or network I/O.
+  Future<void> close() => _closeFuture ??= _close();
+
+  Future<void>? _closeFuture;
+
+  Future<void> _close() async {
+    final clientFuture = _clientFuture;
+    try {
+      if (clientFuture != null) (await clientFuture).close();
+    } catch (_) {
+      // Client creation failed, so there is no client to close.
+    } finally {
+      _transport?.close();
+    }
   }
 }
