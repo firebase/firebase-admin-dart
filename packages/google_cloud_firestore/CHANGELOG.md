@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Fixed `Firestore.terminate()` creating the auth client of a Firestore that never sent a request just to close it. Without Application Default Credentials this threw `MetadataServerException`, and a failed credential lookup left the HTTP/2 transport open. Requests made after `terminate()` now throw a `StateError` (an `Error`, not an `Exception`) instead of opening a new client.
 - Added `CollectionReference.listDocumentsPages()`, which lists a collection's documents, including missing documents, one `DocumentReferencePage` at a time. It takes an optional `pageSize` and a `pageToken` to resume from a previous page's `nextPageToken`, so large collections can be walked without holding every reference in memory.
 - Fixed `CollectionReference.listDocuments()` returning only the first page of results. It now follows `nextPageToken` until the collection is exhausted, matching the Node Admin SDK, so large collections and missing documents past the first page are no longer silently dropped.
 - Fixed `DocumentReference.listCollections()` and `Firestore.listCollections()` returning only the first page of collection IDs. They now follow `nextPageToken` until every collection has been returned.

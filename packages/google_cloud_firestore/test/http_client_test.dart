@@ -14,9 +14,12 @@
 
 import 'dart:io';
 
+import 'package:google_cloud_firestore/google_cloud_firestore.dart';
 import 'package:google_cloud_firestore/src/firestore_http_client.dart';
 import 'package:http/http.dart';
 import 'package:test/test.dart';
+
+import 'fixtures/helpers.dart';
 
 /// Records the requests it is given and answers them without any network I/O,
 /// standing in for whichever half of the transport a request was routed to.
@@ -89,6 +92,46 @@ void main() {
             contains('already closed'),
           ),
         ),
+      );
+    });
+  });
+
+  group('FirestoreHttpClient', () {
+    FirestoreHttpClient createClient() => FirestoreHttpClient(
+      // The key is not registered with Google, so creating the auth client
+      // fails: offline at the token request, online with `invalid_grant`.
+      credential: Credential.fromServiceAccountParams(
+        privateKey: mockPrivateKey,
+        email: 'test@$mockProjectId.iam.gserviceaccount.com',
+        projectId: mockProjectId,
+      ),
+      // Ignore FIRESTORE_EMULATOR_HOST so the production client is used.
+      settings: const Settings(
+        projectId: mockProjectId,
+        environmentOverride: {},
+      ),
+    );
+
+    test('close() does not create a client that was never used', () async {
+      final client = createClient();
+
+      await expectLater(client.close(), completes);
+    });
+
+    test('close() can be called more than once', () async {
+      final client = createClient();
+
+      await client.close();
+      await expectLater(client.close(), completes);
+    });
+
+    test('rejects requests after close()', () async {
+      final client = createClient();
+      await client.close();
+
+      await expectLater(
+        client.v1((api, projectId) async => projectId),
+        throwsA(isA<StateError>()),
       );
     });
   });
