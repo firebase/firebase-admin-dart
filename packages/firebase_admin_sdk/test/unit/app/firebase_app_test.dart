@@ -936,24 +936,27 @@ void main() {
       test(
         'closes an unused firestore without creating its auth client',
         () async {
-          // No emulator, so Firestore would use the service account. The key
-          // is not registered with Google, so creating the auth client fails.
-          await runZoned(zoneValues: {envSymbol: <String, String>{}}, () async {
-            final app = FirebaseApp.initializeApp(
-              options: AppOptions(
-                credential: Credential.fromServiceAccountParams(
-                  clientId: 'client-id',
-                  privateKey: mockPrivateKey,
-                  email: mockClientEmail,
-                  projectId: mockProjectId,
-                ),
+          final app = FirebaseApp.initializeApp(
+            options: AppOptions(
+              credential: Credential.fromServiceAccountParams(
+                clientId: 'client-id',
+                privateKey: mockPrivateKey,
+                email: mockClientEmail,
+                projectId: mockProjectId,
               ),
-            );
-            app.firestore();
+            ),
+          );
+          // Hide FIRESTORE_EMULATOR_HOST (set when unit tests run under the
+          // emulators) so Firestore uses the service account. The key is not
+          // registered with Google, so creating the auth client would fail.
+          app.firestore(
+            settings: const google_cloud_firestore.Settings(
+              environmentOverride: {},
+            ),
+          );
 
-            await expectLater(app.close(), completes);
-            expect(app.isDeleted, isTrue);
-          });
+          await expectLater(app.close(), completes);
+          expect(app.isDeleted, isTrue);
         },
       );
 

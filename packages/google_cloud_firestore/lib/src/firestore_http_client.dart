@@ -251,13 +251,12 @@ class FirestoreHttpClient {
   Future<googleapis_auth.AuthClient>? _clientFuture;
 
   Future<googleapis_auth.AuthClient> get _client {
-    if (_closed) {
+    if (_closeFuture != null) {
       throw StateError('FirestoreHttpClient has already been closed.');
     }
     return _clientFuture ??= _createClient();
   }
 
-  bool _closed = false;
 
   // googleapis_auth never closes a caller-supplied baseClient.
   Http2WithHttp1FallbackClient? _transport;
@@ -324,10 +323,11 @@ class FirestoreHttpClient {
   ///
   /// Does nothing to a client that was never created, so closing an unused
   /// Firestore performs no credential lookup or network I/O.
-  Future<void> close() async {
-    if (_closed) return;
-    _closed = true;
+  Future<void> close() => _closeFuture ??= _close();
 
+  Future<void>? _closeFuture;
+
+  Future<void> _close() async {
     final clientFuture = _clientFuture;
     try {
       if (clientFuture != null) (await clientFuture).close();
