@@ -912,6 +912,51 @@ void main() {
         },
       );
 
+      test(
+        'finishes cleanup and rethrows when a service fails to delete',
+        () async {
+          final app = FirebaseApp.initializeApp(
+            options: const AppOptions(projectId: mockProjectId),
+          );
+          final failing = app.getOrInitService(
+            'failing',
+            (app) => _FakeService(app, error: StateError('delete failed')),
+          );
+          final healthy = app.getOrInitService('healthy', _FakeService.new);
+
+          await expectLater(app.close(), throwsA(isA<StateError>()));
+
+          expect(failing.deleted, isTrue);
+          expect(healthy.deleted, isTrue);
+          expect(app.isDeleted, isTrue);
+          expect(FirebaseApp.apps, isEmpty);
+        },
+      );
+
+      test(
+        'closes an unused firestore without creating its auth client',
+        () async {
+          // No emulator, so Firestore would use the service account. The key
+          // is not registered with Google, so creating the auth client fails.
+          await runZoned(zoneValues: {envSymbol: <String, String>{}}, () async {
+            final app = FirebaseApp.initializeApp(
+              options: AppOptions(
+                credential: Credential.fromServiceAccountParams(
+                  clientId: 'client-id',
+                  privateKey: mockPrivateKey,
+                  email: mockClientEmail,
+                  projectId: mockProjectId,
+                ),
+              ),
+            );
+            app.firestore();
+
+            await expectLater(app.close(), completes);
+            expect(app.isDeleted, isTrue);
+          });
+        },
+      );
+
       test('throws when called twice', () async {
         final app = FirebaseApp.initializeApp(
           options: const AppOptions(projectId: mockProjectId),
@@ -1019,4 +1064,17 @@ void main() {
       );
     });
   });
+}
+
+class _FakeService extends FirebaseService {
+  _FakeService(super.app, {this.error});
+
+  final Error? error;
+  bool deleted = false;
+
+  @override
+  Future<void> delete() async {
+    deleted = true;
+    if (error case final error?) throw error;
+  }
 }

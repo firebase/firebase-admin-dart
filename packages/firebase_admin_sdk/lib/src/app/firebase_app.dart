@@ -334,28 +334,31 @@ class FirebaseApp {
     // Remove from registry
     _defaultAppRegistry.removeApp(name);
 
-    // Delete all services
-    await Future.wait(
-      _services.values.map((service) {
-        return service.delete();
-      }),
-    );
+    try {
+      // Delete all services. Every delete() runs even if one throws; the
+      // first error is rethrown once the app's own cleanup below is done.
+      await Future.wait(
+        _services.values.map((service) {
+          return service.delete();
+        }),
+      );
+    } finally {
+      _services.clear();
 
-    _services.clear();
-
-    // Only close client if it was initialized AND we created it (not user-provided)
-    if (_httpClient != null && options.httpClient == null) {
-      _transport?.close();
-      try {
-        final client = await _httpClient!;
-        client.close();
-      } catch (_) {
-        // Ignore errors during client initialization/closure to ensure
-        // app is marked as deleted.
+      // Only close client if it was initialized AND we created it (not user-provided)
+      if (_httpClient != null && options.httpClient == null) {
+        _transport?.close();
+        try {
+          final client = await _httpClient!;
+          client.close();
+        } catch (_) {
+          // Ignore errors during client initialization/closure to ensure
+          // app is marked as deleted.
+        }
       }
-    }
 
-    _isDeleted = true;
+      _isDeleted = true;
+    }
   }
 
   /// Checks if this app has been deleted and throws if so.
