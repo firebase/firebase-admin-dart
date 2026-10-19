@@ -251,8 +251,10 @@ jobs:
   test-wif:
     name: Test - WIF Auth (Dart ${{ matrix.dart-version }})
     runs-on: ubuntu-latest
-    # Skip for fork PRs — secrets are not available
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    # Skip for fork and Dependabot PRs — repository secrets are not available
+    if: |
+      github.actor != 'dependabot[bot]' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -308,7 +310,7 @@ jobs:
     name: Publish verification
     runs-on: ubuntu-latest
     needs: [check-license-header, lint, test, test-wif]
-    # Run even if test-wif was skipped (fork PRs), but not if other jobs failed
+    # Run even if test-wif was skipped (fork and Dependabot PRs), but not if other jobs failed
     if: |
       always() &&
       needs.check-license-header.result == 'success' &&
