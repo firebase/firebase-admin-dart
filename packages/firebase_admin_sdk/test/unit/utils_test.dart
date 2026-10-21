@@ -58,6 +58,33 @@ void main() {
     });
   });
 
+  group('isTenantId', () {
+    test('returns true for valid tenant IDs', () {
+      expect(isTenantId('tenant-1'), isTrue);
+      expect(isTenantId('tenant_1.test~2'), isTrue);
+    });
+
+    test('returns false for invalid tenant IDs', () {
+      const invalidTenantIds = [
+        '',
+        '.',
+        '..',
+        '...',
+        'tenant.',
+        'tenant\n',
+        'tenant\uFEFF',
+        'tenant/1',
+        r'tenant\1',
+        'tenant?k=v',
+        'tenant#frag',
+        'tenant%2f1',
+      ];
+      for (final tenantId in invalidTenantIds) {
+        expect(isTenantId(tenantId), isFalse, reason: tenantId);
+      }
+    });
+  });
+
   group('assertIsTenantId', () {
     test('does not throw for valid tenant IDs', () {
       expect(() => assertIsTenantId('tenant-1'), returnsNormally);

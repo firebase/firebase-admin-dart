@@ -64,6 +64,8 @@ void assertIsUid(String uid) {
   }
 }
 
+final _validUrlSegmentRegExp = RegExp(r'^[a-zA-Z0-9\-_.~]+$');
+
 /// Validates that a string is a safe URL path segment.
 @internal
 bool isSafeUrlSegment(String? segment) {
@@ -71,8 +73,7 @@ bool isSafeUrlSegment(String? segment) {
     return false;
   }
 
-  final validUrlSegmentRegExp = RegExp(r'^[a-zA-Z0-9\-_.~]+$');
-  return validUrlSegmentRegExp.hasMatch(segment);
+  return _validUrlSegmentRegExp.hasMatch(segment);
 }
 
 /// Validates that a string is a valid tenant ID.

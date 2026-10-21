@@ -14,8 +14,9 @@
 
 import 'dart:convert';
 
-import 'package:firebase_admin_sdk/auth.dart';
 import 'package:firebase_admin_sdk/firebase_admin_sdk.dart';
+import 'package:firebase_admin_sdk/src/auth.dart';
+import 'package:googleapis/identitytoolkit/v2.dart' as auth2;
 import 'package:http/http.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -610,6 +611,72 @@ void main() {
           reason: tenantId,
         );
       }
+    });
+
+    test('AuthHttpClient throws on invalid tenant ID', () async {
+      final clientMock = MockAuthClient();
+      final app = createApp(
+        client: clientMock,
+        name: 'test-http-client-tenant',
+      );
+      final httpClient = AuthHttpClient(app);
+      const invalidTenantIds = [
+        '',
+        '.',
+        '..',
+        '...',
+        'tenant.',
+        'tenant\n',
+        'tenant\uFEFF',
+        'tenant/1',
+        r'tenant\1',
+        'tenant?k=v',
+        'tenant#frag',
+        'tenant%2f1',
+      ];
+
+      for (final tenantId in invalidTenantIds) {
+        await expectLater(
+          httpClient.getTenant(tenantId),
+          throwsA(
+            isA<FirebaseAuthAdminException>().having(
+              (e) => e.code,
+              'code',
+              'auth/invalid-tenant-id',
+            ),
+          ),
+          reason: tenantId,
+        );
+        await expectLater(
+          httpClient.deleteTenant(tenantId),
+          throwsA(
+            isA<FirebaseAuthAdminException>().having(
+              (e) => e.code,
+              'code',
+              'auth/invalid-tenant-id',
+            ),
+          ),
+          reason: tenantId,
+        );
+        await expectLater(
+          httpClient.updateTenant(
+            tenantId,
+            auth2.GoogleCloudIdentitytoolkitAdminV2Tenant(
+              displayName: 'Updated',
+            ),
+          ),
+          throwsA(
+            isA<FirebaseAuthAdminException>().having(
+              (e) => e.code,
+              'code',
+              'auth/invalid-tenant-id',
+            ),
+          ),
+          reason: tenantId,
+        );
+      }
+
+      verifyNever(() => clientMock.send(any()));
     });
 
     test('is instance of BaseAuth', () {

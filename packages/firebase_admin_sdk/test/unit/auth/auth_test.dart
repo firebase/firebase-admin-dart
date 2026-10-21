@@ -15,8 +15,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:firebase_admin_sdk/auth.dart';
 import 'package:firebase_admin_sdk/src/app.dart';
+import 'package:firebase_admin_sdk/src/auth.dart';
 import 'package:googleapis/identitytoolkit/v1.dart';
 import 'package:http/http.dart';
 import 'package:mocktail/mocktail.dart';
@@ -3731,6 +3731,7 @@ void main() {
 
     group('createProviderConfig', () {
       test('throws when provider ID is invalid', () async {
+        final requestHandler = AuthRequestHandler(auth.app);
         const invalidOidcProviderIds = [
           '',
           'unsupported',
@@ -3743,7 +3744,13 @@ void main() {
           'oidc.provider#frag',
           'oidc.provider%2f1',
         ];
+        expect(OIDCAuthProviderConfig.isProviderId('oidc.provider'), isTrue);
         for (final providerId in invalidOidcProviderIds) {
+          expect(
+            OIDCAuthProviderConfig.isProviderId(providerId),
+            isFalse,
+            reason: providerId,
+          );
           final invalidConfig = OIDCAuthProviderConfig(
             providerId: providerId,
             displayName: 'OIDC provider',
@@ -3754,6 +3761,17 @@ void main() {
 
           await expectLater(
             auth.createProviderConfig(invalidConfig),
+            throwsA(
+              isA<FirebaseAuthAdminException>().having(
+                (e) => e.code,
+                'code',
+                'auth/invalid-provider-id',
+              ),
+            ),
+            reason: providerId,
+          );
+          await expectLater(
+            requestHandler.createOAuthIdpConfig(invalidConfig),
             throwsA(
               isA<FirebaseAuthAdminException>().having(
                 (e) => e.code,
@@ -3777,7 +3795,13 @@ void main() {
           'saml.provider#frag',
           'saml.provider%2f1',
         ];
+        expect(SAMLAuthProviderConfig.isProviderId('saml.provider'), isTrue);
         for (final providerId in invalidSamlProviderIds) {
+          expect(
+            SAMLAuthProviderConfig.isProviderId(providerId),
+            isFalse,
+            reason: providerId,
+          );
           final invalidConfig = SAMLAuthProviderConfig(
             providerId: providerId,
             displayName: 'SAML provider',
@@ -3791,6 +3815,17 @@ void main() {
 
           await expectLater(
             auth.createProviderConfig(invalidConfig),
+            throwsA(
+              isA<FirebaseAuthAdminException>().having(
+                (e) => e.code,
+                'code',
+                'auth/invalid-provider-id',
+              ),
+            ),
+            reason: providerId,
+          );
+          await expectLater(
+            requestHandler.createInboundSamlConfig(invalidConfig),
             throwsA(
               isA<FirebaseAuthAdminException>().having(
                 (e) => e.code,
