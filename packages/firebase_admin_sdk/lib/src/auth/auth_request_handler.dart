@@ -797,12 +797,7 @@ class AuthRequestHandler extends _AbstractAuthRequestHandler {
 
   /// Looks up a tenant by tenant ID.
   Future<Map<String, dynamic>> getTenant(String tenantId) async {
-    if (tenantId.isEmpty) {
-      throw FirebaseAuthAdminException(
-        AuthClientErrorCode.invalidTenantId,
-        'Tenant ID must be a non-empty string.',
-      );
-    }
+    assertIsTenantId(tenantId);
 
     final response = await _httpClient.getTenant(tenantId);
     return _tenantResponseToJson(response);
@@ -842,12 +837,7 @@ class AuthRequestHandler extends _AbstractAuthRequestHandler {
 
   /// Deletes a tenant identified by a tenantId.
   Future<void> deleteTenant(String tenantId) async {
-    if (tenantId.isEmpty) {
-      throw FirebaseAuthAdminException(
-        AuthClientErrorCode.invalidTenantId,
-        'Tenant ID must be a non-empty string.',
-      );
-    }
+    assertIsTenantId(tenantId);
 
     await _httpClient.deleteTenant(tenantId);
   }
@@ -869,12 +859,7 @@ class AuthRequestHandler extends _AbstractAuthRequestHandler {
     String tenantId,
     UpdateTenantRequest tenantOptions,
   ) async {
-    if (tenantId.isEmpty) {
-      throw FirebaseAuthAdminException(
-        AuthClientErrorCode.invalidTenantId,
-        'Tenant ID must be a non-empty string.',
-      );
-    }
+    assertIsTenantId(tenantId);
 
     final requestMap = Tenant._buildServerRequest(tenantOptions, false);
     final request = auth2.GoogleCloudIdentitytoolkitAdminV2Tenant.fromJson(

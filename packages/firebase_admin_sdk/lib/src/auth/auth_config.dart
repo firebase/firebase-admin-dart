@@ -359,7 +359,7 @@ class SAMLAuthProviderConfig extends AuthProviderConfig
   }
 
   static bool isProviderId(String providerId) {
-    return providerId.isNotEmpty && providerId.startsWith('saml.');
+    return providerId.startsWith('saml.') && isSafeUrlSegment(providerId);
   }
 
   static void _validate(
@@ -369,7 +369,7 @@ class SAMLAuthProviderConfig extends AuthProviderConfig
     // Required fields.
     final providerId = options.providerId;
     if (providerId != null && providerId.isNotEmpty) {
-      if (!providerId.startsWith('saml.')) {
+      if (!SAMLAuthProviderConfig.isProviderId(providerId)) {
         throw FirebaseAuthAdminException(
           AuthClientErrorCode.invalidProviderId,
           '"SAMLAuthProviderConfig.providerId" must be a valid non-empty string prefixed with "saml.".',
@@ -525,7 +525,7 @@ class OIDCAuthProviderConfig extends AuthProviderConfig
     required bool ignoreMissingFields,
   }) {
     if (options.providerId case final providerId? when providerId.isNotEmpty) {
-      if (!providerId.startsWith('oidc.')) {
+      if (!OIDCAuthProviderConfig.isProviderId(providerId)) {
         throw FirebaseAuthAdminException(
           AuthClientErrorCode.invalidArgument,
           '"OIDCAuthProviderConfig.providerId" must be a valid non-empty string prefixed with "oidc.".',
@@ -633,7 +633,7 @@ class OIDCAuthProviderConfig extends AuthProviderConfig
   }
 
   static bool isProviderId(String providerId) {
-    return providerId.isNotEmpty && providerId.startsWith('oidc.');
+    return providerId.startsWith('oidc.') && isSafeUrlSegment(providerId);
   }
 }
 

@@ -2360,20 +2360,42 @@ void main() {
 
     group('updateProviderConfig', () {
       test('throws when provider ID is invalid', () async {
-        // Provider ID must start with "oidc." or "saml."
-        await expectLater(
-          () => auth.updateProviderConfig(
-            'unsupported',
-            OIDCUpdateAuthProviderRequest(displayName: 'Test'),
-          ),
-          throwsA(
-            isA<FirebaseAuthAdminException>().having(
-              (e) => e.code,
-              'code',
-              'auth/invalid-provider-id',
+        const invalidProviderIds = [
+          '',
+          'unsupported',
+          'oidc.',
+          'oidc.provider.',
+          'oidc.provider\n',
+          'oidc.provider/1',
+          r'oidc.provider\1',
+          'oidc.provider?k=v',
+          'oidc.provider#frag',
+          'oidc.provider%2f1',
+          'saml.',
+          'saml.provider.',
+          'saml.provider\n',
+          'saml.provider/1',
+          r'saml.provider\1',
+          'saml.provider?k=v',
+          'saml.provider#frag',
+          'saml.provider%2f1',
+        ];
+        for (final providerId in invalidProviderIds) {
+          await expectLater(
+            () => auth.updateProviderConfig(
+              providerId,
+              OIDCUpdateAuthProviderRequest(displayName: 'Test'),
             ),
-          ),
-        );
+            throwsA(
+              isA<FirebaseAuthAdminException>().having(
+                (e) => e.code,
+                'code',
+                'auth/invalid-provider-id',
+              ),
+            ),
+            reason: providerId,
+          );
+        }
       });
 
       test('updates OIDC provider config successfully', () async {
@@ -3378,17 +3400,39 @@ void main() {
 
     group('deleteProviderConfig', () {
       test('throws when provider ID is invalid', () async {
-        // Provider ID must start with "oidc." or "saml."
-        await expectLater(
-          () => auth.deleteProviderConfig('unsupported'),
-          throwsA(
-            isA<FirebaseAuthAdminException>().having(
-              (e) => e.code,
-              'code',
-              'auth/invalid-provider-id',
+        const invalidProviderIds = [
+          '',
+          'unsupported',
+          'oidc.',
+          'oidc.provider.',
+          'oidc.provider\n',
+          'oidc.provider/1',
+          r'oidc.provider\1',
+          'oidc.provider?k=v',
+          'oidc.provider#frag',
+          'oidc.provider%2f1',
+          'saml.',
+          'saml.provider.',
+          'saml.provider\n',
+          'saml.provider/1',
+          r'saml.provider\1',
+          'saml.provider?k=v',
+          'saml.provider#frag',
+          'saml.provider%2f1',
+        ];
+        for (final providerId in invalidProviderIds) {
+          await expectLater(
+            () => auth.deleteProviderConfig(providerId),
+            throwsA(
+              isA<FirebaseAuthAdminException>().having(
+                (e) => e.code,
+                'code',
+                'auth/invalid-provider-id',
+              ),
             ),
-          ),
-        );
+            reason: providerId,
+          );
+        }
       });
 
       test('deletes OIDC provider config successfully', () async {
@@ -3504,17 +3548,39 @@ void main() {
 
     group('getProviderConfig', () {
       test('throws when provider ID is invalid', () async {
-        // Provider ID must start with "oidc." or "saml."
-        await expectLater(
-          () => auth.getProviderConfig('unsupported'),
-          throwsA(
-            isA<FirebaseAuthAdminException>().having(
-              (e) => e.code,
-              'code',
-              'auth/invalid-provider-id',
+        const invalidProviderIds = [
+          '',
+          'unsupported',
+          'oidc.',
+          'oidc.provider.',
+          'oidc.provider\n',
+          'oidc.provider/1',
+          r'oidc.provider\1',
+          'oidc.provider?k=v',
+          'oidc.provider#frag',
+          'oidc.provider%2f1',
+          'saml.',
+          'saml.provider.',
+          'saml.provider\n',
+          'saml.provider/1',
+          r'saml.provider\1',
+          'saml.provider?k=v',
+          'saml.provider#frag',
+          'saml.provider%2f1',
+        ];
+        for (final providerId in invalidProviderIds) {
+          await expectLater(
+            () => auth.getProviderConfig(providerId),
+            throwsA(
+              isA<FirebaseAuthAdminException>().having(
+                (e) => e.code,
+                'code',
+                'auth/invalid-provider-id',
+              ),
             ),
-          ),
-        );
+            reason: providerId,
+          );
+        }
       });
 
       test('gets OIDC provider config successfully', () async {
@@ -3665,25 +3731,76 @@ void main() {
 
     group('createProviderConfig', () {
       test('throws when provider ID is invalid', () async {
-        // Provider ID must start with "oidc." or "saml."
-        final invalidConfig = OIDCAuthProviderConfig(
-          providerId: 'unsupported',
-          displayName: 'OIDC provider',
-          enabled: true,
-          clientId: 'CLIENT_ID',
-          issuer: 'https://oidc.com/issuer',
-        );
+        const invalidOidcProviderIds = [
+          '',
+          'unsupported',
+          'oidc.',
+          'oidc.provider.',
+          'oidc.provider\n',
+          'oidc.provider/1',
+          r'oidc.provider\1',
+          'oidc.provider?k=v',
+          'oidc.provider#frag',
+          'oidc.provider%2f1',
+        ];
+        for (final providerId in invalidOidcProviderIds) {
+          final invalidConfig = OIDCAuthProviderConfig(
+            providerId: providerId,
+            displayName: 'OIDC provider',
+            enabled: true,
+            clientId: 'CLIENT_ID',
+            issuer: 'https://oidc.com/issuer',
+          );
 
-        await expectLater(
-          auth.createProviderConfig(invalidConfig),
-          throwsA(
-            isA<FirebaseAuthAdminException>().having(
-              (e) => e.code,
-              'code',
-              'auth/invalid-provider-id',
+          await expectLater(
+            auth.createProviderConfig(invalidConfig),
+            throwsA(
+              isA<FirebaseAuthAdminException>().having(
+                (e) => e.code,
+                'code',
+                'auth/invalid-provider-id',
+              ),
             ),
-          ),
-        );
+            reason: providerId,
+          );
+        }
+
+        const invalidSamlProviderIds = [
+          '',
+          'unsupported',
+          'saml.',
+          'saml.provider.',
+          'saml.provider\n',
+          'saml.provider/1',
+          r'saml.provider\1',
+          'saml.provider?k=v',
+          'saml.provider#frag',
+          'saml.provider%2f1',
+        ];
+        for (final providerId in invalidSamlProviderIds) {
+          final invalidConfig = SAMLAuthProviderConfig(
+            providerId: providerId,
+            displayName: 'SAML provider',
+            enabled: true,
+            idpEntityId: 'IDP_ENTITY_ID',
+            ssoURL: 'https://example.com/login',
+            x509Certificates: ['CERT1'],
+            rpEntityId: 'RP_ENTITY_ID',
+            callbackURL: 'https://project-id.firebaseapp.com/__/auth/handler',
+          );
+
+          await expectLater(
+            auth.createProviderConfig(invalidConfig),
+            throwsA(
+              isA<FirebaseAuthAdminException>().having(
+                (e) => e.code,
+                'code',
+                'auth/invalid-provider-id',
+              ),
+            ),
+            reason: providerId,
+          );
+        }
       });
 
       test('creates OIDC provider config successfully', () async {

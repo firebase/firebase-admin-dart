@@ -12,10 +12,88 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'package:firebase_admin_sdk/src/auth.dart';
 import 'package:firebase_admin_sdk/src/utils/utils.dart';
+import 'package:firebase_admin_sdk/src/utils/validator.dart';
 import 'package:test/test.dart';
 
 void main() {
+  group('isSafeUrlSegment', () {
+    test('returns true for valid URL path segments', () {
+      const validSegments = [
+        'tenant1',
+        'tenant-1',
+        'tenant_1',
+        'tenant.1',
+        'tenant~1',
+        'TENANT123',
+        'oidc.provider',
+        'saml.provider-1',
+      ];
+      for (final segment in validSegments) {
+        expect(isSafeUrlSegment(segment), isTrue, reason: segment);
+      }
+    });
+
+    test('returns false for invalid URL path segments', () {
+      const invalidSegments = <String?>[
+        null,
+        '',
+        '.',
+        '..',
+        '...',
+        'tenant.',
+        'tenant\n',
+        'tenant\r',
+        'tenant\uFEFF',
+        'tenant/1',
+        r'tenant\1',
+        'tenant?k=v',
+        'tenant#frag',
+        'tenant%2f1',
+      ];
+      for (final segment in invalidSegments) {
+        expect(isSafeUrlSegment(segment), isFalse, reason: '$segment');
+      }
+    });
+  });
+
+  group('assertIsTenantId', () {
+    test('does not throw for valid tenant IDs', () {
+      expect(() => assertIsTenantId('tenant-1'), returnsNormally);
+    });
+
+    test('throws invalid-tenant-id for invalid tenant IDs', () {
+      const invalidTenantIds = [
+        '',
+        '.',
+        '..',
+        '...',
+        'tenant.',
+        'tenant\n',
+        'tenant\uFEFF',
+        'tenant/1',
+        r'tenant\1',
+        'tenant?k=v',
+        'tenant#frag',
+        'tenant%2f1',
+      ];
+      for (final tenantId in invalidTenantIds) {
+        expect(
+          () => assertIsTenantId(tenantId),
+          throwsA(
+            isA<FirebaseAuthAdminException>().having(
+              (e) => e.code,
+              'code',
+              'auth/invalid-tenant-id',
+            ),
+          ),
+          reason: tenantId,
+        );
+      }
+    });
+  });
+
   group('generateUpdateMask', () {
     test('non-map objects', () {
       expect(generateUpdateMask(null), isEmpty);

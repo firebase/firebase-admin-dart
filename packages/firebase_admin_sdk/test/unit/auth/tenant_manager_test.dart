@@ -67,15 +67,39 @@ void main() {
         expect(tenantAuth2.tenantId, equals('tenant-2'));
       });
 
-      test('throws on empty tenant ID', () {
+      test('throws on invalid tenant ID', () {
         final app = _createMockApp();
         final auth = Auth.internal(app);
         final tenantManager = auth.tenantManager;
 
-        expect(
-          () => tenantManager.authForTenant(''),
-          throwsA(isA<FirebaseAuthAdminException>()),
-        );
+        const invalidTenantIds = [
+          '',
+          '.',
+          '..',
+          '...',
+          'tenant.',
+          'tenant\n',
+          'tenant\uFEFF',
+          'tenant/1',
+          r'tenant\1',
+          'tenant?k=v',
+          'tenant#frag',
+          'tenant%2f1',
+        ];
+
+        for (final tenantId in invalidTenantIds) {
+          expect(
+            () => tenantManager.authForTenant(tenantId),
+            throwsA(
+              isA<FirebaseAuthAdminException>().having(
+                (e) => e.code,
+                'code',
+                'auth/invalid-tenant-id',
+              ),
+            ),
+            reason: tenantId,
+          );
+        }
       });
     });
 
@@ -90,20 +114,38 @@ void main() {
     });
 
     group('getTenant', () {
-      test('throws when tenantId is empty', () async {
+      test('throws when tenantId is invalid', () async {
         final app = _createMockApp();
         final tenantManager = TenantManager.internal(app);
 
-        await expectLater(
-          () => tenantManager.getTenant(''),
-          throwsA(
-            isA<FirebaseAuthAdminException>().having(
-              (e) => e.code,
-              'code',
-              'auth/invalid-tenant-id',
+        const invalidTenantIds = [
+          '',
+          '.',
+          '..',
+          '...',
+          'tenant.',
+          'tenant\n',
+          'tenant\uFEFF',
+          'tenant/1',
+          r'tenant\1',
+          'tenant?k=v',
+          'tenant#frag',
+          'tenant%2f1',
+        ];
+
+        for (final tenantId in invalidTenantIds) {
+          await expectLater(
+            () => tenantManager.getTenant(tenantId),
+            throwsA(
+              isA<FirebaseAuthAdminException>().having(
+                (e) => e.code,
+                'code',
+                'auth/invalid-tenant-id',
+              ),
             ),
-          ),
-        );
+            reason: tenantId,
+          );
+        }
       });
 
       test('returns tenant successfully', () async {
@@ -312,23 +354,41 @@ void main() {
     });
 
     group('updateTenant', () {
-      test('throws when tenantId is empty', () async {
+      test('throws when tenantId is invalid', () async {
         final app = _createMockApp();
         final tenantManager = TenantManager.internal(app);
 
-        await expectLater(
-          () => tenantManager.updateTenant(
-            '',
-            UpdateTenantRequest(displayName: 'Updated Name'),
-          ),
-          throwsA(
-            isA<FirebaseAuthAdminException>().having(
-              (e) => e.code,
-              'code',
-              'auth/invalid-tenant-id',
+        const invalidTenantIds = [
+          '',
+          '.',
+          '..',
+          '...',
+          'tenant.',
+          'tenant\n',
+          'tenant\uFEFF',
+          'tenant/1',
+          r'tenant\1',
+          'tenant?k=v',
+          'tenant#frag',
+          'tenant%2f1',
+        ];
+
+        for (final tenantId in invalidTenantIds) {
+          await expectLater(
+            () => tenantManager.updateTenant(
+              tenantId,
+              UpdateTenantRequest(displayName: 'Updated Name'),
             ),
-          ),
-        );
+            throwsA(
+              isA<FirebaseAuthAdminException>().having(
+                (e) => e.code,
+                'code',
+                'auth/invalid-tenant-id',
+              ),
+            ),
+            reason: tenantId,
+          );
+        }
       });
 
       test('updates tenant successfully', () async {
@@ -397,20 +457,38 @@ void main() {
     });
 
     group('deleteTenant', () {
-      test('throws when tenantId is empty', () async {
+      test('throws when tenantId is invalid', () async {
         final app = _createMockApp();
         final tenantManager = TenantManager.internal(app);
 
-        await expectLater(
-          () => tenantManager.deleteTenant(''),
-          throwsA(
-            isA<FirebaseAuthAdminException>().having(
-              (e) => e.code,
-              'code',
-              'auth/invalid-tenant-id',
+        const invalidTenantIds = [
+          '',
+          '.',
+          '..',
+          '...',
+          'tenant.',
+          'tenant\n',
+          'tenant\uFEFF',
+          'tenant/1',
+          r'tenant\1',
+          'tenant?k=v',
+          'tenant#frag',
+          'tenant%2f1',
+        ];
+
+        for (final tenantId in invalidTenantIds) {
+          await expectLater(
+            () => tenantManager.deleteTenant(tenantId),
+            throwsA(
+              isA<FirebaseAuthAdminException>().having(
+                (e) => e.code,
+                'code',
+                'auth/invalid-tenant-id',
+              ),
             ),
-          ),
-        );
+            reason: tenantId,
+          );
+        }
       });
 
       test('deletes tenant successfully', () async {
@@ -500,6 +578,38 @@ void main() {
       final tenantAuth = tenantManager.authForTenant('test-tenant-id');
 
       expect(tenantAuth.tenantId, equals('test-tenant-id'));
+    });
+
+    test('TenantAwareAuth.internal throws on invalid tenant ID', () {
+      final app = _createMockApp();
+      const invalidTenantIds = [
+        '',
+        '.',
+        '..',
+        '...',
+        'tenant.',
+        'tenant\n',
+        'tenant\uFEFF',
+        'tenant/1',
+        r'tenant\1',
+        'tenant?k=v',
+        'tenant#frag',
+        'tenant%2f1',
+      ];
+
+      for (final tenantId in invalidTenantIds) {
+        expect(
+          () => TenantAwareAuth.internal(app, tenantId),
+          throwsA(
+            isA<FirebaseAuthAdminException>().having(
+              (e) => e.code,
+              'code',
+              'auth/invalid-tenant-id',
+            ),
+          ),
+          reason: tenantId,
+        );
+      }
     });
 
     test('is instance of BaseAuth', () {
