@@ -64,6 +64,30 @@ void assertIsUid(String uid) {
   }
 }
 
+final _validUrlSegmentRegExp = RegExp(r'^[a-zA-Z0-9\-_.~]+$');
+
+/// Validates that a string is a safe URL path segment.
+@internal
+bool isSafeUrlSegment(String? segment) {
+  if (segment == null || segment.isEmpty || segment.endsWith('.')) {
+    return false;
+  }
+
+  return _validUrlSegmentRegExp.hasMatch(segment);
+}
+
+/// Validates that a string is a valid tenant ID.
+@internal
+bool isTenantId(String tenantId) => isSafeUrlSegment(tenantId);
+
+/// Verifies that a string is a valid tenant ID. Throws otherwise.
+@internal
+void assertIsTenantId(String tenantId) {
+  if (!isTenantId(tenantId)) {
+    throw FirebaseAuthAdminException(AuthClientErrorCode.invalidTenantId);
+  }
+}
+
 /// Validates that the provided topic is a valid FCM topic name.
 bool isTopic(Object? topic) {
   if (topic is! String) return false;

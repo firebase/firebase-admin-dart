@@ -333,12 +333,7 @@ class AuthHttpClient {
     String tenantId,
   ) {
     return v2((api, projectId) async {
-      if (tenantId.isEmpty) {
-        throw FirebaseAuthAdminException(
-          AuthClientErrorCode.invalidTenantId,
-          'Tenant ID must be a non-empty string.',
-        );
-      }
+      assertIsTenantId(tenantId);
 
       final response = await api.projects.tenants.get(
         buildTenantParent(projectId, tenantId),
@@ -371,12 +366,7 @@ class AuthHttpClient {
 
   Future<auth2.GoogleProtobufEmpty> deleteTenant(String tenantId) {
     return v2((api, projectId) async {
-      if (tenantId.isEmpty) {
-        throw FirebaseAuthAdminException(
-          AuthClientErrorCode.invalidTenantId,
-          'Tenant ID must be a non-empty string.',
-        );
-      }
+      assertIsTenantId(tenantId);
 
       return api.projects.tenants.delete(
         buildTenantParent(projectId, tenantId),
@@ -409,12 +399,7 @@ class AuthHttpClient {
     auth2.GoogleCloudIdentitytoolkitAdminV2Tenant request,
   ) {
     return v2((api, projectId) async {
-      if (tenantId.isEmpty) {
-        throw FirebaseAuthAdminException(
-          AuthClientErrorCode.invalidTenantId,
-          'Tenant ID must be a non-empty string.',
-        );
-      }
+      assertIsTenantId(tenantId);
 
       final name = buildTenantParent(projectId, tenantId);
       final updateMask = request.toJson().keys.join(',');
@@ -501,7 +486,9 @@ class AuthHttpClient {
 
 /// Tenant-aware HTTP client that builds tenant-specific resource paths.
 class _TenantAwareAuthHttpClient extends AuthHttpClient {
-  _TenantAwareAuthHttpClient(super.app, this.tenantId);
+  _TenantAwareAuthHttpClient(super.app, this.tenantId) {
+    assertIsTenantId(tenantId);
+  }
 
   final String tenantId;
 

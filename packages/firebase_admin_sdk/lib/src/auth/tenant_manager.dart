@@ -199,12 +199,7 @@ class TenantManager {
   ///
   /// Returns the `TenantAwareAuth` instance corresponding to this tenant identifier.
   TenantAwareAuth authForTenant(String tenantId) {
-    if (tenantId.isEmpty) {
-      throw FirebaseAuthAdminException(
-        AuthClientErrorCode.invalidTenantId,
-        'Tenant ID must be a non-empty string.',
-      );
-    }
+    assertIsTenantId(tenantId);
 
     return _tenantsMap.putIfAbsent(
       tenantId,

@@ -359,7 +359,7 @@ class SAMLAuthProviderConfig extends AuthProviderConfig
   }
 
   static bool isProviderId(String providerId) {
-    return providerId.isNotEmpty && providerId.startsWith('saml.');
+    return providerId.startsWith('saml.') && isSafeUrlSegment(providerId);
   }
 
   static void _validate(
@@ -368,15 +368,9 @@ class SAMLAuthProviderConfig extends AuthProviderConfig
   }) {
     // Required fields.
     final providerId = options.providerId;
-    if (providerId != null && providerId.isNotEmpty) {
-      if (!providerId.startsWith('saml.')) {
-        throw FirebaseAuthAdminException(
-          AuthClientErrorCode.invalidProviderId,
-          '"SAMLAuthProviderConfig.providerId" must be a valid non-empty string prefixed with "saml.".',
-        );
-      }
-    } else if (!ignoreMissingFields) {
-      // providerId is required and not provided correctly.
+    if (!(ignoreMissingFields && providerId == null) &&
+        (providerId == null ||
+            !SAMLAuthProviderConfig.isProviderId(providerId))) {
       throw FirebaseAuthAdminException(
         providerId == null
             ? AuthClientErrorCode.missingProviderId
@@ -524,16 +518,12 @@ class OIDCAuthProviderConfig extends AuthProviderConfig
     _OIDCAuthProviderRequestBase options, {
     required bool ignoreMissingFields,
   }) {
-    if (options.providerId case final providerId? when providerId.isNotEmpty) {
-      if (!providerId.startsWith('oidc.')) {
-        throw FirebaseAuthAdminException(
-          AuthClientErrorCode.invalidArgument,
-          '"OIDCAuthProviderConfig.providerId" must be a valid non-empty string prefixed with "oidc.".',
-        );
-      }
-    } else if (!ignoreMissingFields) {
+    final providerId = options.providerId;
+    if (!(ignoreMissingFields && providerId == null) &&
+        (providerId == null ||
+            !OIDCAuthProviderConfig.isProviderId(providerId))) {
       throw FirebaseAuthAdminException(
-        options.providerId == null
+        providerId == null
             ? AuthClientErrorCode.missingProviderId
             : AuthClientErrorCode.invalidProviderId,
         '"OIDCAuthProviderConfig.providerId" must be a valid non-empty string prefixed with "oidc.".',
@@ -633,7 +623,7 @@ class OIDCAuthProviderConfig extends AuthProviderConfig
   }
 
   static bool isProviderId(String providerId) {
-    return providerId.isNotEmpty && providerId.startsWith('oidc.');
+    return providerId.startsWith('oidc.') && isSafeUrlSegment(providerId);
   }
 }
 
