@@ -36,3 +36,12 @@ melos:
     version:
       hooks:
         post: ./scripts/gen-version.sh
+
+# TODO: remove once package:http2 3.2.0 is published. Pins dart-lang/http#2029,
+# which gives `Http2Client` 4 MiB stream / 16 MiB connection receive windows.
+dependency_overrides:
+  http2:
+    git:
+      url: https://github.com/dart-lang/http.git
+      path: pkgs/http2
+      ref: be2b51fa259b4e99d527df382b6d50af12b8c4bb
