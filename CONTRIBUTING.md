@@ -60,19 +60,20 @@ All submissions, including submissions by project members, require review. We us
 - **Dart SDK** >= 3.9.0
 - **Java 21+** (required for the Firestore emulator)
 - **Node.js** (required for the Firebase Emulator and Cloud Tasks emulator)
-- **Melos** — Dart monorepo tool (`dart pub global activate melos`)
+- **Melos**, only for releases and the docs script (`dart pub global activate melos`)
 - **Firebase CLI** (`npm install -g firebase-tools`)
 - **Google Cloud SDK** ([`gcloud`](https://cloud.google.com/sdk/downloads)) — required to authorise integration tests against a real Firebase project
+
+On macOS and Linux, `./scripts/doctor.sh` checks these, plus [addlicense](#license-headers), and says how to install what's missing.
 
 ### Setup
 
 1. Fork and clone the repository.
 
-2. Install Melos and bootstrap the workspace from the repo root:
+2. Get the dependencies of every package in the workspace, from the repo root:
 
    ```bash
-   dart pub global activate melos
-   melos bootstrap
+   dart pub get
    ```
 
 3. Verify your setup by running the analyzer and formatter:
@@ -85,7 +86,7 @@ All submissions, including submissions by project members, require review. We us
 
 ### Repo Organization
 
-This repository is a monorepo managed by [Melos](https://melos.invertase.dev/).
+This repository is a monorepo: a [pub workspace](https://dart.dev/tools/pub/workspaces), with [Melos](https://melos.invertase.dev/) for releases and the docs script.
 
 ```
 firebase_admin_sdk/             # Workspace root
