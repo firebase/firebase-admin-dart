@@ -35,9 +35,9 @@ fail() {
 # how <macOS> <Debian or Ubuntu> <elsewhere>: the install hint for this machine.
 how() {
   case $platform in
-    macos) echo "$1" ;;
-    debian) echo "$2" ;;
-    *) echo "$3" ;;
+    macos) echo "${1:-}" ;;
+    debian) echo "${2:-}" ;;
+    *) echo "${3:-}" ;;
   esac
 }
 
@@ -52,8 +52,10 @@ at_least() {
     h=${h%%[!0-9]*}
     h=${h:-0}
     w=${want[i]:-0}
-    if ((10#$h > w)); then return 0; fi
-    if ((10#$h < w)); then return 1; fi
+    w=${w%%[!0-9]*}
+    w=${w:-0}
+    if ((10#$h > 10#$w)); then return 0; fi
+    if ((10#$h < 10#$w)); then return 1; fi
   done
   return 0
 }
