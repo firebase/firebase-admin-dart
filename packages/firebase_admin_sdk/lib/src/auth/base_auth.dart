@@ -790,7 +790,7 @@ abstract class _BaseAuth {
       // phoneNumber to null *and* by setting providersToUnlink to include
       // 'phone', then we'll reject that. Though it might also be reasonable
       // to relax this restriction and just unlink it.
-      if (properties.phoneNumber == null) {
+      if (properties.phoneNumber case _Box(value: null)) {
         throw FirebaseAuthAdminException(
           AuthClientErrorCode.invalidArgument,
           "Both UpdateRequest.phoneNumber and UpdateRequest.providersToUnlink=['phone'] were set. To "

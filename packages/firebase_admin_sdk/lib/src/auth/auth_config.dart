@@ -692,18 +692,24 @@ class CreateRequest extends _BaseUpdateRequest {
 /// Interface representing the properties to update on the provided user.
 class UpdateRequest extends _BaseUpdateRequest {
   /// Interface representing the properties to update on the provided user.
-  UpdateRequest({
-    super.disabled,
-    String? super.displayName,
-    super.email,
-    super.emailVerified,
-    super.password,
-    String? super.phoneNumber,
-    String? super.photoURL,
-    this.multiFactor,
-    this.providerToLink,
-    this.providersToUnlink,
-  });
+  ///
+  /// Omitted properties are left unchanged. Setting [displayName], [photoURL]
+  /// or [phoneNumber] to `null` deletes it from the user.
+  // Redirecting to UpdateRequest._ means an omitted displayName, phoneNumber
+  // or photoURL gets its `_sentinel` default (unchanged) rather than `null`
+  // (delete), while the parameters stay typed as String?.
+  factory UpdateRequest({
+    bool? disabled,
+    String? displayName,
+    String? email,
+    bool? emailVerified,
+    String? password,
+    String? phoneNumber,
+    String? photoURL,
+    MultiFactorUpdateSettings? multiFactor,
+    UserProvider? providerToLink,
+    List<String>? providersToUnlink,
+  }) = UpdateRequest._;
 
   UpdateRequest._({
     super.disabled,
