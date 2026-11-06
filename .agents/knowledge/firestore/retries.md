@@ -1,13 +1,14 @@
 ---
 type: Decision
 title: Firestore retries transient errors like Node
-description: A standalone `WriteBatch.commit()` retries ABORTED, UNAVAILABLE and RESOURCE_EXHAUSTED as Node does, and reads retry connection-closed errors only before any partial result and outside a transaction.
+description: A standalone `WriteBatch.commit()` retries ABORTED, UNAVAILABLE and RESOURCE_EXHAUSTED as Node does, and queries, aggregations and pipelines retry `http.ClientException`s, such as connection-closed errors, only before any partial result and outside a transaction.
 tags: [firestore, retries, node-parity]
 agents_md: when-touching
 governs:
   - packages/google_cloud_firestore/lib/src/write_batch.dart
   - packages/google_cloud_firestore/lib/src/transaction.dart
   - packages/google_cloud_firestore/lib/src/firestore_http_client.dart
+  - packages/google_cloud_firestore/lib/src/document_reader.dart
   - packages/google_cloud_firestore/lib/src/reference/**
 sources:
   - id: write-batch-retry
@@ -26,28 +27,30 @@ sources:
     resource: https://github.com/googleapis/google-cloud-node/blob/main/handwritten/firestore/dev/src/write-batch.ts
     symbol: retryCodes
     title: Node's commit retry codes
+  - id: document-reader
+    resource: ../../../packages/google_cloud_firestore/lib/src/document_reader.dart
+    symbol: StatusCode.batchGetRetryCodes
+    title: "`getAll()` retries only after progress, like Node's `document-reader.ts`"
 ---
 
 # Decision
 
 - **Writes.** A standalone `WriteBatch.commit()` retries Node's commit codes, ABORTED, UNAVAILABLE and RESOURCE_EXHAUSTED, with `package:retry`.[^write-batch-retry][^node-retry-codes][^retry-dependency] On RESOURCE_EXHAUSTED it also waits the maximum backoff delay before the next attempt.
 - **Transactions.** A commit inside a transaction isn't retried by the batch. The transaction runner retries the whole transaction.[^transaction-runner]
-- **Reads.** Queries, aggregations and pipelines retry `http.ClientException` connection-closed errors with `package:retry`, but only before any partial result has arrived and only outside a transaction. `getAll()` retries a bounded number of times.
+- **Reads.** Queries, aggregations and pipelines retry any `http.ClientException`, the type of the connection-closed error, with `package:retry`, but only before any partial result has arrived and only outside a transaction. `getAll()` follows Node instead: outside a transaction it retries DEADLINE_EXCEEDED, RESOURCE_EXHAUSTED, INTERNAL and UNAVAILABLE only after the failed attempt returned at least one document, re-requesting only the documents still missing, up to the `maxAttempts` set in `document_reader.dart`.[^document-reader]
 
 `package:retry` replaced a hand-rolled retry loop.
 
 # Why
 
-The maintainers' stated reasons:
-
-- The commit retry codes follow Node's `write-batch.ts`. Transaction commits are left out because the transaction layer already retries them.
-- The connection-closed error is a known keep-alive race in `dart:io`'s `HttpClient`, with no client-side fix except retrying.
-- `package:retry` is used because it does real exponential backoff.
+- The stated reason, in the contribution the maintainers merged: the commit retry codes follow Node's `write-batch.ts`, and transaction commits are left out because the transaction layer already retries them.
+- The maintainers' stated reason for reads: the connection-closed error is a known keep-alive race in `dart:io`'s `HttpClient`, with no client-side fix except retrying.
+- The maintainers' stated reason for `package:retry`: it does real exponential backoff.
 
 # Rules for agents
 
 - **Must not:** retry inside an active transaction. `Transaction._runTransaction` owns retries there.
-- **Must not:** retry a read once it has delivered partial results.
+- **Must not:** retry a query, aggregation or pipeline once it has delivered partial results.
 - **Must not:** hand-roll backoff loops.
 
 # Related
@@ -59,3 +62,4 @@ The maintainers' stated reasons:
 [^node-retry-codes]: Node's commit retry codes
 [^retry-dependency]: The `package:retry` dependency
 [^transaction-runner]: The transaction runner
+[^document-reader]: `getAll()` retries in `document_reader.dart`

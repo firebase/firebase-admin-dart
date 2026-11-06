@@ -10,7 +10,7 @@ sources:
   - id: sealed-credential
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/credential.dart
     symbol: sealed class Credential
-    title: "`Credential`, a sealed class where Node has a union of factories"
+    title: "`Credential`, a sealed class where Node has an interface and factory functions"
   - id: auth-provider-config
     resource: ../../../packages/firebase_admin_sdk/lib/src/auth/auth_config.dart
     symbol: sealed class AuthProviderConfig
@@ -33,9 +33,9 @@ sources:
 
 Node's source is the reference (see the Node port), but where its shape doesn't fit Dart, the Dart idiom wins and the difference is written down:
 
-- TypeScript unions become sealed classes: `Credential`, `AuthProviderConfig`, `ApsSound` and `FunctionScope`.[^sealed-credential][^auth-provider-config][^aps-sound][^function-scope]
+- TypeScript unions become sealed classes: `AuthProviderConfig`, `ApsSound` and `FunctionScope`.[^auth-provider-config][^aps-sound][^function-scope] Node's `Credential` interface, built by `cert()`, `applicationDefault()` and `refreshToken()`, also became a sealed class.[^sealed-credential]
 - Untyped option maps become typed options or named parameters. Pipeline execution options are typed; `rawOptions` sits beside them as a deliberate escape hatch.
-- Docs say `Future` and `null`, not Promise and `undefined`.
+- Docs say `Future` and `null`, not Promise and `undefined`. A stray "undefined" in a dartdoc, such as on `SecurityRules.listRulesetMetadata`'s `pageSize`, is a leftover.
 - Dart `String` method names are kept where Node uses other names, such as Pipeline's `toLowerCase()` and `toUpperCase()`.[^pipeline-to-lower-case]
 - Only the Node Admin SDK is the reference. Web-SDK-style synonyms such as `equalValue` are not added, because the Node Admin SDK has none of them.
 

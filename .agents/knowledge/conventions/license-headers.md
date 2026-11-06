@@ -26,7 +26,7 @@ The `check-license-header` job in `.github/workflows/build.yml` checks it with `
 
 - To add headers, run the job's `addlicense` command from the repo root without `--check`.
 - Files addlicense can't comment, such as Markdown, JSON and `.rules`, are skipped.
-- `.js`, `.ts` and `.mjs` tool files still carry the header by convention.
+- `.js` and `.ts` tool files carry the header by convention; CI skips them. `.mjs` files are checked like `.dart` files.
 
 # Why
 

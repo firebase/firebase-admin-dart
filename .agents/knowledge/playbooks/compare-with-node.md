@@ -41,7 +41,7 @@ Before you change a Dart API or behaviour, or port a feature, in either package.
 
    | Dart path | Node reference |
    | --- | --- |
-   | `packages/firebase_admin_sdk/lib/src/<product>/`: app, credentials, Auth, App Check, Messaging, Functions, Security Rules, Storage helpers | firebase-admin-node `src/<product>/`[^node-admin-src] |
+   | `packages/firebase_admin_sdk/lib/src/<product>/`: app (credentials included, in `app/`), Auth, App Check, Messaging, Functions, Security Rules, Storage helpers | firebase-admin-node `src/<product>/`, with credentials in `src/app/`[^node-admin-src] |
    | `packages/firebase_admin_sdk/lib/src/firestore/`: how `app.firestore()` builds settings, maps credentials and caches databases | firebase-admin-node `src/firestore/firestore-internal.ts` and `src/firestore/index.ts`[^node-admin-firestore] |
    | `packages/google_cloud_firestore/` | `@google-cloud/firestore`: sources in google-cloud-node `handwritten/firestore/dev/src/`, public typings in `handwritten/firestore/types/firestore.d.ts`[^node-firestore-src] |
    | Storage object operations | the upstream `google_cloud_storage` package, not this repo |
@@ -50,7 +50,7 @@ Before you change a Dart API or behaviour, or port a feature, in either package.
 
 2. **Map Node's layout to Dart's.**
    - Files mirror Node module by module, kebab-case to snake_case: `src/auth/base-auth.ts` is `lib/src/auth/base_auth.dart`. `google_cloud_firestore/lib/src/` follows `dev/src/` the same way.
-   - Node's `*-api-request.ts` is split in two: `*_http_client.dart` for transport and `*_request_handler.dart` for validation.
+   - Node's per-service request file, `*-api-request.ts` for Auth and Messaging or `*-api-client-internal.ts` for App Check, Functions and Security Rules, is split in two: `*_http_client.dart` for transport and `*_request_handler.dart` for validation.
    - Node's hand-written endpoint paths, such as `/accounts:lookup`, mostly become methods of the generated `package:googleapis` client used in `*_http_client.dart`. The exceptions call their endpoints directly: FCM v1 topic subscriptions in `messaging_request_handler.dart`, the legacy IID topic calls in `messaging_http_client.dart`, App Check's `verifyAppCheckToken`, and Storage's `getDownloadURL`.
 
 3. **Pick the Node version.**

@@ -37,7 +37,7 @@ The repo is one pub workspace. The root pubspec's `workspace:` lists its four me
 
 # Why
 
-- Melos and the root-pubspec layout: the maintainers' stated reason, given while Invertase maintained the repo, is that this is the standard on most Invertase repositories and has served them well at scale.
+- Melos and the root-pubspec layout: the maintainers' stated reason is that this is the standard on most Invertase repositories and has served them well at scale.
 - Coverage: `scripts/coverage.sh` states that it uses `test_with_coverage` because "dart test --coverage doesn't work with resolution: workspace".
 
 # Enforced by

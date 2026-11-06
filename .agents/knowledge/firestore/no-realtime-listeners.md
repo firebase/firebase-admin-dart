@@ -54,15 +54,15 @@ Node's `query.stream()`, `explainStream()` and `pipeline.stream()` aren't listen
 
 This is a transport limit and a gap, not a choice that admin SDKs don't need listeners.
 
-- The maintainers' stated reason: the client library the SDK went through had no streaming API, and adding one was up to Google. That was said of the earlier `googleapis` client. The generated client has the same limit for the bidirectional `Listen` RPC.
-- An earlier work contract for the Firestore module excluded realtime APIs. That is contract history; it doesn't make listeners out of scope.
+- The maintainers' stated reason, about an earlier client library: it had no streaming API, and adding one was up to Google. The generated client has the same limit for the bidirectional `Listen` RPC.
 - A gRPC transport for `Listen` (`package:grpc`) has been explored as the way to add listeners. It can't ship while `package:grpc` forces an older major of `http2` than the SDK's HTTP/2 pool needs.
 
 # Rules for agents
 
 - **Must not:** publish anything that depends on `grpc` while it forces an older major of `http2` than the SDK's HTTP/2 pool needs ([Pooled HTTP/2 by default](/architecture/http2-pooled-transport.md)).
 - **Must not:** document listeners as supported.
-- **Must not:** fake listeners by polling or by looping `runQuery`, and don't call listeners out of scope. No maintainer has stated this rule.
+- **Ask first:** before emulating listeners by polling or by looping `runQuery`.
+- **Must not:** call listeners out of scope.
 - **Ask first:** before choosing the listener API's shape, a `snapshots()` `Stream` or a Node-style `onSnapshot` callback. It hasn't been decided; ask a maintainer.
 
 # Related

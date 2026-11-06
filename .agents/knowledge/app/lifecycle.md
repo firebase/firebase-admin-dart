@@ -43,7 +43,7 @@ The app API keeps Node's semantics and error codes, with a Dart surface of stati
 
 Semantics shared with Node:
 
-- Every argument is optional. With no options, the app is configured from `FIREBASE_CONFIG`, read as inline JSON or as a file path, as Node does.[^firebase-config]
+- Every argument is optional. With no options, the app is configured from `FIREBASE_CONFIG`, read as inline JSON or as a file path, as Node does.[^firebase-config] One code differs: a `FIREBASE_CONFIG` that can't be read or parsed throws `app/invalid-argument` in Dart, where Node throws `app/invalid-app-options`.
 - Apps live in a named registry. Re-initializing with equal options returns the existing app. Different options throw `app/duplicate-app`. Mixing an auto-initialized app (from `FIREBASE_CONFIG`) with an explicit one throws `app/invalid-app-options`.
 - One exception: re-initializing with a different credential or `httpClient` silently returns the existing app.
 - `app.close()` deletes every service of the app and removes it from the registry.[^app-close] Its cleanup runs in a `finally` block, so a service that fails to close doesn't leave the app half-closed.

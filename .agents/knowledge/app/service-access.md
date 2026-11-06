@@ -57,14 +57,14 @@ Sub-managers are getters: `auth.tenantManager` and `auth.projectConfigManager`.[
 
 The maintainers' stated reason, in part: each app returns the same service instance instead of creating a new one on every call, and `FirebaseServiceType` replaces magic strings as service names.
 
-The change that removed the public constructors and turned the service getters into methods gave no reason. The likely reason (not recorded): one access path per service. Caching didn't require removing the constructors, since before their removal they were factories that went through `getOrInitService`.
+The change that removed the public constructors and turned the service getters into methods gave no reason. The likely reasons (not recorded): one access path per service, and Node parity, since Node's service constructors are `@internal` too. Caching didn't require removing the constructors, since before their removal they were factories that went through `getOrInitService`.
 
 Why Dart uses methods on the app instead of Node's top-level functions isn't recorded. Ask a maintainer before changing it.
 
 # Rules for agents
 
 - **Must:** give a new service an `X app.x()` method plus an `@internal factory X.internal(FirebaseApp)` that goes through `getOrInitService` with a new `FirebaseServiceType` value's `name`.
-- **Must not:** add public service constructors. They were removed, and no reason was recorded; ask a maintainer.
+- **Ask first:** before adding public service constructors. They were removed on purpose; the likely reason (not recorded) is Node parity, where the service constructors are `@internal`.
 - **Must not:** register services with string names outside `FirebaseServiceType`. Don't copy the `FirebaseService` dartdoc example, which uses `'my-service'` and a public factory.
 - **Ask first:** before adding Node-style top-level `getX()` functions. Why Dart chose methods isn't recorded.
 

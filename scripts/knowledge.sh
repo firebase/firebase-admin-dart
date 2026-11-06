@@ -22,8 +22,9 @@ set -uo pipefail
 # The same sort order, and so the same index.md, on every machine.
 export LC_ALL=C
 
-CALLER_DIR=$PWD
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Physical paths, so a symlinked directory (/tmp on macOS) still compares equal.
+CALLER_DIR=$(pwd -P)
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 KB=.agents/knowledge
 cd "$ROOT" || exit 1
 
@@ -53,10 +54,10 @@ list() {
 # sources <file>: "resource<TAB>symbol" for each `sources` entry.
 sources() {
   frontmatter "$1" | awk '
-    function flush() { if (res != "") print res "\t" sym; res = ""; sym = "" }
+    function flush() { if (item) print res "\t" sym; res = ""; sym = ""; item = 0 }
     function value(line) { sub(/^[^:]*:[[:space:]]*/, "", line); gsub(/^["'\'']|["'\'']$/, "", line); return line }
     $0 == "sources:" { inside = 1; next }
-    inside && /^  - / { flush(); line = $0; sub(/^  - /, "    ", line); $0 = line }
+    inside && /^  - / { flush(); item = 1; line = $0; sub(/^  - /, "    ", line); $0 = line }
     inside && /^    resource:/ { res = value($0); next }
     inside && /^    symbol:/ { sym = value($0); next }
     inside && !/^  / { flush(); inside = 0 }
@@ -89,12 +90,28 @@ check() {
       always | when-touching | reference) ;;
       *) fail "$file" "agents_md must be always, when-touching or reference" ;;
     esac
+    case "$(field "$file" status)" in
+      "" | draft | stable | deprecated) ;;
+      *) fail "$file" "status must be draft, stable or deprecated" ;;
+    esac
+
+    # The parsers below read block lists only, so reject anything they would skip.
+    if frontmatter "$file" | grep -qE '^(governs|sources):[[:space:]]*[^[:space:]]'; then
+      fail "$file" "write governs and sources as block lists, one '  - ' item per line"
+    fi
+    if frontmatter "$file" | grep -qx 'governs:' && [ -z "$(list "$file" governs)" ]; then
+      fail "$file" "governs has no '  - ' items"
+    fi
+    if frontmatter "$file" | grep -qx 'sources:' && [ -z "$(sources "$file")" ]; then
+      fail "$file" "sources has no '  - ' items"
+    fi
 
     while IFS= read -r glob; do
       [ -n "$(matches "$glob")" ] || fail "$file" "governs $glob, which matches no file"
     done < <(list "$file" governs)
 
     while IFS=$'\t' read -r res sym; do
+      [ -n "$res" ] || { fail "$file" "a sources entry has no resource: line"; continue; }
       case "$res" in
         http://* | https://*) continue ;;
         /*) target="$KB$res" ;;
@@ -115,8 +132,10 @@ check() {
       [ -e "${target%%#*}" ] || fail "$file" "links to $link, which doesn't exist"
     done < <(grep -oE '\]\([^)#[:space:]]+\.md(#[^)]*)?\)' "$file" | sed -E 's/^\]\(//; s/\)$//')
 
-    if grep -nE '(^|[^&[:alnum:]_/])#[0-9]{2,5}\b|/(pull|issues)/[0-9]' "$file" >/dev/null; then
-      fail "$file" "cites a pull request or issue: $(grep -nE '(^|[^&[:alnum:]_/])#[0-9]{2,5}\b|/(pull|issues)/[0-9]' "$file" | head -n 1)"
+    # `#123`, `owner/repo#123`, "PR 123" or "issue 123", a pull or issue URL, or a date.
+    history='(^|[^&[:alnum:]_])#[0-9]+\b|[[:alnum:]_.-]+/[[:alnum:]_.-]+#[0-9]+\b|\b(PR|[Pp]ull request|[Ii]ssue) #?[0-9]+\b|/(pull|issues)/[0-9]|\b20[0-9]{2}-[01][0-9]-[0-3][0-9]\b'
+    if grep -qE "$history" "$file"; then
+      fail "$file" "cites history (a PR, issue or date): $(grep -nE "$history" "$file" | head -n 1)"
     fi
 
   done < <(concepts)
@@ -141,17 +160,23 @@ check() {
 # index: index.md as generated from the concepts' frontmatter, one section per
 # folder (OKF §8).
 index() {
-  local file dir previous=
+  local file dir previous= title
   printf -- '---\nokf_version: "0.2"\n---\n'
+  # Grouped by folder, so a subfolder's concepts don't split its parent's section.
   while IFS= read -r file; do
     file=${file#"$KB/"}
     dir=$(dirname "$file")
     if [ "$dir" != "$previous" ]; then
-      printf '\n# %s\n\n' "$(echo "$dir" | tr '/-' '  ' | awk '{ print toupper(substr($0, 1, 1)) substr($0, 2) }')"
+      printf '\n# %s\n\n' "$(echo "$dir" | tr '/-' '  ' | awk '{
+        for (i = 1; i <= NF; i++) $i = ($i == "ci") ? "CI" : (i == 1 ? toupper(substr($i, 1, 1)) substr($i, 2) : $i)
+        print
+      }')"
       previous=$dir
     fi
-    printf '* [%s](%s) - %s\n' "$(field "$KB/$file" title)" "$file" "$(field "$KB/$file" description)"
-  done < <(concepts)
+    title=$(field "$KB/$file" title)
+    [ "$(field "$KB/$file" status)" = deprecated ] && title="$title (deprecated)"
+    printf '* [%s](%s) - %s\n' "$title" "$file" "$(field "$KB/$file" description)"
+  done < <(concepts | awk '{ dir = $0; sub(/\/[^\/]*$/, "", dir); print dir "\t" $0 }' | sort | cut -f2)
 }
 
 # relative <path>: the path relative to the repository root, resolved from the

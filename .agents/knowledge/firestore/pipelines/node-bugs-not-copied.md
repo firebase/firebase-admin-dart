@@ -25,7 +25,7 @@ sources:
 The `@google-cloud/firestore` version that the golden fixtures capture sends some Pipeline requests that the backend rejects, or that drop or misapply options.[^node-pipelines] Two examples:
 
 - A search-space list holding expressions is sent as a literal `arrayValue` that contains a field reference.
-- Variadic `add` and `multiply` are sent as one call with every operand.
+- The variadic method forms of `add` and `multiply` (`a.add(b, c)`) are sent as one call with every operand.
 
 # Dart
 

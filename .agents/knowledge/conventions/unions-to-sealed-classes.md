@@ -58,7 +58,7 @@ The stated reasons:
 
 # Rules for agents
 
-- **Must:** keep Dart's way. Model every new TypeScript union as a sealed class.
+- **Must:** keep Dart's way. Model every new TypeScript object union, or a union of a primitive and an object such as `string | CriticalSound`, as a sealed class. A string-literal union becomes an enum ([String unions become enums](/conventions/string-unions-to-enums.md)), and a `T | T[]` parameter becomes a `List<T>`.
 - **Must not:** add `type` or `expressionType` string tags.
 
 # Related

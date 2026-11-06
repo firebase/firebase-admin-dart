@@ -1,7 +1,7 @@
 ---
 type: Decision
 title: Emulators found only through standard environment variables
-description: Emulators are found only through the standard Admin SDK `*_EMULATOR_HOST` variables, as in Node, with no `useEmulator()` API and `Bearer owner` on emulator requests.
+description: Emulators are found only through the standard Admin SDK `*_EMULATOR_HOST` variables, as in Node, with no `useEmulator()` API and `Bearer owner` on Auth, Firestore and Cloud Tasks emulator requests.
 tags: [environment, emulators, node-parity]
 agents_md: when-touching
 governs:
@@ -31,6 +31,10 @@ sources:
     resource: https://github.com/firebase/firebase-admin-node/blob/main/src/auth/auth-api-request.ts
     symbol: FIREBASE_AUTH_EMULATOR_HOST
     title: Node reads the Auth emulator host from the environment
+  - id: node-check-revoked
+    resource: https://github.com/firebase/firebase-admin-node/blob/main/src/auth/base-auth.ts
+    symbol: if (checkRevoked || isEmulator)
+    title: Node always checks revocation under the Auth emulator
   - id: node-storage
     resource: https://github.com/firebase/firebase-admin-node/blob/main/src/storage/storage.ts
     symbol: STORAGE_EMULATOR_HOST
@@ -46,9 +50,9 @@ Emulators are found only through the standard Admin SDK environment variables:[^
 - `FIREBASE_STORAGE_EMULATOR_HOST`
 - `CLOUD_TASKS_EMULATOR_HOST`
 
-There is no `useEmulator(host, port)` API. Emulator requests carry `Authorization: Bearer owner`.[^bearer-owner] App Check has no emulator.
+There is no `useEmulator(host, port)` API. Auth, Firestore and Cloud Tasks emulator requests carry `Authorization: Bearer owner`,[^bearer-owner] except that Auth and Functions use `AppOptions.httpClient` as is when it is set. Storage emulator requests go through `google_cloud_storage`'s own unauthenticated client, and `getDownloadURL` uses `app.client`. App Check has no emulator.
 
-This matches Node in which variables are read. When they are read varies, in both SDKs: `AuthHttpClient` and `FunctionsHttpClient` pick the emulator client once per instance, `Storage` decides in its constructor, and `verifyIdToken` checks for the Auth emulator on each call. In the emulator, `verifyIdToken` always checks revocation (`checkRevoked || isEmulator`), as in Node.[^check-revoked][^node-auth-env]
+This matches Node in which variables are read. When they are read varies, in both SDKs: `AuthHttpClient` and `FunctionsHttpClient` pick the emulator client once per instance, `Storage` decides in its constructor, and `verifyIdToken` checks for the Auth emulator on each call. In the emulator, `verifyIdToken` always checks revocation (`checkRevoked || isEmulator`), as in Node.[^check-revoked][^node-check-revoked][^node-auth-env]
 
 Both SDKs reject a `FIREBASE_STORAGE_EMULATOR_HOST` that contains `http://` or `https://`, with the same pattern and message. The error differs:[^node-storage]
 
@@ -75,7 +79,7 @@ Rejected alternatives: host and port parameters, reading `firebase.json`, and ha
 - **Must:** keep the zone and FFI mechanisms, and the `owner` bearer token.
 - **Must not:** replace them with `Platform.environment`-only reads or a `useEmulator` API.
 - **Must not:** add a host/port emulator API or read `firebase.json`.
-- **Must not:** send real credentials to an emulator.
+- **Must not:** send real credentials to an emulator. `getDownloadURL` does, since it uses `app.client` under the Storage emulator too; don't copy it.
 - **Ask first:** before changing the Storage protocol error's type or code, for example to a `FirebaseStorageAdminException` with Node's `invalid-emulator-host`. Callers may catch the type that's thrown, and the Storage unit tests expect `FirebaseAppException`.
 
 # Related
@@ -89,4 +93,5 @@ Rejected alternatives: host and port parameters, reading `firebase.json`, and ha
 [^bearer-owner]: `EmulatorClient`
 [^check-revoked]: Revocation check under the emulator
 [^node-auth-env]: Node's Auth emulator host
+[^node-check-revoked]: Node's revocation check under the emulator
 [^node-storage]: Node's `STORAGE_EMULATOR_HOST`

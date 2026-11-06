@@ -70,7 +70,7 @@ Each rule links to the concept that explains it.
 - **Tests.** [Tiers](.agents/knowledge/tests/tiers-and-tags.md), [helpers](.agents/knowledge/tests/helpers-and-injection.md)
   - Every fix or feature needs tests.
   - Tag tests that need an emulator or credentials, so they stay out of the default run.
-  - Unit-test services by injecting doubles through their `@internal` factories, or through `AppOptions.httpClient` for Storage. A mock `AppOptions.httpClient` never reaches Firestore, so test Firestore requests in `google_cloud_firestore`'s own tests or against the emulator.
+  - Unit-test services by injecting doubles through their `@internal` factories, or through `AppOptions.httpClient` for Storage, in a zone with an empty environment so the Storage emulator variable doesn't bypass the double. A mock `AppOptions.httpClient` never reaches Firestore, so test Firestore requests in `google_cloud_firestore`'s own tests or against the emulator.
   - Build emulator tests on the guarded helpers in `test/fixtures/`.
 - **Credentials.** Never run `-P prod` or `-P wif` unless the user asks and supplies credentials. Never write credentials into the repo, logs or fixtures. [More](.agents/knowledge/tests/prod-and-wif.md)
 - **CHANGELOG.** [More](.agents/knowledge/release/versioning-and-changelog.md)
@@ -96,4 +96,4 @@ Each rule links to the concept that explains it.
 
 - **Before you edit or add a file**, run `./scripts/knowledge.sh for <path>...` and read the concepts it lists. Each concept's `governs` globs say which files it covers. A path can be a file that doesn't exist yet, or a directory.
 - **Keep it true.** If your change makes a concept wrong, update the concept in the same PR. A new decision gets a new concept, and a reversed one gets `status: deprecated`. The `update-knowledge-base` skill in `.agents/skills/` says how.
-- CI runs `./scripts/knowledge.sh check`. It fails when a concept names a file, symbol or glob that no longer exists, so a rename forces the update.
+- CI runs `./scripts/knowledge.sh check`. It fails when a concept names a file, symbol or glob that no longer exists, so a change that breaks a concept shows up as a failing check.

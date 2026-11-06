@@ -40,7 +40,7 @@ sources:
 
 **Unit tests inject doubles through the `@internal` factories.**
 
-- Services are built through their `@internal` factories with an injected handler, such as `Auth.internal(app, requestHandler: ...)` and `AppCheck.internal(app, requestHandler: ...)`. `TenantManager` has an uncached `@internal` constructor instead, `TenantManager.internal(app, authRequestHandler: ...)`; its parameter is `authRequestHandler:`, not `requestHandler:`. All are stubbed with the mocktail doubles in `test/fixtures/mock.dart`: `AuthRequestHandlerMock`, `AuthHttpClientMock`, `MockAuthClient`, `FirebaseAdminMock`. `registerFallbacks()` registers the fallback values.[^mocks] Tests import `package:firebase_admin_sdk/src/...` to reach these internals.
+- Services are built through their `@internal` factories with an injected handler, such as `Auth.internal(app, requestHandler: ...)` and `AppCheck.internal(app, requestHandler: ...)`. `TenantManager` has an uncached `@internal` constructor instead, `TenantManager.internal(app, authRequestHandler: ...)`; its parameter is `authRequestHandler:`, not `requestHandler:`. Auth and `TenantManager` tests use the shared doubles in `test/fixtures/mock.dart` (`AuthRequestHandlerMock`, `AuthHttpClientMock`, `MockAuthClient`, `FirebaseAdminMock`, `MockFirebaseTokenVerifier`), and `registerFallbacks()` registers the fallback values.[^mocks] Other products declare theirs in their own test file, such as `MockAppCheckRequestHandler` in `test/unit/app_check/app_check_test.dart`. Tests import `package:firebase_admin_sdk/src/...` to reach these internals.
 - `createApp()` creates an app for project `dart-firebase-admin` and closes it on teardown. `createApp(client: …)` passes a client double as `AppOptions.httpClient`.[^create-app]
 - Storage: `Storage.internal(app)` takes no handler and sends requests through `app.client`, so a double reaches it through `createApp(client: …)`, but only outside Storage-emulator mode. When the tests run inside `firebase emulators:exec` with the Storage emulator, as `scripts/coverage.sh` runs `-P ci`, `FIREBASE_STORAGE_EMULATOR_HOST` is set and the `google_cloud_storage` delegate gets no client. The Storage unit tests avoid this by running in a zone with an empty environment.
 - Firestore never uses `AppOptions.httpClient`. The admin wrapper only maps the app's options onto `google_cloud_firestore` `Settings`, and `FirestoreHttpClient` builds its own client. Admin Firestore unit tests pass a mock client only to stop the app from authenticating.
@@ -53,7 +53,7 @@ sources:
 - `createFirestore()` requires `FIRESTORE_EMULATOR_HOST`, then recursively deletes all documents and terminates the client on teardown.[^create-firestore]
 - `prodEnv()` removes the emulator variables for prod-tagged tests.
 
-Nearly every `createApp` call passes a `name:`, usually a fixed per-test string; the Auth and Functions helpers add a timestamp suffix. Fake keys in fixtures are listed under `false_secrets`.
+Nearly every `createApp` call passes a `name:`, usually a fixed per-test string; the Auth and Functions helpers add a timestamp suffix. Fake keys in fixtures and test files are listed under `false_secrets`; the admin package also lists `test/unit/auth/jwt_test.dart` and `test/unit/app/credential_test.dart`.
 
 # Why
 

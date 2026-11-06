@@ -29,7 +29,7 @@ sources:
 
 - `test/fixtures/node_pipeline_api.json` is extracted from the TypeScript declarations of the `@google-cloud/firestore` version pinned in `tool/pipeline_api_parity/package.json`, by `tool/pipeline_api_parity/extract_node_api.mjs` (`npm ci && npm run extract`).[^api-snapshot][^extractor]
 - `test/pipeline_api_parity_test.dart` reads the Dart exports with `package:analyzer` and compares the Pipelines API shape with the snapshot. It also checks that the snapshot's Node version equals `_nodeVersion`.[^node-version]
-- Its exceptions live in `_renames`, `_classes`, `_enums`, `_optionTypes`, `_dartOnly`, `_knownDifferences` and `_pendingFixes`. Stale entries fail the test. `tool/pipeline_api_parity/README.md` gives the triage rules.
+- Its exceptions live in `_renames`, `_classes`, `_enums`, `_optionTypes`, `_dartOnly`, `_knownDifferences` and `_pendingFixes`. A stale entry in `_renames`, `_dartOnly`, `_knownDifferences` or `_pendingFixes` fails the test. `tool/pipeline_api_parity/README.md` gives the triage rules.
 - `test/pipeline_single_implementation_test.dart` requires every form of a Pipeline function (static, fluent, top-level, alias) to forward to one implementation. Its exceptions are in `_exceptions` and `_notFunctions`.
 - Both tests run in the unit run. They are analyzer-based, run on the VM only, and are slow: each sets a `Timeout` of several minutes.
 

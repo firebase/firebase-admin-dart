@@ -23,6 +23,7 @@ sources:
 
 - `scripts/coverage.sh` and `scripts/firestore-coverage.sh` collect coverage inside the emulators with `dart run coverage:test_with_coverage -- --concurrency=1 -P ci`.[^coverage-script]
 - `scripts/process_coverage.dart` merges every `packages/*/coverage.lcov` into the root `coverage.lcov`, and fails when total line coverage is below the threshold it defines. It also fails when any directory under `packages/` has no `coverage.lcov`.[^process-coverage]
+- The PR-comment text in `build.yml` and CONTRIBUTING.md repeat the threshold's value as plain text; neither reads it from the script.
 - The check runs only in the `test` job on the stable SDK. That job also posts the result as a PR comment (non-fork PRs only) and uploads it to Codecov, which never blocks.
 
 # Why

@@ -35,7 +35,7 @@ Node uses `photoURL`,[^node-photo-url] `databaseURL`, `ssoURL`, `callbackURL` an
 
 Dart is mixed:
 
-- It keeps Node's casing in `AppOptions.databaseURL`,[^database-url] `CreateRequest.photoURL` and `UpdateRequest.photoURL`, `UserImportRecord.photoURL`, the SAML and OIDC `ssoURL` and `callbackURL`,[^request-photo-url] and `Storage.getDownloadURL`.
+- It keeps Node's casing in `AppOptions.databaseURL`,[^database-url] `CreateRequest.photoURL` and `UpdateRequest.photoURL`, `UserImportRecord.photoURL`, the SAML `ssoURL` and `callbackURL`,[^request-photo-url] and `Storage.getDownloadURL`.
 - `UserRecord.photoUrl` and `UserInfo.photoUrl` use Dart casing, while their `toJson()` still emits the key `photoURL`, to encode JSON like Node.[^user-photo-url]
 
 # Why

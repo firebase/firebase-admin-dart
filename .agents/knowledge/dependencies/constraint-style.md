@@ -25,7 +25,7 @@ sources:
 # Constraint
 
 - **Caret by default.** Most dependencies use caret constraints, including some 0.x Google Cloud packages (`google_cloud_protobuf`, `google_cloud_type`).[^firestore-protobuf-caret]
-- **Explicit ranges where widened.** `'>=a <b'` ranges are used where a range was widened across breaking releases: `google_cloud`, `google_cloud_firestore`, `google_cloud_storage`, `google_cloud_firestore_v1`, `google_cloud_rpc` and `googleapis`.[^admin-firestore-range][^firestore-rpc-range] These packages ship breaking releases often: 0.x minors of `google_cloud_*`, and majors of `googleapis`.
+- **Explicit ranges where widened.** `'>=a <b'` ranges are used where a range was widened across breaking releases: `google_cloud`, `google_cloud_firestore`, `google_cloud_storage`, `google_cloud_firestore_v1`, `google_cloud_rpc` and `googleapis`.[^admin-firestore-range][^firestore-rpc-range] The `analyzer` dev dependency of `google_cloud_firestore` also uses a range, chosen around the SDK floor (see [minimum Dart SDK](/dependencies/min-dart-sdk.md)). These packages ship breaking releases often: 0.x minors of `google_cloud_*`, and majors of `googleapis`.
 - **Bounds.** Lower bounds are tightened to versions known to work. Upper bounds are widened without raising the minimums.
 - **Order.** Dependencies are sorted alphabetically.
 
@@ -47,7 +47,7 @@ The maintainers' stated reasons:
 
 - **Must:** widen a range, and add a CHANGELOG line, rather than force users onto a new minor.
 - **Must:** keep pubspec dependencies alphabetical.
-- **Must:** when widening `googleapis`, check that every generated API the package imports still exists in the new major. A generated client has left `googleapis` before (see [generated REST clients](/architecture/generated-rest-clients.md)).
+- **Must:** when widening `googleapis`, check that every generated API the package imports still exists in the new major. A generated client has left `googleapis` before: `firebaseremoteconfig`, which is why `googleapis` has no Remote Config client (see [unsupported services](/scope/unsupported-services.md)).
 - **Must not:** raise a lower bound unless the code needs the newer version.
 - **Must not:** rewrite existing caret constraints into ranges, or the reverse, just to match a pattern.
 

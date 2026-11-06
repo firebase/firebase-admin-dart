@@ -41,12 +41,12 @@ sources:
 
 # Why
 
-- Pipeline names: the stated reason is that `toLowerCase()` and `toUpperCase()` deliberately keep Dart's `String` names. The doc comment says it is "Named for Dart's `String.toLowerCase()` rather than the Node SDK's `toLower`; the backend function is still `to_lower`."[^pipeline-to-lower-case] The parity test's `_renames` table records every Pipeline rename and enforces it.[^parity-renames]
+- Pipeline names: the stated reason is that `toLowerCase()` and `toUpperCase()` deliberately keep Dart's `String` names. The doc comment says it is "Named for Dart's `String.toLowerCase()` rather than the Node SDK's `toLower`; the backend function is still `to_lower`."[^pipeline-to-lower-case] The parity test's `_renames` table records every Pipeline member rename and enforces it;[^parity-renames] class and enum names are mapped in its `_classes` and `_enums` tables.
 - The others: the likely reasons (not recorded) are that `jsonEncode` calls `toJson()`, and Dart's equality protocol is `operator ==` with `hashCode`.
 
 # Rules for agents
 
-- **Must:** keep Dart's way. Where Dart has a core-library equivalent (`String` methods, `==`, `toJson`, `close`), use the Dart name, and record the rename in the `_renames` table if it is a Pipeline API.
+- **Must:** keep Dart's way. Where Dart has a core-library equivalent (`String` methods, `==`, `toJson`, `close`), use the Dart name, and record the rename in the parity test if it is a Pipeline API: in `_renames` for a member, in `_classes` or `_enums` for a type.
 
 # Related
 

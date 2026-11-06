@@ -1,7 +1,7 @@
 ---
 type: Constraint
 title: The publish dry run must pass for both packages
-description: CI's `publish` job runs `dart pub publish --dry-run` for both packages, which fails on fake keys not listed in `false_secrets`, bad descriptions, stale checked-in files and dependency overrides.
+description: CI's `publish` job runs `dart pub publish --dry-run` for both packages, which fails on fake keys not listed in `false_secrets`, modified checked-in files and other pub validator warnings.
 tags: [release, publishing, ci]
 agents_md: when-touching
 governs:
@@ -36,18 +36,18 @@ sources:
 The dry run fails on:
 
 - a fake private key in a test file that isn't listed under `false_secrets` in the package pubspec;[^admin-false-secrets][^firestore-false-secrets]
-- a pubspec `description` outside 50–180 characters;
 - a modified checked-in file, such as a stale `version.g.dart`;
-- dependency overrides;
 - other pub validator warnings.
+
+Not caught by the dry run: a description outside 50–180 characters (pub.dev's scoring asks for that length) and dependency overrides (only a hint).
 
 `.pubignore` files shape what is published.[^admin-pubignore] `tool/pipeline_golden/.pubignore` excludes that tool entirely.[^golden-pubignore]
 
 # Why
 
-The maintainers' stated reasons: `false_secrets` lists the fixtures so the publish check doesn't flag the mock RSA test key; pub requires a description between 50 and 180 characters; and `tool/pipeline_golden/.pubignore` says "The Node.js fixture generator is a development tool, not part of the package."
+The maintainers' stated reasons: `false_secrets` lists the fixtures so the publish check doesn't flag the mock RSA test key; pub.dev asks for a description between 50 and 180 characters; and `tool/pipeline_golden/.pubignore` says "The Node.js fixture generator is a development tool, not part of the package."
 
-The likely reason each of these blocks CI (not recorded): the dry run exits non-zero on warnings.
+The likely reason the listed failures block CI (not recorded): the dry run exits non-zero on warnings.
 
 # Enforced by
 

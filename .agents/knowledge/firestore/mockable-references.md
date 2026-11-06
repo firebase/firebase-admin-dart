@@ -34,7 +34,7 @@ sources:
 
 `Query`, `CollectionReference`, `DocumentReference` and `CollectionGroup` are `interface class`es, so users can mock them with `package:mocktail` or `package:mockito`.[^query][^collection-reference][^document-reference][^collection-group]
 
-Value types such as `Timestamp` and `GeoPoint` stay `final`.[^timestamp]
+`Timestamp` and `GeoPoint` stay `final`.[^timestamp]
 
 # Why
 

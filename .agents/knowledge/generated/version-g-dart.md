@@ -7,6 +7,7 @@ agents_md: when-touching
 governs:
   - packages/firebase_admin_sdk/lib/src/version.g.dart
   - packages/firebase_admin_sdk/pubspec.yaml
+  - scripts/gen-version.sh
 sources:
   - id: version-file
     resource: ../../../packages/firebase_admin_sdk/lib/src/version.g.dart

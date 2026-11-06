@@ -31,7 +31,7 @@ Discovery runs both for `initializeApp()` without options and for `AppOptions` w
 
 The maintainers' stated reason: discovery that runs only when `options` is null altogether leaves callers that set any other option without a credential. Extending it to options with a null `credential` fixed this for the Dart Cloud Functions runtime (`firebase_functions`).
 
-Requiring an explicit credential is the rejected alternative.
+The alternative would be to require an explicit credential; no discussion of it is recorded.
 
 # Rules for agents
 

@@ -35,7 +35,12 @@ Each REST service (App Check, Auth, Functions, Messaging and Security Rules) is 
 
 Storage and the Firestore wrapper have neither file; they delegate to their packages.
 
-The split isn't uniform: Messaging's FCM v1 topic management builds URIs and calls `client.post` inside `messaging_request_handler.dart`.
+The split isn't uniform:
+
+- Messaging's FCM v1 topic management builds URIs and calls `client.post` inside `messaging_request_handler.dart`.
+- `AuthHttpClient` validates many arguments inside its operations: emails, request types, page tokens and sizes, and tenant and provider IDs.
+- `FunctionsRequestHandler.enqueue` reads `_httpClient.client` directly to set up task authentication.
+- `MessagingHttpClient.invokeRequestHandler` reads `app.client` outside `_run` for the legacy IID calls.
 
 # Why
 
@@ -45,8 +50,8 @@ The alternative was one API-internals file per service.
 
 # Rules for agents
 
-- **Must not:** put validation in the HTTP client.
-- **Must not:** fetch the client or the project ID outside `_run`.
+- **Should:** put new validation in the request handler. Where an HTTP client already validates its arguments, as `AuthHttpClient` does, follow the surrounding code.
+- **Should:** get the client and project ID through `_run`, or through the `v1`/`withClient`-style wrappers built on it, rather than awaiting `app.client` or `app.getProjectId()` in each operation.
 
 # Related
 

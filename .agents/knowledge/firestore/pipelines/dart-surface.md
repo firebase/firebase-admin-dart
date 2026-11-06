@@ -33,12 +33,16 @@ Node's `FirebaseFirestore.Pipelines` namespace has top-level functions, an `Expr
 
 # Dart
 
-Dart mirrors that namespace. Every exception is an entry, with its reason, in a table in `pipeline_api_parity_test.dart`. The tables are the full list.[^renames][^dart-only]
+Dart mirrors that namespace. Every exception is an entry in a table in `pipeline_api_parity_test.dart`.[^renames][^dart-only] `_dartOnly`, `_knownDifferences` and `_pendingFixes` give a reason for every entry; `_renames` and `_classes` give one only where a comment does.
+
+The tables are the full list relative to the pinned Node release (`_nodeVersion` in the same file). APIs added in later Node releases, such as the `insert` and `upsert` stages, appear only when the pin is bumped.
 
 | Table | What it records | Example |
 | --- | --- | --- |
 | `_renames` | Node members that Dart spells differently | `Transaction.execute` is `executePipeline` |
 | `_classes` | The Dart type that stands for each Node class | Node's implementation classes are private in Dart |
+| `_enums` | The Dart enum that stands for each Node string union | `Type` is `PipelineValueType` |
+| `_optionTypes` | Dart types that Node models as option objects or inline string unions | `PipelineExplainOptions`, used by `PipelineExecuteOptions.explainOptions` |
 | `_dartOnly` | Public Dart members with no Node counterpart | the `raw` escape hatches |
 | `_knownDifferences` | Deliberate signature differences | `count()` with no argument |
 
@@ -50,7 +54,7 @@ Names that exist only in the JS Web SDK, such as `equalValue` and `eqValue`, are
 
 # Why
 
-The maintainers' stated reasons are in the tables: each entry carries its own. For the Web SDK names, the stated reason is that they come from the JS Web SDK and the Node Admin SDK has none of them. The reference is the Node Admin SDK, not the Web SDK.
+The maintainers' stated reasons are in the tables, where an entry has one. For the Web SDK names, the stated reason is that they come from the JS Web SDK and the Node Admin SDK has none of them. The reference is the Node Admin SDK, not the Web SDK.
 
 # Rules for agents
 

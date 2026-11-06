@@ -30,7 +30,7 @@ sources:
 
 # Node.js
 
-Node has none of these. For example, it lists a collection's documents only through `listDocuments()`.
+Node has none of these, except that `FirebaseApp.instance` is a shorthand for `getApp()`, which Node also has. For example, Node lists a collection's documents only through `listDocuments()`.
 
 # Dart
 
@@ -38,7 +38,7 @@ Dart adds:
 
 - `CollectionReference.listDocumentsPages({pageSize, pageToken})`, which returns a `Stream<DocumentReferencePage>`, one page at a time.[^list-documents-pages]
 - `Settings.headers`: custom HTTP headers sent with every Firestore request.[^settings-headers]
-- `FirebaseApp.instance`, the default app.[^app-instance]
+- `FirebaseApp.instance`, the default app, a shorthand for `FirebaseApp.getApp()`.[^app-instance]
 - `Timestamp.fromMicros`.[^timestamp-from-micros]
 - `Query.sum()` and `Query.average()` (see [the aggregate API](/firestore/aggregate-api.md)).
 - `FirebaseApp.client`, `Credential.createClient` and `AppOptions.additionalScopes` (see [the app client and transport options](/app/app-client-and-transport-options.md)).
@@ -46,7 +46,8 @@ Dart adds:
 # Why
 
 - `listDocumentsPages`: the stated reason, in `google_cloud_firestore`'s CHANGELOG, is that "large collections can be walked without holding every reference in memory".
-- `Settings.headers`: the CHANGELOG states it is there to attach custom HTTP headers to every outgoing Firestore request.
+- `Settings.headers`: the CHANGELOG states only what it does. The admin SDK uses it to send the usage-tracking headers, which Firestore requests must carry too (see [usage-tracking headers](/architecture/usage-tracking-headers.md)).
+- `Timestamp.fromMicros`: the stated reason, in the contribution the maintainers accepted, is to keep microsecond precision.
 - The others: the reason isn't recorded.
 
 # Rules for agents

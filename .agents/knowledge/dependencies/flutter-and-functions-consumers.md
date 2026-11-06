@@ -26,7 +26,7 @@ sources:
 `firebase_admin_sdk` is a dependency of `firebase_functions` (firebase/firebase-functions-dart), and both published packages must resolve in a pub workspace that also contains a Flutter (stable) app.
 
 - **Flutter-pinned packages.** The Flutter SDK pins some packages to exact versions: `meta`, `collection` and, through `flutter_localizations`, `intl`. The regular `dependencies` of both packages must not raise their lower bounds above what Flutter stable ships. The `meta` lower bound in both pubspecs is held there for this reason.[^admin-meta][^firestore-meta]
-- **Wide ranges.** Version ranges on the `google_cloud_*` dependencies are wide.
+- **Wide ranges.** Version ranges on most `google_cloud_*` dependencies are wide; `google_cloud_protobuf` and `google_cloud_type` use caret constraints.
 - **Downstream APIs.** APIs that downstream SDKs need stay public or injectable, for example `UrlKeyFetcher`'s `http.Client`.[^url-key-fetcher]
 - **Dev dependencies** aren't affected: consumers don't resolve them.
 

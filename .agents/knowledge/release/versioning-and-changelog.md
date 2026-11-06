@@ -38,7 +38,7 @@ Between releases, the two packages follow different conventions:
 
 # Why
 
-The maintainers' stated reasons: `firebase_admin_sdk` is not GA, so releases have no fixed cycle. Reviewers move entries under a new `-wip` section because the previous version is already released and the release commit strips the suffix. A fixed weekly release schedule was proposed and declined.
+The maintainers' stated reasons: `firebase_admin_sdk` is not GA, so releases have no fixed cycle. Reviewers move entries under a new `-wip` section because the previous version is already released and the release commit strips the suffix. A user proposed a weekly release schedule; a maintainer answered that releases have no fixed cycle before GA.
 
 Why the two packages use different conventions isn't recorded. Ask a maintainer before changing either. The likely reason (not recorded): `-wip` keeps the version in the usage-tracking headers distinct from the released one, which matters only for the admin package, the only one with `version.g.dart`.
 

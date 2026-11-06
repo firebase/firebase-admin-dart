@@ -44,7 +44,7 @@ Every package, both admin examples and the workspace root declare the same minim
 # Enforced by
 
 - The pubspecs' `environment.sdk` constraints.
-- The CI `lint` job runs `dart analyze` on the floor, stable and dev.[^lint-job]
+- The CI `lint` job runs `dart analyze` on the floor, stable and dev, in `packages/firebase_admin_sdk` only.[^lint-job]
 - Tests run only on stable and beta, so nothing runs the tests on the floor.
 
 # Rules for agents

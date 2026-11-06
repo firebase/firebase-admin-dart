@@ -28,7 +28,7 @@ sources:
   - id: node-firestore
     resource: https://github.com/firebase/firebase-admin-node/blob/main/src/firestore/index.ts
     symbol: getFirestore
-    title: Node's `firebase-admin/firestore`, which re-exports `@google-cloud/firestore`
+    title: Node's `firebase-admin/firestore`, which re-exports a fixed list of `@google-cloud/firestore`'s names
 ---
 
 # Decision
@@ -37,7 +37,7 @@ Firestore is its own published package, `google_cloud_firestore`. It can be used
 
 `firebase_admin_sdk` wraps it: `app.firestore()` maps the app's credential onto Firestore's `Credential` and throws `app/invalid-credential` for credential types Firestore doesn't accept, such as OAuth refresh tokens.[^admin-wrapper]
 
-This mirrors Node.js, where Firestore is the separate `@google-cloud/firestore` package and `firebase-admin/firestore` builds on it.[^node-firestore] One difference: Node's `firebase-admin/firestore` re-exports every `@google-cloud/firestore` type, while `package:firebase_admin_sdk/firestore.dart` doesn't re-export `google_cloud_firestore`. That barrel exports the admin wrapper class, also named `Firestore`, so code that imports both packages has two `Firestore` classes and needs a prefix or a `show`/`hide`.
+This mirrors Node.js, where Firestore is the separate `@google-cloud/firestore` package and `firebase-admin/firestore` builds on it.[^node-firestore] One difference: Node's `firebase-admin/firestore` re-exports a fixed list of most of `@google-cloud/firestore`'s public names, while `package:firebase_admin_sdk/firestore.dart` doesn't re-export `google_cloud_firestore`. That barrel exports the admin wrapper class, also named `Firestore`, so code that imports both packages has two `Firestore` classes and needs a prefix or a `show`/`hide`.
 
 # Why
 

@@ -28,7 +28,7 @@ sources:
 
 # Node.js
 
-Node's `pipeline.execute(options)` has no public `readTime`.[^node-execute] `transaction.execute(pipeline)` takes no options and drops explain stats. `findNearest` has no `distanceThreshold`. `PipelineResult` throws on non-document references nested in maps and arrays.
+Node's `pipeline.execute(options)` has no public `readTime`.[^node-execute] `transaction.execute(pipeline)` takes no options and drops explain stats. `findNearest` has no `distanceThreshold`. `PipelineResult` throws on a non-document reference at any depth, including inside maps and arrays.
 
 # Dart
 
@@ -41,7 +41,7 @@ The full list of signature differences, each with its reason, is `_knownDifferen
 
 Two behaviours sit outside that table:
 
-- A non-document reference nested in a map or array decodes to its resource-name `String`. "The Node SDK throws for such references instead" (a comment in `pipeline.dart`).
+- A non-document reference, at any depth, decodes to its resource-name `String`. "The Node SDK throws for such references instead" (a comment in `pipeline.dart`).
 - Query-level options are passed to `execute()`, not built onto the Pipeline, "so a Pipeline value stays a pure description of what to fetch" (the package README).
 
 # Why

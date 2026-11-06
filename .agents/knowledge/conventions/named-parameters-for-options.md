@@ -23,20 +23,20 @@ sources:
 
 Node uses trailing optional positionals and options objects:
 
-- `orderBy(path, 'desc')`, `createCustomToken(uid, claims?)`, `setCustomUserClaims(uid, claims | null)`, `listUsers(maxResults?, pageToken?)`, `getUserByProviderUid(providerId, uid)`, `send(message, dryRun?)`, `initializeApp(options?, name?)`;
+- `orderBy(path, 'desc')`, `createCustomToken(uid, claims?)`, `listUsers(maxResults?, pageToken?)`, `send(message, dryRun?)`, `initializeApp(options?, name?)`;
 - `doc.set(data, {merge: true})`;
 - Pipeline stage options objects such as `CollectionStageOptions`.
 
 # Dart
 
-- **Named parameters** replace trailing optional positionals: `orderBy(path, descending: true)`,[^order-by-descending] `createCustomToken(uid, developerClaims: …)`, `setCustomUserClaims(uid, customUserClaims: …)`, `listUsers(maxResults: …, pageToken: …)`, `getUserByProviderUid(providerId: …, uid: …)`, `send(message, dryRun: …)`,[^send-dry-run] `initializeApp(options: …, name: …)`, and `set(data, options: SetOptions.merge())`.
+- **Named parameters** replace trailing optional positionals: `orderBy(path, descending: true)`,[^order-by-descending] `createCustomToken(uid, developerClaims: …)`, `listUsers(maxResults: …, pageToken: …)`, `send(message, dryRun: …)`,[^send-dry-run] `initializeApp(options: …, name: …)`, and `set(data, options: SetOptions.merge())`. Some required Node positionals became named too: `setCustomUserClaims(uid, customUserClaims: …)` and `getUserByProviderUid(providerId: …, uid: …)`.
 - **Pipeline stages** map a Node options object onto named parameters; a stage's required keys may instead be positional.[^parity-options-rule]
 - **Admin services keep Node's options classes** one to one, mostly unshared: `createSessionCookie(idToken, SessionCookieOptions)`, `AppCheck.createToken(appId, [AppCheckTokenOptions?])`, `VerifyAppCheckTokenOptions`, `TaskOptions`, `UserImportOptions` and `ActionCodeSettings`, which four `_BaseAuth` methods share.
 
 # Why
 
 - Pipelines: the stated mapping rule, in the parity test, is that "A Node options object (`CollectionStageOptions`, ...) maps onto Dart named parameters; a stage's required keys may instead be positional."[^parity-options-rule] The parity test enforces it.
-- Elsewhere: the likely reason (not recorded) is the same convention. It holds only for trailing optional positionals: the admin services keep their options classes.
+- Elsewhere: the likely reason (not recorded) is the same convention. It doesn't extend to options objects: the admin services keep their options classes.
 
 # Rules for agents
 

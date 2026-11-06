@@ -44,7 +44,7 @@ Consumers that read the environment natively, such as `google_cloud_storage`, ig
 
 The maintainers' stated reason: if the code uses zones, the tests should use them too. Zones allow more robust and isolated testing, especially for production tests that need to unset emulator variables.
 
-Rejected alternatives: shell scripts that set variables around `dart test`, and an `environmentOverride` map, which zones replaced (Firestore accepts it in places).
+Rejected alternative: shell scripts that set variables around `dart test`. Zones replaced the `environmentOverride` map as the tests' main mechanism; `google_cloud_firestore` also reads `Settings.environmentOverride`, after the zone, and admin unit tests configure Firestore through it.
 
 # Rules for agents
 

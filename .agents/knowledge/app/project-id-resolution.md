@@ -22,14 +22,17 @@ sources:
 
 Every service resolves the project ID through `FirebaseApp.resolveProjectIdSync()` and `getProjectId()`, in one fixed order:[^resolve-sync][^get-project-id]
 
-1. a zone-injected environment (tests);
-2. `AppOptions.projectId`;
-3. the credential's service-account project;
-4. non-empty `GOOGLE_CLOUD_PROJECT`-style environment variables;
-5. the credentials file;
-6. async discovery through `package:google_cloud` (the gcloud CLI and the GCE metadata server).
+1. an `environment` argument or a zone-injected environment (tests);
+2. a `projectIdOverride` argument;
+3. `AppOptions.projectId`;
+4. the credential's service-account project;
+5. non-empty `GOOGLE_CLOUD_PROJECT`-style environment variables;
+6. the credentials file;
+7. async discovery through `package:google_cloud` (the gcloud CLI and the GCE metadata server).
 
-`resolveProjectIdSync()` stops before step 6 and returns null when only discovery could answer. `getProjectId()` falls back to step 6.
+An injected environment replaces the process environment instead of layering on it: when one is supplied, `resolveProjectIdSync()` skips steps 5 and 6 and returns null after step 4.
+
+`resolveProjectIdSync()` stops before step 7 and returns null when only discovery could answer. `getProjectId()` falls back to step 7.
 
 An explicit credential outranks the ambient environment, so a service account for one project resolves to that project even on Google Cloud infrastructure that belongs to another.
 

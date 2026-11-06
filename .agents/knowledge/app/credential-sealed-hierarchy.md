@@ -37,7 +37,7 @@ sources:
 
 # Node.js
 
-Top-level factories `cert(pathOrObject, httpAgent?)`, `applicationDefault(httpAgent?)` and `refreshToken(pathOrObject, httpAgent?)` return a `Credential` interface. They are memoised globally by their JSON. With no credential, `FirebaseApp` uses `getApplicationDefault()`.[^node-factories]
+Top-level factories `cert(pathOrObject, httpAgent?)`, `applicationDefault(httpAgent?)` and `refreshToken(pathOrObject, httpAgent?)` return a `Credential` interface. `applicationDefault()` is memoised in a single global, and `cert()` and `refreshToken()` are memoised globally by their JSON. With no credential, `FirebaseApp` uses `getApplicationDefault()`.[^node-factories]
 
 # Dart
 
@@ -68,7 +68,7 @@ A `GoogleCredential` from a short-lived local `googleapis_auth_utils` package wa
 
 - **Must:** keep Dart's way. A new credential source is a new factory and a new sealed subtype, and every `switch` over `Credential` must stay exhaustive.
 - **Must:** when you add a subtype, update every exhaustive switch and the Firestore credential mapping in `app.firestore()`.
-- **Must not:** assume `serviceAccountCredentials` is non-null. It is null for ADC and WIF.
+- **Must not:** assume `serviceAccountCredentials` is non-null. It is null for ADC, WIF and refresh-token credentials.
 
 # Related
 

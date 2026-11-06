@@ -1,7 +1,7 @@
 ---
 type: Decision
 title: Verifying ID tokens, session cookies and App Check tokens
-description: Tokens are verified with `dart_jsonwebtoken` against Google's public keys, without the JWT `typ` header check, mapping errors from exception types (the emulator verifier also matches message text) and accepting unsigned tokens in emulator mode.
+description: Tokens are verified with `dart_jsonwebtoken` against Google's public keys, without the JWT `typ` header check, mapping errors from exception types (the emulator verifier also matches message text) and accepting unsigned ID tokens and session cookies under the Auth emulator.
 tags: [auth, app-check, jwt]
 agents_md: when-touching
 governs:
@@ -38,14 +38,14 @@ sources:
 Firebase ID tokens, session cookies and App Check tokens are verified with `dart_jsonwebtoken` against Google's public keys.[^jsonwebtoken-dependency] The shared JWT code is in `lib/src/utils/jwt.dart`; the Auth verifier[^auth-token-verifier] and the App Check verifier[^app-check-token-verifier] build on it.
 
 - **No `typ` header check.** Signatures are verified with `checkHeaderType: false`.[^jwt-header-check]
-- **Emulator tokens.** In emulator mode, unsigned emulator tokens are accepted.[^emulator-verifier]
+- **Emulator tokens.** Under the Auth emulator, the Auth verifier accepts unsigned emulator tokens.[^emulator-verifier] App Check has no emulator.
 - **Errors.** Verification errors are mapped from exception types and `JwtErrorCode` values. `EmulatorSignatureVerifier.verify` is the one place that branches on message text: it accepts a token when the `JWTInvalidException` it catches has the message `'unknown algorithm'` or `'invalid signature'`.[^emulator-verifier]
-- **Custom claims.** `DecodedIdToken.claims` is an unmodifiable map that excludes the standard and reserved claims (see [custom claims](/auth/claims-map.md)).
+- **Custom claims.** `DecodedIdToken.claims` is an unmodifiable map of every claim that has no typed field (see [custom claims](/auth/claims-map.md)).
 - **Key fetching.** `UrlKeyFetcher` takes an optional `http.Client`, so callers can inject one.[^url-key-fetcher]
 
 # Why
 
-- `typ` check: the maintainers' stated reason, also given in the code comment at the call, is that Firebase session cookies omit the `typ` header claim, and signature, issuer, audience and expiry are all validated separately.[^jwt-header-check]
+- `typ` check: the maintainers' stated reason, also given in the code comment at the call, is that Firebase session cookies omit the `typ` header claim.[^jwt-header-check] The comment adds that signature, issuer, audience and expiry are validated separately. It is inaccurate about expiry: `JWT.verify` checks it, and the catch around that call maps every failure, an expired token included, to an invalid-signature error.
 - Error mapping: the maintainers' stated reason is that the code must not depend on the English message text.
 - Injectable client: the maintainers' stated reason is that the real token-verification tests in the `firebase_functions` SDK need it.
 - A proposal to expose the raw token payload was closed. The likely reason (not recorded): custom claims are exposed through the `claims` map instead.

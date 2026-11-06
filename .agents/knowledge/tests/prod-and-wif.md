@@ -7,7 +7,7 @@ agents_md: always
 governs:
   - packages/*/test/**/*_prod_test.dart
   - .github/workflows/build.yml
-  - scripts/*.sh
+  - scripts/*coverage.sh
 sources:
   - id: test-wif-job
     resource: ../../../.github/workflows/build.yml
@@ -36,7 +36,7 @@ sources:
 **`-P prod`** runs tests against real Google Cloud APIs.
 
 - It needs `GOOGLE_APPLICATION_CREDENTIALS` pointing to a service account with access to the Google-owned `dart-firebase-admin` project. `scripts/coverage.sh` and `scripts/firestore-coverage.sh` run it only when that variable is set.[^prod-opt-in]
-- It also needs `FIREBASE_REFRESH_TOKEN_CREDENTIALS`. Without it, the two refresh-token tests fail rather than skip.[^wif-test]
+- In `firebase_admin_sdk`, it also needs `FIREBASE_REFRESH_TOKEN_CREDENTIALS`. Without it, the two refresh-token tests fail rather than skip.[^wif-test]
 - CI never runs `-P prod` for `firebase_admin_sdk`. The one prod suite CI runs is the Firestore Pipeline E2E suite.
 
 **`-P wif`** (admin only) runs a single file, `test/integration/app/firebase_app_prod_test.dart`, in the `test-wif` job of `.github/workflows/build.yml`.[^test-wif-job]

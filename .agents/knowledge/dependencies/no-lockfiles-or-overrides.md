@@ -47,7 +47,7 @@ sources:
 # Enforced by
 
 - `.gitignore`, for the lock and override files.
-- Overrides: the `publish` job's `dart pub publish --dry-run` is expected to fail with them in place (inferred, not tested).
+- Overrides: not enforced. The `publish` job's dry run passes with `dependency_overrides` in place and only prints a hint; reviewers must catch them.
 
 # Rules for agents
 

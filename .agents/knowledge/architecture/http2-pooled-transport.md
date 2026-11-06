@@ -46,7 +46,7 @@ The maintainers' stated reason: `dart:io`'s `HttpClient` only speaks HTTP/1.1, s
 
 Alternatives that were tried or rejected:
 
-- Capping connections per host: it only limits how many requests run at once and queues the rest, which is much slower. Maintainers were also wary of exposing a `dart:io`-specific setting.
+- Capping connections per host: it only limits how many requests run at once and queues the rest, which is much slower. A reviewer also questioned exposing a `dart:io`-specific setting.
 - Retrying connection-closed errors: it fixed the crashes but not the speed.
 
 # Rules for agents

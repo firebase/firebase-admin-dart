@@ -1,7 +1,7 @@
 ---
 type: Divergence
 title: Firestore misuse throws ArgumentError and StateError
-description: In `google_cloud_firestore`, misuse throws Dart `ArgumentError` or `StateError` where Node throws a plain `Error`, while the admin package throws typed exceptions with `invalid-*` codes.
+description: In `google_cloud_firestore`, most misuse throws Dart `ArgumentError` or `StateError` where Node throws a plain `Error`, while the admin package throws typed exceptions with `invalid-*` codes.
 tags: [errors, firestore, node-parity]
 agents_md: when-touching
 governs:
@@ -19,6 +19,10 @@ sources:
     resource: ../../../packages/google_cloud_firestore/lib/src/geo_point.dart
     symbol: Value for argument "latitude" is not a valid number
     title: A validation message copied verbatim from Node
+  - id: transaction-misuse
+    resource: ../../../packages/google_cloud_firestore/lib/src/transaction.dart
+    symbol: FirestoreClientErrorCode.failedPrecondition
+    title: Transaction misuse throws `FirestoreException`
   - id: node-validate
     resource: https://github.com/googleapis/google-cloud-node/blob/main/handwritten/firestore/dev/src/validate.ts
     symbol: invalidArgumentMessage
@@ -31,10 +35,12 @@ Node Firestore's validation throws a plain `Error`: `throw new Error(invalidArgu
 
 # Dart
 
-`google_cloud_firestore` throws Dart `Error`s for misuse, not `Exception`s:
+`google_cloud_firestore` throws Dart `Error`s for most misuse, not `Exception`s:
 
 - `ArgumentError` for invalid arguments;[^argument-error]
 - `StateError` for invalid state, such as any request after `terminate()`.[^state-error]
+
+Transaction misuse (a read after a write, a write in a read-only transaction) and an invalid `desiredPartitionCount` throw `FirestoreException` (`failed-precondition`, `invalid-argument`) instead, where Node throws a plain `Error`.[^transaction-misuse]
 
 Validation messages are often Node's text verbatim, such as `Value for argument "latitude" is not a valid number`.[^geo-point] Backend failures are `FirestoreException`s.
 
@@ -48,7 +54,8 @@ The likely reason (not recorded): Effective Dart's convention that an `Error` si
 
 # Rules for agents
 
-- **Must:** keep each package's convention. In `google_cloud_firestore`, misuse is an `ArgumentError` or `StateError`, and backend failures are `FirestoreException`. In `firebase_admin_sdk`, follow Node's codes.
+- **Must:** keep each package's convention. In `google_cloud_firestore`, use `ArgumentError`/`StateError` for misuse in new code, and `FirestoreException` for backend failures. In `firebase_admin_sdk`, follow Node's codes.
+- **Ask first:** before changing an existing misuse throw from `FirestoreException`. Callers may catch it.
 
 # Related
 
@@ -59,3 +66,4 @@ The likely reason (not recorded): Effective Dart's convention that an `Error` si
 [^argument-error]: `ArgumentError` in `validate.dart`
 [^state-error]: `StateError` after `terminate()`
 [^geo-point]: `GeoPoint` validation message
+[^transaction-misuse]: Transaction misuse in `transaction.dart`

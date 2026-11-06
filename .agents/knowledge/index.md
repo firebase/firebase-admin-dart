@@ -25,17 +25,17 @@ okf_version: "0.2"
 * [Port of the Node.js Admin SDK](architecture/node-port.md) - The SDK is a close port of the Node.js Admin SDK and of Node Firestore, so Node's API names, file layout, validation rules and error codes are the reference.
 * [Published as firebase_admin_sdk, owned by Google](architecture/package-name-and-ownership.md) - The package is published as `firebase_admin_sdk` from the `firebase/firebase-admin-dart` repository, no longer as `dart_firebase_admin`, and source headers name Google LLC.
 * [Generic Google-auth features live upstream, not in this repo](architecture/upstream-generic-auth-features.md) - Generic Google-auth features such as signing, impersonation and project-ID discovery belong in Google's `googleapis_auth` and `google_cloud` packages, not in a local package.
-* [Usage-tracking headers on the default client and Firestore](architecture/usage-tracking-headers.md) - Requests through the SDK-built default client and through admin Firestore carry `X-Firebase-Client` with `fire-admin-dart/<version>` and an `X-Goog-Api-Client` value containing `fire-admin/<version>`, appended to an existing value; a user-supplied client and the emulator clients don't add them.
+* [Usage-tracking headers on the default client and Firestore](architecture/usage-tracking-headers.md) - Requests through the SDK-built default client and through admin Firestore carry `X-Firebase-Client` with `fire-admin-dart/<version>` and an `X-Goog-Api-Client` value containing `fire-admin/<version>`, appended to an existing value; a user-supplied client and the Auth, Functions and Storage emulator clients don't add them.
 
 # Auth
 
-* [Custom claims as a map, not an index signature](auth/claims-map.md) - Node's `DecodedIdToken` exposes custom claims through an index signature, while Dart has typed fields plus a `claims` map holding only the non-reserved claims.
+* [Custom claims as a map, not an index signature](auth/claims-map.md) - Node's `DecodedIdToken` exposes custom claims through an index signature, while Dart has typed fields plus a `claims` map holding every claim that has no typed field.
 * [ActionCodeSettings has linkDomain, not dynamicLinkDomain](auth/dynamic-link-domain-removed.md) - Dart's `ActionCodeSettings` has only `linkDomain`, with no `dynamicLinkDomain`, where Node keeps `dynamicLinkDomain` as deprecated.
-* [Verifying ID tokens, session cookies and App Check tokens](auth/jwt-verification.md) - Tokens are verified with `dart_jsonwebtoken` against Google's public keys, without the JWT `typ` header check, mapping errors from exception types (the emulator verifier also matches message text) and accepting unsigned tokens in emulator mode.
-* [Unset versus null in Auth updates (sentinel and _Box)](auth/unset-vs-null-sentinel.md) - `_BaseUpdateRequest` encodes Node's three states for `displayName`, `photoURL` and `phoneNumber` with a `_sentinel` default and `_Box` (omitted leaves a field unchanged, a value sets it, `null` clears it), so every public constructor must keep that default reachable.
+* [Verifying ID tokens, session cookies and App Check tokens](auth/jwt-verification.md) - Tokens are verified with `dart_jsonwebtoken` against Google's public keys, without the JWT `typ` header check, mapping errors from exception types (the emulator verifier also matches message text) and accepting unsigned ID tokens and session cookies under the Auth emulator.
+* [Unset versus null in Auth updates (sentinel and _Box)](auth/unset-vs-null-sentinel.md) - `_BaseUpdateRequest` encodes Node's three states for `displayName`, `photoURL` and `phoneNumber` with a `_sentinel` default and `_Box` (omitted leaves a field unchanged, a value sets it, `null` clears it), so every public constructor must make that default reachable.
 * [Auth records encode JSON like Node's toJSON()](auth/user-record-tojson.md) - Auth records expose a public `toJson()` that encodes like Node's `toJSON()`.
 
-# Ci
+# CI
 
 * [Lints, analysis and formatting](ci/lint-and-format.md) - One root `analysis_options.yaml` builds on `dart_flutter_team_lints` with strict modes; CI analyzes and format-checks only `packages/firebase_admin_sdk/`, with `--fatal-infos` and the format check on the dev SDK only, so format only the files you change and check ignores against every analysis SDK.
 * [What CI runs where, and what gates merging](ci/trigger-matrix.md) - Build runs on every non-docs PR, push to `main` and nightly, the knowledge-base check on every PR and push to `main`, the Firestore-only workflows on Firestore changes, admin prod tests never run in CI, and merging is gated by the `cla/google` status and an Alphabet-required zizmor scan, not by any workflow in this repo.
@@ -72,7 +72,7 @@ okf_version: "0.2"
 
 # Environment
 
-* [Emulators found only through standard environment variables](environment/emulator-detection.md) - Emulators are found only through the standard Admin SDK `*_EMULATOR_HOST` variables, as in Node, with no `useEmulator()` API and `Bearer owner` on emulator requests.
+* [Emulators found only through standard environment variables](environment/emulator-detection.md) - Emulators are found only through the standard Admin SDK `*_EMULATOR_HOST` variables, as in Node, with no `useEmulator()` API and `Bearer owner` on Auth, Firestore and Cloud Tasks emulator requests.
 * [Storage emulator host set in the native process environment](environment/storage-emulator-native-env.md) - The Storage emulator host reaches `google_cloud_storage` through `STORAGE_EMULATOR_HOST`, written with FFI `setenv` and removed with `unsetenv` in production mode.
 * [Environment reads go through a zone override first](environment/zone-injected-environment.md) - Code that reads environment variables checks `Zone.current[envSymbol]` before `Platform.environment`, so tests can inject or remove variables.
 
@@ -81,7 +81,7 @@ okf_version: "0.2"
 * [Typed per-service admin exceptions with Node's error codes](errors/admin-exceptions.md) - Admin errors are typed per service under `FirebaseAdminException`, with Node's `service/kebab-code` codes, Node's server-to-client code tables and `toJson()`.
 * [FirestoreException is separate and maps HTTP to gRPC codes](errors/firestore-exception.md) - `google_cloud_firestore` throws its own `FirestoreException`, not a `FirebaseAdminException`, and maps REST and HTTP statuses onto gRPC-style codes.
 * [Node's error extras are not ported](errors/node-error-extras.md) - Node's `FirebaseError` has `httpResponse`, `cause`, `hasCode()` and a richer `toJSON()`, while Dart's `FirebaseAdminException` has none of them and its `toJson()` returns only `code` and `message`.
-* [Firestore misuse throws ArgumentError and StateError](errors/programmer-errors.md) - In `google_cloud_firestore`, misuse throws Dart `ArgumentError` or `StateError` where Node throws a plain `Error`, while the admin package throws typed exceptions with `invalid-*` codes.
+* [Firestore misuse throws ArgumentError and StateError](errors/programmer-errors.md) - In `google_cloud_firestore`, most misuse throws Dart `ArgumentError` or `StateError` where Node throws a plain `Error`, while the admin package throws typed exceptions with `invalid-*` codes.
 
 # Firestore
 
@@ -92,28 +92,25 @@ okf_version: "0.2"
 * [One cached Firestore per database, settings fixed](firestore/multi-database.md) - The admin `app.firestore()` caches one `Firestore` per database ID; asking for it again with settings whose project, database, host, SSL flag or credential differ throws, and other setting changes are silently ignored.
 * [No realtime listeners (onSnapshot)](firestore/no-realtime-listeners.md) - Node's Admin SDK supports Firestore realtime listeners through the bidirectional `Listen` RPC, which the generated REST client Dart uses doesn't have, so listeners are a transport limit and a gap, not out of scope.
 * [Firestore follows Node, not FlutterFire](firestore/node-not-flutterfire.md) - The Firestore API follows Node rather than FlutterFire's `cloud_firestore`, and matching FlutterFire signatures to share code with Flutter clients was declined.
-
-# Firestore pipelines
-
-* [Pipeline execution options Node lacks](firestore/pipelines/dart-only-options.md) - Dart's Pipeline execution adds options and behaviours that Node lacks, each recorded with its reason, and keeps query-level options on `execute()` rather than on the Pipeline.
-* [Pipeline API mirrors Node with recorded exceptions](firestore/pipelines/dart-surface.md) - The Dart Pipeline API mirrors Node's `FirebaseFirestore.Pipelines` namespace, and every rename, type mapping, alias, Dart-only member and known difference is recorded in the parity tables.
-* [Pipeline APIs Node has that Dart lacks](firestore/pipelines/missing-node-apis.md) - Some Node Pipeline APIs, including `pipeline.stream()`, have no Dart implementation; each is a pending entry in the parity tables, which fail when an entry goes stale.
-* [Pipeline wire format does not copy Node's bugs](firestore/pipelines/node-bugs-not-copied.md) - Where the pinned Node SDK sends Pipeline requests the backend rejects, Dart sends what the backend accepts, and each such difference is a checked entry in `_knownDivergences`.
-* [Pipelines parity with Node is checked by machine](firestore/pipelines/node-parity.md) - For Firestore Pipelines, Node-generated golden requests, an API-signature snapshot, a single-implementation test and an E2E coverage guard check parity with Node in CI.
-
-# Firestore
-
 * [Firestore runs over REST, not gRPC](firestore/rest-transport.md) - Node's Firestore uses gRPC by default, while Dart's uses only REST through the generated `google_cloud_firestore_v1` client, which has no bidirectional `Listen` or `Write` RPC.
-* [Firestore retries transient errors like Node](firestore/retries.md) - A standalone `WriteBatch.commit()` retries ABORTED, UNAVAILABLE and RESOURCE_EXHAUSTED as Node does, and reads retry connection-closed errors only before any partial result and outside a transaction.
+* [Firestore retries transient errors like Node](firestore/retries.md) - A standalone `WriteBatch.commit()` retries ABORTED, UNAVAILABLE and RESOURCE_EXHAUSTED as Node does, and queries, aggregations and pipelines retry `http.ClientException`s, such as connection-closed errors, only before any partial result and outside a transaction.
 * [Firestore is a standalone package](firestore/standalone-package.md) - Firestore ships as `google_cloud_firestore`, which works without the Admin SDK and never imports it; `firebase_admin_sdk` wraps it through `app.firestore()`.
 * [Timestamp shape and its Node JSON keys](firestore/timestamp.md) - Dart's `Timestamp` uses named parameters and `DateTime`, but `toJson()` keeps Node's `_seconds` and `_nanoseconds` keys on purpose.
 * [One type parameter and a function-pair withConverter](firestore/typed-references.md) - Dart typed references have a single type parameter and `withConverter` takes a pair of functions, where Node has two model type parameters and a converter object.
 * [No field-value-pairs form of update()](firestore/update-field-value-pairs.md) - Node's alternating `update(field, value, ...)` varargs form has no Dart equivalent; Dart has only the map form.
 * [Firestore value types use Dart types and named parameters](firestore/value-types.md) - Firestore value types such as `GeoPoint`, dates, big integers, bytes and `FieldValue` use Dart types (`DateTime`, `BigInt`, `Uint8List`) and named or const constructors instead of Node's shapes.
 
+# Firestore pipelines
+
+* [Pipeline execution options Node lacks](firestore/pipelines/dart-only-options.md) - Dart's Pipeline execution adds options and behaviours that Node lacks, each recorded with its reason, and keeps query-level options on `execute()` rather than on the Pipeline.
+* [Pipeline API mirrors Node with recorded exceptions](firestore/pipelines/dart-surface.md) - The Dart Pipeline API mirrors Node's `FirebaseFirestore.Pipelines` namespace, and every rename, type mapping, alias, Dart-only member and known difference is recorded in the parity tables.
+* [Pipeline APIs Node has that Dart lacks](firestore/pipelines/missing-node-apis.md) - Some Node Pipeline APIs, including `pipeline.stream()`, have no Dart implementation; each one in the pinned Node release is a pending entry in the parity tables, which fail when an entry goes stale.
+* [Pipeline wire format does not copy Node's bugs](firestore/pipelines/node-bugs-not-copied.md) - Where the pinned Node SDK sends Pipeline requests the backend rejects, Dart sends what the backend accepts, and each such difference is a checked entry in `_knownDivergences`.
+* [Pipelines parity with Node is checked by machine](firestore/pipelines/node-parity.md) - For Firestore Pipelines, Node-generated golden requests, an API-signature snapshot, a single-implementation test and an E2E coverage guard check parity with Node in CI.
+
 # Functions
 
-* [Task Queue scopes: no extension self-targeting, private Kit](functions/task-queue-scopes.md) - The Task Queue scope port drops Node's own-extension self-targeting, keeps the Kit scope private and prints warnings with `print()`.
+* [Task Queue scopes: no extension self-targeting, private Kit](functions/task-queue-scopes.md) - The Task Queue scope port never reads `EXT_INSTANCE_ID`, so it drops Node's own-extension handling, keeps the Kit scope private and prints warnings with `print()`.
 
 # Generated
 
@@ -134,7 +131,7 @@ okf_version: "0.2"
 
 # Release
 
-* [The publish dry run must pass for both packages](release/publish-dry-run.md) - CI's `publish` job runs `dart pub publish --dry-run` for both packages, which fails on fake keys not listed in `false_secrets`, bad descriptions, stale checked-in files and dependency overrides.
+* [The publish dry run must pass for both packages](release/publish-dry-run.md) - CI's `publish` job runs `dart pub publish --dry-run` for both packages, which fails on fake keys not listed in `false_secrets`, modified checked-in files and other pub validator warnings.
 * [Releases are manual and done by Google maintainers](release/release-process.md) - A release PR strips the unreleased markers, then `google_cloud_firestore` and `firebase_admin_sdk` are published by hand under the `firebase.google.com` publisher and tagged by hand; there is no publish workflow.
 * [Pre-GA versioning and CHANGELOG headings between releases](release/versioning-and-changelog.md) - Packages stay on 0.x until GA with no fixed release cadence; between releases `firebase_admin_sdk` carries a `-wip` version and heading, while `google_cloud_firestore` keeps its released version under `## Unreleased`.
 

@@ -38,7 +38,7 @@ Parity is kept by convention:
 
 - The file layout mirrors Node module by module. `auth/` has `action_code_settings_builder`, `auth_config`, `base_auth`, `token_generator`, `token_verifier`, `user_import_builder` and the rest, like Node's `src/auth/`.[^auth-layout][^node-auth]
 - Dartdoc and comments mark ported logic with "Mirrors/Matches the Node SDK's X". Most are in `google_cloud_firestore`'s `pipeline.dart`; others sit on the implicit order-by in queries and on project-ID resolution.[^implicit-order-by-marker][^explicit-project-id-marker]
-- CHANGELOG entries justify fixes by matching the Node Admin SDK.
+- `google_cloud_firestore`'s CHANGELOG entries justify fixes by matching the Node Admin SDK.
 - CONTRIBUTING says "Match the behaviour of the Node.js Admin SDK where applicable." That line sits under "Error Handling", so it is an error-behaviour rule rather than a general port policy.[^contributing-node-rule]
 - Behaviours matched by hand include project-ID precedence, the Firestore credential restriction, revocation checks in `verifyIdToken` under the emulator, FCM v1 topic management with deprecated legacy IID methods, `listDocuments` following `nextPageToken`, and the JSON keys of `UserRecord.toJson` and `Timestamp.toJson`.
 

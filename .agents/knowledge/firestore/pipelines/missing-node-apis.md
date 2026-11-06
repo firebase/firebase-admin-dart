@@ -1,7 +1,7 @@
 ---
 type: Divergence
 title: Pipeline APIs Node has that Dart lacks
-description: Some Node Pipeline APIs, including `pipeline.stream()`, have no Dart implementation; each is a pending entry in the parity tables, which fail when an entry goes stale.
+description: Some Node Pipeline APIs, including `pipeline.stream()`, have no Dart implementation; each one in the pinned Node release is a pending entry in the parity tables, which fail when an entry goes stale.
 tags: [firestore, pipelines, gaps, node-parity]
 agents_md: when-touching
 governs:
@@ -29,12 +29,12 @@ Node's Pipelines include APIs Dart doesn't have, such as `subcollection()`, the 
 
 # Dart
 
-Dart has none of these. Each missing API is an entry in a parity table, and the tables are the full list:
+Dart has none of these. Each API missing relative to the pinned Node release (`_nodeVersion` in `pipeline_api_parity_test.dart`) is an entry in a parity table:
 
 - `_pendingFixes` in `pipeline_api_parity_test.dart`, for missing members and options;[^pending-fixes]
 - `_dartApiGaps` in `pipeline_golden_test.dart`, for golden cases Dart can't express.[^dart-api-gaps]
 
-Both tests fail when an entry goes stale, so implementing an API forces its entry out.
+Both tests fail when an entry goes stale, so implementing an API forces its entry out. APIs added in later Node releases, such as the `insert` and `upsert` stages, appear only when the pin is bumped.
 
 `pipeline.stream()` is a gap. The `executePipeline` RPC under `execute()` returns a `Stream`, but its response is buffered: the generated client requests it with `enableSse: false`, and the whole JSON array is read before the first result is yielded. A `stream()` built on it would not be incremental; an incremental port needs SSE or gRPC.
 

@@ -35,7 +35,7 @@ sources:
 
 Object operations belong to `google_cloud_storage`, for example `bucket.storage.uploadObject(...)`. The `gcs.Storage` client is created lazily and uses the app's client and credential.
 
-This repo has no GCS client of its own. An in-repo port of Node's `@google-cloud/storage` (with V2/V4 signed URLs and POST policies) was dropped in favour of Google's package. Users who need more than the wrapper offers, such as streaming or ranged reads, use `FirebaseApp.client` with `googleapis`.
+This repo has no GCS client of its own. An in-repo port of Node's `@google-cloud/storage` (with V2/V4 signed URLs and POST policies) was dropped in favour of Google's package. Users who need more than `google_cloud_storage` offers, such as ranged or streamed downloads, use `FirebaseApp.client` with `googleapis`.
 
 In Node, `getStorage().bucket()` returns a `@google-cloud/storage` `Bucket`, and `getDownloadURL(file)` is a top-level function that takes a `File`.[^node-get-download-url]
 

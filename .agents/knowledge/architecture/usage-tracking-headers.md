@@ -1,7 +1,7 @@
 ---
 type: Decision
 title: Usage-tracking headers on the default client and Firestore
-description: Requests through the SDK-built default client and through admin Firestore carry `X-Firebase-Client` with `fire-admin-dart/<version>` and an `X-Goog-Api-Client` value containing `fire-admin/<version>`, appended to an existing value; a user-supplied client and the emulator clients don't add them.
+description: Requests through the SDK-built default client and through admin Firestore carry `X-Firebase-Client` with `fire-admin-dart/<version>` and an `X-Goog-Api-Client` value containing `fire-admin/<version>`, appended to an existing value; a user-supplied client and the Auth, Functions and Storage emulator clients don't add them.
 tags: [architecture, transport, telemetry]
 agents_md: when-touching
 governs:
@@ -47,7 +47,7 @@ Two usage-tracking headers identify the SDK:
 Two paths add the headers:
 
 - `FirebaseApp._createDefaultClient()` wraps the client the SDK builds in `FirebaseUserAgentClient`. Requests through `app.client` carry the headers when the user supplied no client.[^default-client]
-- Firestore gets them through `Settings.headers`, which `app.firestore()` fills in.[^firestore-headers]
+- Firestore gets them through `Settings.headers`, which `app.firestore()` fills in. They are added on the Firestore emulator path too.[^firestore-headers]
 
 Clients outside those paths don't add them:
 
@@ -63,7 +63,7 @@ Clients outside those paths don't add them:
 
 The maintainers' stated reason: the headers are for usage tracking. The Firebase team asked for `fire-admin` as the Admin SDK's tag in `X-Goog-Api-Client`, as Node uses; an earlier `fire-admin-dart` tag there was wrong. Firestore requests have to carry the headers too, so they get them through `Settings.headers`. Appending instead of overwriting keeps the value other libraries set, and matching whole whitespace-separated tokens avoids false duplicates.
 
-Why a user-supplied client and the emulator clients aren't wrapped isn't recorded. Ask a maintainer before changing it.
+Why a user-supplied client and the Auth, Functions and Storage emulator clients aren't wrapped isn't recorded. Ask a maintainer before changing it.
 
 # Rules for agents
 

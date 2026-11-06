@@ -45,12 +45,12 @@ Layout:
 
 # Why
 
-The maintainers' stated reasons: reviewers ask for tests before merging, and CONTRIBUTING.md makes them mandatory. Production tests are quota-heavy and not required in CI, so they are an explicit opt-in. An earlier `RUN_PROD_TESTS`/`hasProdEnv` environment-variable guard was dropped in favour of tags, and each tag's description in `dart_test.yaml` says what it needs.
+The maintainers' stated reasons: reviewers ask for tests before merging, and CONTRIBUTING.md makes them mandatory. Production tests are quota-heavy and not required in CI, so they are an explicit opt-in. An earlier `RUN_PROD_TESTS`/`hasProdEnv` environment-variable guard was dropped in favour of tags, and each tag's description in `dart_test.yaml` says what it needs. CONTRIBUTING.md's testing section says to gate prod tests behind `RUN_PROD_TESTS`; that line is out of date, so use the `prod` tag.
 
 # Enforced by
 
 - The default `exclude_tags` and the presets in `packages/firebase_admin_sdk/dart_test.yaml` and `packages/google_cloud_firestore/dart_test.yaml`.
-- For the live E2E suite, `test/pipeline_e2e_coverage_test.dart` fails any file under `test/e2e/pipeline/` that lacks `@Tags(['prod'])`.
+- For the live E2E suite, `test/pipeline_e2e_coverage_test.dart` fails any `*_test.dart` file under `test/e2e/pipeline/` that lacks `@Tags(['prod'])`.
 
 # Rules for agents
 

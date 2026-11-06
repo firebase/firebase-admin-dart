@@ -48,7 +48,7 @@ Dart's Firestore uses REST only, through the generated `google_cloud_firestore_v
 
 # Rules for agents
 
-- **Must:** keep Dart's REST transport. Everything Node's `preferRest` mode can do is in scope.
+- **Ask first:** before moving existing RPCs off REST. Everything Node's `preferRest` mode can do is in scope.
 - **Must:** treat anything that needs a bidirectional RPC as needing a new transport, as listeners do ([No realtime listeners](/firestore/no-realtime-listeners.md)). Incremental server streaming needs SSE or gRPC ([Promises become Futures, async iterables become Streams](/conventions/futures-and-streams.md)).
 
 # Related

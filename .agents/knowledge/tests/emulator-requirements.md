@@ -6,7 +6,7 @@ tags: [tests, emulators, tooling]
 agents_md: when-touching
 governs:
   - packages/*/test/**
-  - scripts/*.sh
+  - scripts/*coverage.sh
   - packages/*/firebase.json
 sources:
   - id: admin-coverage-script

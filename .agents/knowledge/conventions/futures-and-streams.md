@@ -51,8 +51,7 @@ The server-streaming RPCs behind them are exposed as `Stream`s, but the generate
 
 - **Must:** keep Dart's way. Map `AsyncIterable` to `Stream` and Promise to `Future`, and write docs in Dart terms.
 - **Should:** port Node's `Readable` APIs as Dart `Stream`s. This is inferred; no maintainer has decided it.
-- **Ask first:** before porting `query.stream()`, `explainStream()` or `pipeline.stream()`. An incremental port needs SSE (unverified for Firestore REST) or gRPC.
-- **Must not:** port Node `Readable` APIs as callbacks.
+- **Ask first:** before porting `query.stream()`, `explainStream()` or `pipeline.stream()`, and before porting any of them as callbacks rather than a `Stream`. An incremental port needs SSE (unverified for Firestore REST) or gRPC.
 - **Must not:** present a buffered `runQuery` or `executePipeline` result as an incremental stream.
 
 # Related

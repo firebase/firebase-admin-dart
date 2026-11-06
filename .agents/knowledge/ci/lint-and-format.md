@@ -53,7 +53,7 @@ CI neither analyzes nor format-checks `packages/google_cloud_firestore/` or `scr
 
 # Why
 
-The maintainers' stated reasons: they adopted `dart_flutter_team_lints`, centralized `analysis_options.yaml` at the workspace root, removed the per-package copies and un-ignored lints. Both skews have broken CI: formatting had to be reverted to match the dev formatter, and the `deprecated_member_use` ignore in `messaging_test.dart` was removed as unnecessary, then restored to satisfy `--fatal-infos`. The likely reason that ignore comes and goes (not recorded): whether it is needed depends on which `googleapis` resolves.
+Why the project uses this lint setup isn't recorded. The change that introduced it states only what it did: adopt `dart_flutter_team_lints`, centralize `analysis_options.yaml` at the workspace root, remove the per-package copies and un-ignore lints. Both skews have broken CI: formatting had to be reverted to match the dev formatter, and the `deprecated_member_use` ignore in `messaging_test.dart` was removed as unnecessary, then restored to satisfy `--fatal-infos`. The likely reason that ignore comes and goes (not recorded): whether it is needed depends on which `googleapis` resolves.
 
 Why the format and `--fatal-infos` checks run only on dev, and why `example_server_app` is excluded, isn't recorded. Ask a maintainer before changing either. The likely reason Firestore isn't linted (not recorded): the `lint` job was never extended when Firestore became its own package.
 

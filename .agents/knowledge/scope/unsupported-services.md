@@ -56,13 +56,13 @@ App, App Check, Authentication, Firestore, Functions, Messaging, Security Rules 
 
 Phone Number Verification has no row in the README at all, though Node ships it, so that gap is undocumented.
 
-These are gaps. The README only says "Not supported", and nothing records a decision that any of these products is out of scope for good. The likely exception (not recorded) is Machine Learning, given Node's deprecation.
+These are gaps. The README only says "Not supported", and nothing records a decision that any of these products is out of scope for good. The likely exceptions (not recorded) are Machine Learning, given Node's deprecation, and Extensions: Node's Extensions `Runtime` works only inside an extension (it requires `EXT_INSTANCE_ID`), and a maintainer has said Firebase Extensions don't use the Dart runtime.
 
 # Why
 
 Mostly unknown. The likely reason (not recorded): the supported set follows the module-by-module plan the SDK was built against.
 
-- **Realtime Database:** no reason is recorded. The feature request is labelled blocked, with no reason given. RTDB doesn't go through Firestore's transport, so the reason Firestore has no realtime listeners doesn't explain it.
+- **Realtime Database:** no reason is recorded. RTDB doesn't go through Firestore's transport, so the reason Firestore has no realtime listeners doesn't explain it.
 - **Remote Config:** no decision on the approach is recorded. The admin services go through the generated `googleapis` package, which has no Remote Config client; one proposal uses direct REST calls with server-side template evaluation.
 
 # Rules for agents

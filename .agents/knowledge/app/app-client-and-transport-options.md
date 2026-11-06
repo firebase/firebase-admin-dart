@@ -46,7 +46,9 @@ With these, users can call Google APIs the SDK doesn't wrap while sharing the ap
 
 # Why
 
-The maintainers' stated reason: some wrapped products, such as Storage, have a trimmed-down API that isn't enough for every use case, for example multi-GB uploads or range reads. While `client` was `@internal`, users who needed an authenticated client for `googleapis` APIs the SDK doesn't cover had to silence the warning and use the internal API, or re-implement the credential setup themselves. The HTTP/2 pooling is stated in the package CHANGELOG.
+The stated reason, from the feature request this implements: some wrapped products, such as Storage, have a trimmed-down API that isn't enough for every use case, for example multi-GB uploads or range reads.
+
+The maintainers' stated reason: while `client` was `@internal`, users who needed an authenticated client for `googleapis` APIs the SDK doesn't cover had to silence the warning and use the internal API, or re-implement the credential setup themselves. The HTTP/2 pooling is stated in the package CHANGELOG.
 
 # Rules for agents
 

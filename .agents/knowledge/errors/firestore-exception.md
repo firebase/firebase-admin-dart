@@ -32,7 +32,7 @@ sources:
 
 # Node.js
 
-Node Firestore's server errors are google-gax `GoogleError`s with a numeric gRPC `code`, taken from an internal copy of the status codes.[^node-status-code]
+Node Firestore's server errors are google-gax `GoogleError`s, with the numeric gRPC `code` that google-gax sets. Node Firestore keeps its own copy of the status codes, in `status-code.ts`, to compare those codes against.[^node-status-code]
 
 # Dart
 

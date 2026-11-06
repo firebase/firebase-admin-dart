@@ -34,7 +34,7 @@ sources:
 
 # Decision
 
-Admin errors are typed per service. `FirebaseAdminException` is an `abstract class … implements Exception`.[^admin-exception] Each service subclasses it and carries a typed enum `errorCode`: `FirebaseAuthAdminException(AuthClientErrorCode)`, `FirebaseMessagingAdminException`, `FirebaseAppCheckException`, `FirebaseAppException(AppErrorCode)` and so on.[^auth-exception][^app-error-code]
+Admin errors are typed per service. `FirebaseAdminException` is an `abstract class … implements Exception`.[^admin-exception] Each service subclasses it and takes a per-service error-code enum, such as `FirebaseAuthAdminException(AuthClientErrorCode)` and `FirebaseAppException(AppErrorCode)`.[^auth-exception][^app-error-code] Most expose it as a typed `errorCode` (`FirebaseAuthAdminException`, `FirebaseAppException`, `FirebaseMessagingAdminException`, `FirebaseFunctionsAdminException`, `FirebaseStorageAdminException`); `FirebaseAppCheckException` and `FirebaseSecurityRulesException` expose only the `code` string.
 
 The rest matches Node's `FirebaseError` and its per-service subclasses:[^node-firebase-error]
 

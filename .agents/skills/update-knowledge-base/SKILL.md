@@ -17,7 +17,7 @@ Read each concept listed. If your change makes anything in one untrue, edit it. 
 
 ## 2. Edit or add a concept
 
-Copy the shape of an existing concept of the same `type`. Keep the frontmatter's indentation: `scripts/knowledge.sh` parses it.
+Copy the shape of an existing concept of the same `type`. Keep the frontmatter's indentation: `scripts/knowledge.sh` parses it. Write `governs` and `sources` as block lists, with one `  - ` item per line and each source's keys indented four spaces. `check` rejects the inline `[...]` and `{...}` forms.
 
 - **Frontmatter:**
   - `type`: `Decision`, `Divergence` (how Dart differs from Node), `Constraint` (a rule the repo enforces or expects) or `Playbook`.
@@ -41,9 +41,10 @@ Copy the shape of an existing concept of the same `type`. Keep the frontmatter's
   - "The likely reason (not recorded): …" when it's inferred.
   - "The reason isn't recorded. Ask a maintainer before changing it." when nobody knows.
 - **Timeless:** concepts state what is true and why, not how it got there.
-  - No pull request or issue numbers, commit SHAs, dates, names, release versions used as history, or "now" and "currently". `check` rejects PR and issue numbers.
+  - No pull request or issue numbers, commit SHAs, dates, names, release versions used as history, or "now" and "currently". `check` rejects `#123`-style references, "PR 123", pull and issue URLs, and dates.
   - For a value the code holds, such as a version constraint or a threshold, point to where it lives instead of copying it.
 - **Links** between concepts use bundle-relative paths, e.g. `[Title](/firestore/standalone-package.md)`.
+- **Footnotes** attribute a claim to one of the concept's sources: `[^source-id]`, where `source-id` is a `sources` entry's `id`. Define each footnote at the end of the body.
 
 - **Provenance (optional):** when a maintainer has checked a concept against the code, they can add `verified: { by: human:<github-login>, at: <UTC time> }`. A concept nobody has verified stays unverified, and that's allowed. Don't record which tool or model wrote a concept.
 

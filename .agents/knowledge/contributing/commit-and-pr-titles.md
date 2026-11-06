@@ -34,7 +34,7 @@ The repository settings enforce squash-only merges. The title format is not enfo
 
 # Rules for agents
 
-- **Must:** title the PR, and the commit of a single-commit PR, as a Conventional Commit: `type(scope): summary`, in the imperative mood, with the package or product as the scope.
+- **Should:** title the PR, and the commit of a single-commit PR, as a Conventional Commit: `type(scope): summary`, in the imperative mood, with the package or product as the scope when one applies.
 
 # Related
 

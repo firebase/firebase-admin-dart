@@ -36,9 +36,9 @@ The SDK targets trusted server environments only.[^admin-readme] Both packages a
 - `lib/` in both packages imports `dart:io`.[^admin-dart-io][^firestore-dart-io]
 - `firebase_admin_sdk` also uses `dart:ffi` and `package:ffi`, to call `setenv` or `SetEnvironmentVariableW`.[^native-environment]
 
-There is no web support and none is planned. The SDK must not be used in mobile apps.
+There is no web support. The SDK must not be used in mobile apps.
 
-Nothing declares this: neither pubspec has a `platforms:` field, so pub.dev infers the platforms and tags both packages `sdk:flutter`, `platform:android` and `platform:ios`. The imports enforce it for web, where compilation fails. Whether to add `platforms:` is an open question; ask a maintainer.
+Nothing declares this: neither pubspec has a `platforms:` field, so pub.dev infers the platforms and tags both packages `sdk:flutter`, `platform:android` and `platform:ios`. The imports enforce it for web, where compilation fails. A maintainer has said the mobile tags should be removed with a `platforms:` field.
 
 # Why
 
@@ -48,13 +48,14 @@ The maintainers' stated reasons:
 - iOS, Android and web are client environments, which can't be trusted.
 - The package depends on `dart:io`, so it won't run on web.
 
-Web support for test setups was requested and declined; the maintainers suggested a small backend API instead, and rejected leaving the choice to users as a serious footgun. A Flutter example used to exist in the repo; it was deleted, with no reason recorded.
+Web support for test setups was requested and declined; the maintainers suggested a small backend API instead, and rejected leaving the choice to users as a serious footgun.
 
 # Rules for agents
 
 - **Must:** treat `dart:io` as allowed anywhere in `lib/`. The Flutter-workspace constraint is about dependency versions, not `dart:io`.
 - **Must not:** add web support, try to make the packages web-compatible, or add conditional imports for web.
 - **Must not:** advertise mobile platforms.
+- **Should:** when you change a pubspec's metadata, declare `platforms:` without `android`, `ios` or `web`.
 - **Must not:** add examples or docs that use the Admin SDK in a Flutter client app.
 
 # Related
