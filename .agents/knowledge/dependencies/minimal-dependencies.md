@@ -28,7 +28,7 @@ These have been removed:
 - `googleapis_beta`, unmaintained and trivial to inline;
 - `freezed` (see [no code generation](/conventions/no-codegen.md));
 - `jose`: JWT handling uses `dart_jsonwebtoken` alone;
-- `googleapis_auth_utils`, whose generic features moved upstream into `googleapis_auth`.
+- `googleapis_auth_utils`, whose generic features moved upstream into `googleapis_auth` and `google_cloud`.
 
 `asn1lib` is declared in `firebase_admin_sdk`'s pubspec, but nothing under `lib/` imports it.
 
