@@ -133,7 +133,7 @@ check() {
     done < <(grep -oE '\]\([^)#[:space:]]+\.md(#[^)]*)?\)' "$file" | sed -E 's/^\]\(//; s/\)$//')
 
     # `#123`, `owner/repo#123`, "PR 123" or "issue 123", a pull or issue URL, or a date.
-    history='(^|[^&[:alnum:]_])#[0-9]+\b|[[:alnum:]_.-]+/[[:alnum:]_.-]+#[0-9]+\b|\b(PR|[Pp]ull request|[Ii]ssue) #?[0-9]+\b|/(pull|issues)/[0-9]|\b20[0-9]{2}-[01][0-9]-[0-3][0-9]\b'
+    history='(^|[^&[:alnum:]_])#[0-9]+([^[:alnum:]_-]|$)|[[:alnum:]_.-]+/[[:alnum:]_.-]+#[0-9]+([^[:alnum:]_-]|$)|\b(PR|[Pp]ull request|[Ii]ssue) #?[0-9]+\b|/(pull|issues)/[0-9]|\b20[0-9]{2}-[01][0-9]-[0-3][0-9]\b'
     if grep -qE "$history" "$file"; then
       fail "$file" "cites history (a PR, issue or date): $(grep -nE "$history" "$file" | head -n 1)"
     fi
@@ -183,10 +183,15 @@ index() {
 # caller's directory. It may not exist yet. Fails for a path outside the repo.
 relative() {
   local path=$1
+  local dir
   case "$path" in
     /*) ;;
     *) path="$CALLER_DIR/$path" ;;
   esac
+  # Resolve symlinks in the part that exists, e.g. /tmp → /private/tmp on macOS.
+  dir=$path
+  while [ ! -d "$dir" ] && [ "$dir" != / ]; do dir=$(dirname "$dir"); done
+  path="$(cd "$dir" && pwd -P)${path#"$dir"}"
   path=$(printf '%s\n' "$path" | awk -F/ '{
     n = 0
     for (i = 1; i <= NF; i++) {

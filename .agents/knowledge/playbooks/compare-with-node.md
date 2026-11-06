@@ -50,7 +50,7 @@ Before you change a Dart API or behaviour, or port a feature, in either package.
 
 2. **Map Node's layout to Dart's.**
    - Files mirror Node module by module, kebab-case to snake_case: `src/auth/base-auth.ts` is `lib/src/auth/base_auth.dart`. `google_cloud_firestore/lib/src/` follows `dev/src/` the same way.
-   - Node's per-service request file, `*-api-request.ts` for Auth and Messaging or `*-api-client-internal.ts` for App Check, Functions and Security Rules, is split in two: `*_http_client.dart` for transport and `*_request_handler.dart` for validation.
+   - Node's per-service request file, `auth-api-request.ts` for Auth, `messaging-api-request-internal.ts` for Messaging, or `*-api-client-internal.ts` for App Check, Functions and Security Rules, is split in two: `*_http_client.dart` for transport and `*_request_handler.dart` for validation.
    - Node's hand-written endpoint paths, such as `/accounts:lookup`, mostly become methods of the generated `package:googleapis` client used in `*_http_client.dart`. The exceptions call their endpoints directly: FCM v1 topic subscriptions in `messaging_request_handler.dart`, the legacy IID topic calls in `messaging_http_client.dart`, App Check's `verifyAppCheckToken`, and Storage's `getDownloadURL`.
 
 3. **Pick the Node version.**

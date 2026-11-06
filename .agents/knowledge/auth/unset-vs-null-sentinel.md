@@ -68,7 +68,7 @@ The maintainers' stated reason is in the doc comment on `_Box`: "An object used 
 - **Must:** make the `_sentinel` default reachable for every clearable field on every public constructor. Don't declare these parameters as typed super-parameters (`String? super.displayName`), which drop the default and turn an omitted field into a clear.
 - **Must:** test that an omitted field sends no delete: no `deleteAttribute` entry and no `deleteProvider: ['phone']` for a field the caller didn't pass.
 - **Must not:** simplify these fields to plain nullable fields.
-- **Ask first:** before changing how the public `UpdateRequest` constructor exposes the three states. Its shape is an API decision for the maintainers.
+- **Ask first:** about the shape of the public `UpdateRequest` constructor when you fix or change it. The outcome above is required; how the constructor exposes the three states is an API decision for the maintainers.
 
 # Related
 

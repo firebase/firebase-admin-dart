@@ -61,7 +61,8 @@ Several signers were tried and replaced:
 # Rules for agents
 
 - **Must not:** require `serviceAccountCredentials` to sign. ADC and WIF sign through IAM.
-- **Must not:** reintroduce `jose` or a custom ASN.1 parser. JWT handling is consolidated on `dart_jsonwebtoken`.
+- **Must not:** reintroduce `jose`. JWT handling is consolidated on `dart_jsonwebtoken`.
+- **Should:** sign through `googleapis_auth` and `dart_jsonwebtoken` rather than a hand-written signer or ASN.1 parser, which the SDK no longer needs.
 - **Must not:** sign Auth custom tokens when the Auth emulator is enabled, as in Node.
 - **Ask first:** before changing whether App Check custom tokens are signed under the Auth emulator. Node signs them; why Dart doesn't isn't recorded.
 

@@ -38,7 +38,7 @@ Storage and the Firestore wrapper have neither file; they delegate to their pack
 The split isn't uniform:
 
 - Messaging's FCM v1 topic management builds URIs and calls `client.post` inside `messaging_request_handler.dart`.
-- `AuthHttpClient` validates many arguments inside its operations: emails, request types, page tokens and sizes, and tenant and provider IDs.
+- `AuthHttpClient` validates many arguments inside its operations: emails, request types, page tokens and sizes, and tenant IDs.
 - `FunctionsRequestHandler.enqueue` reads `_httpClient.client` directly to set up task authentication.
 - `MessagingHttpClient.invokeRequestHandler` reads `app.client` outside `_run` for the legacy IID calls.
 

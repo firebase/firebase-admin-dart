@@ -40,7 +40,7 @@ Node Firestore's validation throws a plain `Error`: `throw new Error(invalidArgu
 - `ArgumentError` for invalid arguments;[^argument-error]
 - `StateError` for invalid state, such as any request after `terminate()`.[^state-error]
 
-Transaction misuse (a read after a write, a write in a read-only transaction) and an invalid `desiredPartitionCount` throw `FirestoreException` (`failed-precondition`, `invalid-argument`) instead, where Node throws a plain `Error`.[^transaction-misuse]
+Transaction misuse (a read after a write, a write in a read-only transaction) and an invalid `desiredPartitionCount` throw `FirestoreException` instead (`FirestoreClientErrorCode.failedPrecondition` and `.invalidArgument`, codes `failed_precondition` and `invalid_argument`), where Node throws a plain `Error`.[^transaction-misuse]
 
 Validation messages are often Node's text verbatim, such as `Value for argument "latitude" is not a valid number`.[^geo-point] Backend failures are `FirestoreException`s.
 
