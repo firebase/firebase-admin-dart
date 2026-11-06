@@ -41,7 +41,7 @@ sources:
 # Why
 
 - The maintainers state the rule itself: lock files aren't checked in, which is also why Dependabot doesn't check Dart dependencies.
-- On overrides, the maintainers' stated reason: a release must not ship with an override in place, so a PR that needs one stays a draft until the dependency is released. The publish dry run doesn't catch an override (see below).
+- On overrides, the maintainers' stated reason: the package cannot be published with an override in place, so a PR that needs one stays a draft until the dependency is released. The publish dry run doesn't flag an override (see below), so this rests on review.
 - The likely reason for the daily run (not recorded): it is the early warning for new upstream releases.
 
 # Enforced by
