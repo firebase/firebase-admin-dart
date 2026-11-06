@@ -688,13 +688,13 @@ abstract class _AbstractAuthRequestHandler {
 
     final providerToLink = properties.providerToLink;
     if (providerToLink != null) {
-      if (providerToLink.providerId?.isNotEmpty ?? false) {
+      if (providerToLink.providerId?.isEmpty ?? true) {
         throw FirebaseAuthAdminException(
           AuthClientErrorCode.invalidArgument,
           'providerToLink.providerId of properties argument must be a non-empty string.',
         );
       }
-      if (providerToLink.uid?.isNotEmpty ?? false) {
+      if (providerToLink.uid?.isEmpty ?? true) {
         throw FirebaseAuthAdminException(
           AuthClientErrorCode.invalidArgument,
           'providerToLink.uid of properties argument must be a non-empty string.',

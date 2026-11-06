@@ -125,6 +125,123 @@ void main() {
       });
     });
 
+    group('providerToLink', () {
+      test('links a federated provider', () async {
+        final body = await _sentUpdate(
+          UpdateRequest(
+            providerToLink: UserProvider(
+              providerId: 'google.com',
+              uid: 'google-uid',
+            ),
+          ),
+        );
+
+        expect(body, {
+          'localId': _uid,
+          'linkProviderUserInfo': {
+            'providerId': 'google.com',
+            'rawId': 'google-uid',
+          },
+        });
+      });
+
+      test('links the phone provider by setting phoneNumber', () async {
+        final body = await _sentUpdate(
+          UpdateRequest(
+            displayName: 'Jane Doe',
+            providerToLink: UserProvider(
+              providerId: 'phone',
+              uid: '+15555550100',
+            ),
+          ),
+        );
+
+        expect(body, {
+          'localId': _uid,
+          'displayName': 'Jane Doe',
+          'phoneNumber': '+15555550100',
+        });
+      });
+
+      test('links the email provider by setting email', () async {
+        final body = await _sentUpdate(
+          UpdateRequest(
+            photoURL: null,
+            providerToLink: UserProvider(
+              providerId: 'email',
+              uid: 'jane@example.com',
+            ),
+          ),
+        );
+
+        expect(body, {
+          'localId': _uid,
+          'email': 'jane@example.com',
+          'deleteAttribute': ['PHOTO_URL'],
+        });
+      });
+
+      test('rejects phoneNumber together with a phone provider', () async {
+        final auth = _authWithoutBackend();
+
+        await expectLater(
+          auth.updateUser(
+            _uid,
+            UpdateRequest(
+              phoneNumber: '+15555550100',
+              providerToLink: UserProvider(
+                providerId: 'phone',
+                uid: '+15555550100',
+              ),
+            ),
+          ),
+          throwsA(_invalidArgument('UpdateRequest.phoneNumber')),
+        );
+      });
+
+      for (final (name, provider, message) in [
+        (
+          'missing providerId',
+          UserProvider(uid: 'google-uid'),
+          'providerToLink.providerId',
+        ),
+        (
+          'empty providerId',
+          UserProvider(providerId: '', uid: 'google-uid'),
+          'providerToLink.providerId',
+        ),
+        (
+          'missing uid',
+          UserProvider(providerId: 'google.com'),
+          'providerToLink.uid',
+        ),
+        (
+          'empty uid',
+          UserProvider(providerId: 'google.com', uid: ''),
+          'providerToLink.uid',
+        ),
+        (
+          'a phone provider without uid',
+          UserProvider(providerId: 'phone'),
+          'providerToLink.uid',
+        ),
+        (
+          'an email provider without uid',
+          UserProvider(providerId: 'email'),
+          'providerToLink.uid',
+        ),
+      ]) {
+        test('rejects $name', () async {
+          final auth = _authWithoutBackend();
+
+          await expectLater(
+            auth.updateUser(_uid, UpdateRequest(providerToLink: provider)),
+            throwsA(_invalidArgument(message)),
+          );
+        });
+      }
+    });
+
     group('providersToUnlink', () {
       test("unlinks the phone provider with ['phone']", () async {
         final body = await _sentUpdate(
@@ -148,6 +265,34 @@ void main() {
           throwsA(_invalidArgument("providersToUnlink=['phone']")),
         );
       });
+    });
+  });
+
+  group('UpdateRequest.copyWith', () {
+    test('keeps set, cleared and omitted fields', () {
+      final request = UpdateRequest(
+        displayName: 'Jane Doe',
+        photoURL: null,
+      ).copyWith(email: 'jane@example.com');
+
+      expect(request.email, 'jane@example.com');
+      expect(request.displayName?.value, 'Jane Doe');
+      expect(request.photoURL, isNotNull);
+      expect(request.photoURL?.value, isNull);
+      expect(request.phoneNumber, isNull);
+    });
+
+    test('sets and clears phoneNumber', () {
+      final request = UpdateRequest(phoneNumber: '+15555550100');
+
+      expect(request.copyWith().phoneNumber?.value, '+15555550100');
+      expect(
+        request.copyWith(phoneNumber: '+15555550199').phoneNumber?.value,
+        '+15555550199',
+      );
+      final cleared = request.copyWith(phoneNumber: null);
+      expect(cleared.phoneNumber, isNotNull);
+      expect(cleared.phoneNumber?.value, isNull);
     });
   });
 }
