@@ -30,6 +30,7 @@ import 'credential.dart';
 import 'firestore_exception.dart';
 import 'firestore_http_client.dart';
 import 'status_code.dart';
+import 'watch/listen_transport.dart';
 
 part 'aggregate.dart';
 part 'bulk_writer.dart';
@@ -76,6 +77,7 @@ part 'transaction.dart';
 part 'types.dart';
 part 'util.dart';
 part 'validate.dart';
+part 'watch/watch.dart';
 part 'write_batch.dart';
 
 /// Settings used to configure a Firestore instance.
