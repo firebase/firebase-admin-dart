@@ -1448,7 +1448,7 @@ void main() {
     }
 
     test('handles deleting a non-existent doc', () async {
-      // Skipped in Node; here the delete is a no-op that delivers nothing.
+      // The delete is a no-op that delivers nothing.
       final events = await start();
       await sendInitialSnapshot(events);
       backend
