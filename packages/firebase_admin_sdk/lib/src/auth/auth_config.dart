@@ -661,6 +661,10 @@ class _Box<T> {
     return _Box(value as T?);
   }
 
+  /// The inverse of [unwrap], to pass a box back to a constructor.
+  static Object? rewrap(_Box<Object?>? box) =>
+      box == null ? _sentinel : box.value;
+
   final T value;
 }
 
@@ -692,18 +696,24 @@ class CreateRequest extends _BaseUpdateRequest {
 /// Interface representing the properties to update on the provided user.
 class UpdateRequest extends _BaseUpdateRequest {
   /// Interface representing the properties to update on the provided user.
-  UpdateRequest({
-    super.disabled,
-    String? super.displayName,
-    super.email,
-    super.emailVerified,
-    super.password,
-    String? super.phoneNumber,
-    String? super.photoURL,
-    this.multiFactor,
-    this.providerToLink,
-    this.providersToUnlink,
-  });
+  ///
+  /// Omitted properties are left unchanged. Setting [displayName], [photoURL]
+  /// or [phoneNumber] to `null` deletes it from the user.
+  // Redirecting to UpdateRequest._ means an omitted displayName, phoneNumber
+  // or photoURL gets its `_sentinel` default (unchanged) rather than `null`
+  // (delete), while the parameters stay typed as String?.
+  factory UpdateRequest({
+    bool? disabled,
+    String? displayName,
+    String? email,
+    bool? emailVerified,
+    String? password,
+    String? phoneNumber,
+    String? photoURL,
+    MultiFactorUpdateSettings? multiFactor,
+    UserProvider? providerToLink,
+    List<String>? providersToUnlink,
+  }) = UpdateRequest._;
 
   UpdateRequest._({
     super.disabled,
@@ -737,23 +747,31 @@ class UpdateRequest extends _BaseUpdateRequest {
   /// Unlinks this user from the specified providers.
   final List<String>? providersToUnlink;
 
-  UpdateRequest Function({String? email, String? phoneNumber}) get copyWith {
-    return ({Object? email = _sentinel, Object? phoneNumber = _sentinel}) {
-      return UpdateRequest._(
-        disabled: disabled,
-        displayName: displayName,
-        email: email == _sentinel ? this.email : email as String?,
-        emailVerified: emailVerified,
-        password: password,
-        phoneNumber: phoneNumber == _sentinel
-            ? this.phoneNumber
-            : phoneNumber as String?,
-        photoURL: photoURL,
-        multiFactor: multiFactor,
-        providerToLink: providerToLink,
-        providersToUnlink: providersToUnlink,
-      );
-    };
+  UpdateRequest Function({String? email, String? phoneNumber}) get copyWith =>
+      _copyWith;
+
+  /// Backs [copyWith]. `updateUser` also uses it to drop [providerToLink]
+  /// once an email or phone provider has been moved to [email] or
+  /// [phoneNumber], as the Node.js SDK does.
+  UpdateRequest _copyWith({
+    Object? email = _sentinel,
+    Object? phoneNumber = _sentinel,
+    bool keepProviderToLink = true,
+  }) {
+    return UpdateRequest._(
+      disabled: disabled,
+      displayName: _Box.rewrap(displayName),
+      email: email == _sentinel ? this.email : email as String?,
+      emailVerified: emailVerified,
+      password: password,
+      phoneNumber: phoneNumber == _sentinel
+          ? _Box.rewrap(this.phoneNumber)
+          : phoneNumber as String?,
+      photoURL: _Box.rewrap(photoURL),
+      multiFactor: multiFactor,
+      providerToLink: keepProviderToLink ? providerToLink : null,
+      providersToUnlink: providersToUnlink,
+    );
   }
 }
 

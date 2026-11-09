@@ -762,10 +762,12 @@ abstract class _BaseAuth {
     // conflict could arise, e.g. if the user provides a phoneNumber property,
     // but also provides a providerToLink with a 'phone' provider id. In that
     // case, we'll throw an error.
+    // A provider without a uid is left for updateExistingAccount to reject:
+    // moving it would send phoneNumber: null, which deletes the phone number.
     var request = properties;
     final providerToLink = properties.providerToLink;
     switch (providerToLink) {
-      case UserProvider(providerId: 'email'):
+      case UserProvider(providerId: 'email', :final uid?) when uid.isNotEmpty:
         if (properties.email != null) {
           throw FirebaseAuthAdminException(
             AuthClientErrorCode.invalidArgument,
@@ -773,8 +775,8 @@ abstract class _BaseAuth {
             'link to the email/password provider, only specify the UpdateRequest.email field.',
           );
         }
-        request = properties.copyWith(email: providerToLink.uid);
-      case UserProvider(providerId: 'phone'):
+        request = properties._copyWith(email: uid, keepProviderToLink: false);
+      case UserProvider(providerId: 'phone', :final uid?) when uid.isNotEmpty:
         if (properties.phoneNumber != null) {
           throw FirebaseAuthAdminException(
             AuthClientErrorCode.invalidArgument,
@@ -782,7 +784,10 @@ abstract class _BaseAuth {
             'link to a phone provider, only specify the UpdateRequest.phoneNumber field.',
           );
         }
-        request = properties.copyWith(phoneNumber: providerToLink.uid);
+        request = properties._copyWith(
+          phoneNumber: uid,
+          keepProviderToLink: false,
+        );
     }
     final providersToUnlink = properties.providersToUnlink;
     if (providersToUnlink != null && providersToUnlink.contains('phone')) {
@@ -790,7 +795,7 @@ abstract class _BaseAuth {
       // phoneNumber to null *and* by setting providersToUnlink to include
       // 'phone', then we'll reject that. Though it might also be reasonable
       // to relax this restriction and just unlink it.
-      if (properties.phoneNumber == null) {
+      if (properties.phoneNumber case _Box(value: null)) {
         throw FirebaseAuthAdminException(
           AuthClientErrorCode.invalidArgument,
           "Both UpdateRequest.phoneNumber and UpdateRequest.providersToUnlink=['phone'] were set. To "
