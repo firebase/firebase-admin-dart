@@ -20,8 +20,7 @@ const _watchTargetId = 0x1;
 /// How long a watch stream may go without a response before it is reset.
 ///
 /// Under normal load the backend sends a `TargetChange` roughly every 30
-/// seconds, so a stream that is silent for this long is considered stalled
-/// (see googleapis/nodejs-firestore#1057).
+/// seconds, so a stream that is silent for this long is considered stalled.
 @internal
 const watchIdleTimeout = Duration(seconds: 120);
 
@@ -76,12 +75,12 @@ final class WatchSnapshot<T> {
 /// Listens to a single document or query over a `Listen` stream and turns the
 /// backend's change stream into consistent [WatchSnapshot]s.
 ///
-/// Port of the Node SDK's `Watch` (`dev/src/watch.ts`). Listening to
-/// [snapshots] opens the stream; cancelling the subscription closes it. The
-/// stream is re-opened with the last resume token after a retryable error or
-/// an unexpected end, backing off between attempts. A permanent error, a
-/// target removed by the backend, or running out of retries is delivered as
-/// the single error event of [snapshots], which then closes.
+/// Listening to [snapshots] opens the stream; cancelling the subscription
+/// closes it. The stream is re-opened with the last resume token after a
+/// retryable error or an unexpected end, backing off between attempts. A
+/// permanent error, a target removed by the backend, or running out of
+/// retries is delivered as the single error event of [snapshots], which then
+/// closes.
 ///
 /// The project ID must be resolved before [snapshots] is listened to: the
 /// database name and the target are built synchronously each time a stream
@@ -339,12 +338,12 @@ final class Watch<T> {
     if (_isActive && !_isPermanentWatchError(error)) {
       _lastRetryableError = (error, stackTrace);
       if (_resumeToken == null) {
-        // Deliberately diverges from Node, which always clears the pending
-        // changes here. Without a resume token the new stream re-sends the
-        // whole result set, so the documents it no longer contains must
-        // still be removed: keep them all marked removed, as RESET and an
-        // existence filter mismatch do, instead of dropping those removals
-        // and leaving stale documents in the next snapshot.
+        // The pending changes are deliberately not cleared here. Without a
+        // resume token the new stream re-sends the whole result set, so the
+        // documents it no longer contains must still be removed: keep them
+        // all marked removed, as RESET and an existence filter mismatch do,
+        // instead of dropping those removals and leaving stale documents in
+        // the next snapshot.
         _resetDocs();
       } else {
         _changeMap.clear();
@@ -449,9 +448,9 @@ final class Watch<T> {
           );
       }
 
-      // As in Node, every target change, including one that just failed the
-      // watch, falls through to the resume token check. After a failure the
-      // watch is already stopped, so resetting the backoff there is a no-op.
+      // Every target change, including one that just failed the watch, falls
+      // through to the resume token check. After a failure the watch is
+      // already stopped, so resetting the backoff there is a no-op.
       if (change.resumeToken.isNotEmpty &&
           _affectsTarget(change.targetIds, _watchTargetId)) {
         _backoff.reset();
