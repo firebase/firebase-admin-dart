@@ -66,7 +66,7 @@ Several signers were tried and replaced:
 # Rules for agents
 
 - **Must not:** require `serviceAccountCredentials` to sign. ADC and WIF sign through IAM.
-- **Must not:** reintroduce `jose`. JWT handling is consolidated on `dart_jsonwebtoken`; see [Keep the dependency set small](/dependencies/minimal-dependencies.md).
+- **Must not:** reintroduce `jose`. JWT handling is consolidated on `dart_jsonwebtoken`; see [Keep the dependency set small](/dependencies/dependency-set.md).
 - **Should:** sign through `app.sign()`, which uses `googleapis_auth` (the local key, or IAM `signBlob`), rather than a hand-written signer or ASN.1 parser, which the SDK doesn't need.
 - **Must not:** sign Auth custom tokens when the Auth emulator is enabled, as in Node.
 - **Ask first:** before changing whether App Check custom tokens are signed under the Auth emulator. Node signs them; why Dart doesn't isn't recorded.
@@ -74,9 +74,9 @@ Several signers were tried and replaced:
 # Related
 
 - [Generic Google-auth features live upstream, not in this repo](/architecture/upstream-generic-auth-features.md)
-- [Credential is a sealed class with factories](/app/credential-sealed-hierarchy.md)
+- [Credential: sealed class, factories and discovery](/app/credentials.md)
 - [Verifying ID tokens, session cookies and App Check tokens](/auth/jwt-verification.md)
-- [Keep the dependency set small](/dependencies/minimal-dependencies.md)
+- [Small dependency set, no lockfiles or overrides](/dependencies/dependency-set.md)
 
 [^auth-token-generator]: Auth's token generator
 [^app-check-token-generator]: App Check's token generator

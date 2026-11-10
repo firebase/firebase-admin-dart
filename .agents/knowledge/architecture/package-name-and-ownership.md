@@ -47,7 +47,7 @@ Why this name was chosen over others isn't recorded; ask a maintainer. The rule 
 # Related
 
 - [Apache-2.0 header on every source file](/conventions/license-headers.md)
-- [Releases are manual and done by Google maintainers](/release/release-process.md)
+- [Releases, versioning, CHANGELOG and version.g.dart](/release/releases-and-versioning.md)
 
 [^pubspec-name]: The package name in the pubspec
 [^header-template]: `scripts/header_template.txt`

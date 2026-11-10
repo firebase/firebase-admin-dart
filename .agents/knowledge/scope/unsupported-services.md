@@ -69,9 +69,9 @@ Mostly unknown. The likely reason (not recorded): the supported set follows the 
 
 # Related
 
-- [No realtime listeners](/firestore/no-realtime-listeners.md)
+- [Firestore runs over REST: buffered streams, no listeners](/firestore/rest-transport.md)
 - [Admin services use generated REST clients](/architecture/generated-rest-clients.md)
-- [No FID message targets](/messaging/fid-targets.md)
+- [Messaging: no FID targets, topic management on FCM v1](/messaging/node-differences.md)
 - [Product libraries, parts and barrel exports](/conventions/product-libraries-and-barrels.md)
 
 [^node-database]: Node's `@firebase/database-compat` dependency

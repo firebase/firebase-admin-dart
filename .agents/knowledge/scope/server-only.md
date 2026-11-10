@@ -61,8 +61,8 @@ Web support for test setups was requested and declined; the maintainers suggeste
 
 # Related
 
-- [Resolvable in Flutter workspaces and for firebase_functions](/dependencies/flutter-and-functions-consumers.md)
-- [Storage emulator host set in the native process environment](/environment/storage-emulator-native-env.md)
+- [Dependency constraints: bounds, consumers and the SDK floor](/dependencies/constraints.md)
+- [Storage wraps google_cloud_storage; emulator via native env](/storage/google-cloud-storage-wrapper.md)
 
 [^admin-readme]: The README's server framing
 [^admin-dart-io]: `dart:io` in the admin SDK

@@ -63,7 +63,7 @@ The maintainers' stated reason is to align with the Node.js Admin SDK, where Fir
 
 # Related
 
-- [Credential is a sealed class with factories](/app/credential-sealed-hierarchy.md), which owns the rule to update `app.firestore()`'s mapping when the admin SDK gains a `Credential` subtype
+- [Credential: sealed class, factories and discovery](/app/credentials.md), which owns the rule to update `app.firestore()`'s mapping when the admin SDK gains a `Credential` subtype
 - [Firestore runs over REST, with buffered streaming](/firestore/rest-transport.md)
 - [Firestore errors](/errors/firestore-exception.md)
 - [One cached Firestore per database, settings fixed](/firestore/multi-database.md)

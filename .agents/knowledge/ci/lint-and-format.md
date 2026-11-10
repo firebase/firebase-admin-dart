@@ -71,9 +71,8 @@ Why the format and `--fatal-infos` checks run only on dev, and why `example_serv
 
 # Related
 
-- [Minimum Dart SDK](/dependencies/min-dart-sdk.md)
-- [Dependency constraint style](/dependencies/constraint-style.md)
-- [No committed lockfiles or dependency overrides](/dependencies/no-lockfiles-or-overrides.md)
+- [Dependency constraints: bounds, consumers and the SDK floor](/dependencies/constraints.md)
+- [Small dependency set, no lockfiles or overrides](/dependencies/dependency-set.md)
 
 [^lint-job]: The `lint` job in `build.yml`
 [^fatal-infos]: `--fatal-infos` in the `lint` job

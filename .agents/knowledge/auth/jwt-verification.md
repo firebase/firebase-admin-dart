@@ -73,7 +73,7 @@ Consolidating the key fetchers and clock-skew handling into one shared verifier 
 # Related
 
 - [Generic Google-auth features live upstream](/architecture/upstream-generic-auth-features.md)
-- [Resolvable in Flutter workspaces and for firebase_functions](/dependencies/flutter-and-functions-consumers.md)
+- [Dependency constraints: bounds, consumers and the SDK floor](/dependencies/constraints.md)
 
 [^jsonwebtoken-dependency]: The `dart_jsonwebtoken` dependency
 [^url-key-fetcher]: `UrlKeyFetcher` and its optional `http.Client`

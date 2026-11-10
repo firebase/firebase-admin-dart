@@ -57,8 +57,8 @@ The likely reason (not recorded): Google maintains those packages, so the featur
 
 - [Sign locally with the key, else through IAM signBlob](/app/signing.md)
 - [Verifying ID tokens, session cookies and App Check tokens](/auth/jwt-verification.md)
-- [Keep the dependency set small](/dependencies/minimal-dependencies.md)
-- [Credential is a sealed class with factories](/app/credential-sealed-hierarchy.md)
+- [Small dependency set, no lockfiles or overrides](/dependencies/dependency-set.md)
+- [Credential: sealed class, factories and discovery](/app/credentials.md)
 
 [^googleapis-auth-dependency]: The `googleapis_auth` dependency
 [^google-cloud-dependency]: The `google_cloud` dependency

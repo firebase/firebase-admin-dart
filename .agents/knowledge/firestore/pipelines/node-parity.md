@@ -130,7 +130,7 @@ The maintainers' stated reasons are in the tool READMEs, the test-file headers a
 - [Firestore runs over REST, with buffered streaming](/firestore/rest-transport.md), which owns why `pipeline.stream()` can't stream incrementally
 - [Firestore follows Node, with a few FlutterFire look-alikes](/firestore/node-not-flutterfire.md), for the FlutterFire-style aliases
 - [Dart idioms win where Node's shape does not fit](/architecture/dart-idioms-over-node-shapes.md), for renames, option objects and JS Web SDK names
-- [Prod and WIF test runs](/tests/prod-and-wif.md)
+- [Test tiers and tags, and the prod and WIF runs](/tests/tiers-and-tags.md)
 - [The publish dry run must pass for both packages](/release/publish-dry-run.md)
 
 [^golden-test]: The golden wire-format test

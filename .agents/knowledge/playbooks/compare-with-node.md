@@ -74,14 +74,14 @@ Before you change a Dart API or behaviour, or port a feature, in either package.
 
 7. **When Node has a feature and Dart doesn't, it is a gap, unless a concept marks it deliberate.** A difference is an idiom, a transport limit, a deliberate omission, a gap, a Dart-only addition, unclear, or a Node bug not copied (Dart sends something else on purpose because the backend rejects what Node sends). Check the Divergence concepts, then ask a maintainer before you call a feature out of scope. Never "fix" a Node bug not copied back to Node's behaviour.
 
-8. **Check the concepts most often "fixed" the wrong way:** [no realtime listeners](/firestore/no-realtime-listeners.md); [Pipelines parity with Node](/firestore/pipelines/node-parity.md), for the Node bugs not copied and the Pipeline surface; [admin exceptions](/errors/admin-exceptions.md) and [Firestore errors](/errors/firestore-exception.md); [unset versus null in Auth updates](/auth/unset-vs-null-sentinel.md); [service access](/app/service-access.md); [Dart idioms over Node's shapes](/architecture/dart-idioms-over-node-shapes.md), for overloads, rest parameters and unions; [the standalone Firestore package](/firestore/standalone-package.md); [emulator detection](/environment/emulator-detection.md). Then [`Timestamp`](/firestore/timestamp.md) and [acronym casing](/conventions/acronym-casing.md).
+8. **Check the concepts most often "fixed" the wrong way:** [no realtime listeners](/firestore/rest-transport.md); [Pipelines parity with Node](/firestore/pipelines/node-parity.md), for the Node bugs not copied and the Pipeline surface; [admin exceptions](/errors/admin-exceptions.md) and [Firestore errors](/errors/firestore-exception.md); [unset versus null in Auth updates](/auth/unset-vs-null-sentinel.md); [service access](/app/service-access.md); [Dart idioms over Node's shapes](/architecture/dart-idioms-over-node-shapes.md), for overloads, rest parameters and unions; [the standalone Firestore package](/firestore/standalone-package.md); [emulator detection](/environment/emulator-detection.md). Then [`Timestamp`](/firestore/timestamp.md) and [acronym casing](/conventions/acronym-casing.md).
 
 # Related
 
 - [Port of the Node.js Admin SDK](/architecture/node-port.md)
 - [Pipelines parity with Node](/firestore/pipelines/node-parity.md)
 - [Firebase services Node has and Dart does not](/scope/unsupported-services.md)
-- [No realtime listeners](/firestore/no-realtime-listeners.md)
+- [Firestore runs over REST: buffered streams, no listeners](/firestore/rest-transport.md)
 
 [^parity-test]: `test/pipeline_api_parity_test.dart`
 [^golden-test]: `test/pipeline_golden_test.dart`

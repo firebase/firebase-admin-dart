@@ -77,7 +77,7 @@ Why Node's error extras aren't ported isn't recorded.
 # Rules for agents
 
 - **Must:** match Node for code strings, messages and when each is thrown, where applicable.
-- **Ask first:** before changing a place where Dart knowingly differs, such as [re-initializing an app with a different credential](/app/reinit-ignores-credential.md), or [the `app/` prefix in the Firestore wrapper](/firestore/multi-database.md).
+- **Ask first:** before changing a place where Dart knowingly differs, such as [re-initializing an app with a different credential](/app/lifecycle.md), or [the `app/` prefix in the Firestore wrapper](/firestore/multi-database.md).
 - **Must:** keep Dart's class shape: an enum per service, and `implements Exception`.
 - **Must:** map from the server's error code. Fall back to the HTTP status only when the response carries none, as Node does (see the non-JSON branch in `messaging/fmc_exception.dart`).
 - **Must not:** remove codes that exist in Node.
@@ -88,7 +88,7 @@ Why Node's error extras aren't ported isn't recorded.
 # Related
 
 - [Firestore errors: FirestoreException, and Errors for misuse](/errors/firestore-exception.md)
-- [Re-initializing an app ignores a different credential](/app/reinit-ignores-credential.md)
+- [Node-style app lifecycle and registry](/app/lifecycle.md)
 - [One cached Firestore per database, settings fixed](/firestore/multi-database.md)
 
 [^admin-exception]: `FirebaseAdminException`

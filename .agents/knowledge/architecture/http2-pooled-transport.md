@@ -49,10 +49,9 @@ Alternatives that were tried or rejected:
 
 # Related
 
-- [Public authenticated app client and transport options](/app/app-client-and-transport-options.md)
+- [App HTTP client: public access, ownership and lazy creation](/app/http-clients.md)
 - [Firestore is a standalone package](/firestore/standalone-package.md)
 - [Firestore runs over REST, with buffered streaming](/firestore/rest-transport.md)
-- [No realtime listeners](/firestore/no-realtime-listeners.md)
 
 [^admin-transport]: The app client's transport
 [^firestore-transport]: Firestore's transport

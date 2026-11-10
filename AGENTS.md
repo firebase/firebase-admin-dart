@@ -37,7 +37,7 @@ Each rule links to the concept that explains it.
   - Map from the server's error code, and fall back to the HTTP status only when there is none.
   - Don't remove codes Node has. Don't throw a bare `Exception` in new code. Use `rethrow`, not `throw e`.
 - **Libraries and barrels.** Follow the layout of the product you're editing. When you add a public name, check how its barrel exports it (`hide`, `show` or a plain re-export), so that exporting it is deliberate. Never export transport, request-handler or generated-client types. `lib/functions.dart` already exports `FunctionsHttpClient` and `FunctionsRequestHandler`; ask before hiding them, because removing an export is a breaking change. [More](.agents/knowledge/conventions/product-libraries-and-barrels.md)
-- **Dependencies.** [More](.agents/knowledge/dependencies/flutter-and-functions-consumers.md)
+- **Dependencies.** [Constraints](.agents/knowledge/dependencies/constraints.md), [dependency set](.agents/knowledge/dependencies/dependency-set.md)
   - The packages must keep resolving in Flutter workspaces and for `firebase_functions`.
   - Don't raise the lower bounds of Flutter-pinned packages (`meta`, `collection`, `intl`) above what stable Flutter pins.
   - Ask before adding a runtime dependency.
@@ -45,21 +45,21 @@ Each rule links to the concept that explains it.
   - Tag tests that need an emulator or credentials, so they stay out of the default run.
   - Unit-test services by injecting doubles through their `@internal` factories. A mock `AppOptions.httpClient` never reaches Firestore, and Storage needs extra care; see the helpers concept.
   - Build emulator tests on the guarded helpers in `test/fixtures/`.
-- **Credentials.** Never run `-P prod` or `-P wif` unless the user asks and supplies credentials. Never write credentials into the repo, logs or fixtures. [More](.agents/knowledge/tests/prod-and-wif.md)
-- **CHANGELOG.** [More](.agents/knowledge/release/versioning-and-changelog.md)
+- **Credentials.** Never run `-P prod` or `-P wif` unless the user asks and supplies credentials. Never write credentials into the repo, logs or fixtures. [More](.agents/knowledge/tests/tiers-and-tags.md)
+- **CHANGELOG.** [More](.agents/knowledge/release/releases-and-versioning.md)
   - Add an entry for every user-visible change, under the package's top heading: `## X.Y.Z-wip` for `firebase_admin_sdk`, `## Unreleased` for `google_cloud_firestore`. The PR template's example heading is wrong.
   - Never add a numbered release heading.
   - If the admin package has no `-wip` heading, bump to the next patch `-wip` and regenerate `version.g.dart` (below).
-- **Releases.** Never publish, tag, or prepare a release unless the user asks. [More](.agents/knowledge/release/release-process.md)
+- **Releases.** Never publish, tag, or prepare a release unless the user asks. [More](.agents/knowledge/release/releases-and-versioning.md)
 - **License header.** Every new `.dart` file, Dockerfile and `.mjs` file starts with the text in `scripts/header_template.txt`, except `*.g.dart` files. [More](.agents/knowledge/conventions/license-headers.md)
 - **Lint and format.** Keep to the one root `analysis_options.yaml`. Don't add per-package options or disable rules. [More](.agents/knowledge/ci/lint-and-format.md)
-- **Commits and PRs.** [Titles](.agents/knowledge/contributing/commit-and-pr-titles.md), [template](.agents/knowledge/contributing/pr-template-and-review.md)
+- **Commits and PRs.** [More](.agents/knowledge/contributing/pull-requests.md)
   - PR titles, and the commit of a single-commit PR, are Conventional Commits (`type(scope): summary`).
   - Fill in the PR template, but never tick the CLA box for the user.
 
 ## Generated files: don't edit by hand
 
-- `packages/firebase_admin_sdk/lib/src/version.g.dart`: run `scripts/gen-version.sh` after changing the admin version. [More](.agents/knowledge/generated/version-g-dart.md)
+- `packages/firebase_admin_sdk/lib/src/version.g.dart`: run `scripts/gen-version.sh` after changing the admin version. [More](.agents/knowledge/release/releases-and-versioning.md)
 - The Pipeline golden fixtures and the Node API snapshot in `google_cloud_firestore`: regenerate them with their tools. [More](.agents/knowledge/firestore/pipelines/node-parity.md)
 
 ## Knowledge base

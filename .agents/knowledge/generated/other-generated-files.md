@@ -47,7 +47,7 @@ sources:
 # Constraint
 
 - The root `README.md` is a symlink to the admin package README.
-- The task-queue fixture's compiled `lib/index.js` and its source map are committed. `scripts/coverage.sh` and CONTRIBUTING's emulator setup rebuild them and run `npm install` in the fixture, which can leave a rebuild-only diff and lockfile churn (see [No committed lockfiles or overrides](/dependencies/no-lockfiles-or-overrides.md)).
+- The task-queue fixture's compiled `lib/index.js` and its source map are committed. `scripts/coverage.sh` and CONTRIBUTING's emulator setup rebuild them and run `npm install` in the fixture, which can leave a rebuild-only diff and lockfile churn (see [No committed lockfiles or overrides](/dependencies/dependency-set.md)).
 - The API reference is the dartdoc on pub.dev. No workflow builds or deploys docs. The repo's GitHub Pages site is the last deployment of an earlier docs workflow that was dropped, and nothing updates it.
 - Nothing checks that a public API has dartdoc; the lints check only the references inside it.
 
@@ -69,10 +69,10 @@ sources:
 
 # Related
 
-- [No committed lockfiles or dependency overrides](/dependencies/no-lockfiles-or-overrides.md)
+- [Small dependency set, no lockfiles or overrides](/dependencies/dependency-set.md)
 - [Inject test doubles and use the guarded emulator helpers](/tests/helpers-and-injection.md)
 - [The pub workspace, melos and local setup](/repo/workspace-and-melos.md)
-- [version.g.dart is generated from the pubspec](/generated/version-g-dart.md)
+- [Releases, versioning, CHANGELOG and version.g.dart](/release/releases-and-versioning.md)
 
 [^fixture-source]: The fixture's TypeScript source
 [^compiled-fixture]: The compiled task-queue fixture

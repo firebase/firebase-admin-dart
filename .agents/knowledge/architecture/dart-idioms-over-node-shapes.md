@@ -91,11 +91,11 @@ Outside the parity test, the general rule isn't stated anywhere; it is inferred 
 
 - [Port of the Node.js Admin SDK](/architecture/node-port.md)
 - [Pipelines parity with Node is checked by machine](/firestore/pipelines/node-parity.md)
-- [Credential is a sealed class with factories](/app/credential-sealed-hierarchy.md)
+- [Credential: sealed class, factories and discovery](/app/credentials.md)
 - [Firestore runs over REST, with buffered streaming](/firestore/rest-transport.md)
-- [No field-value-pairs form of update()](/firestore/update-field-value-pairs.md)
+- [Firestore gaps: ignoreUndefinedProperties, update() pairs](/firestore/known-gaps.md)
 - [URL casing; JSON keys stay Node's](/conventions/acronym-casing.md)
-- [Public authenticated app client and transport options](/app/app-client-and-transport-options.md)
+- [App HTTP client: public access, ownership and lazy creation](/app/http-clients.md)
 
 [^parity-options-rule]: The parity test's mapping rules
 [^parity-string-union]: The parity test's string-union rule

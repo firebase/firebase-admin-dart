@@ -67,9 +67,8 @@ The likely reason the listed failures block CI (not recorded): the dry run exits
 
 # Related
 
-- [version.g.dart is generated from the pubspec](/generated/version-g-dart.md)
-- [No committed lockfiles or dependency overrides](/dependencies/no-lockfiles-or-overrides.md)
-- [Releases are manual and done by Google maintainers](/release/release-process.md)
+- [Releases, versioning, CHANGELOG and version.g.dart](/release/releases-and-versioning.md)
+- [Small dependency set, no lockfiles or overrides](/dependencies/dependency-set.md)
 - [Inject test doubles and use the guarded emulator helpers](/tests/helpers-and-injection.md)
 
 [^publish-job]: The `publish` job

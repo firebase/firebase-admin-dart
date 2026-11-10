@@ -50,7 +50,7 @@ sources:
 # Constraint
 
 - A plain `dart pub get` at the repo root resolves the whole workspace, and is enough to develop.
-- CONTRIBUTING.md installs melos globally; that's optional, since `dart run melos …` works from the root dev dependency, though CI uses the global install. What `melos bootstrap` regenerates is in [version.g.dart is generated from the pubspec](/generated/version-g-dart.md).
+- CONTRIBUTING.md installs melos globally; that's optional, since `dart run melos …` works from the root dev dependency, though CI uses the global install. What `melos bootstrap` regenerates is in [version.g.dart is generated from the pubspec](/release/releases-and-versioning.md).
 - `firebase_admin_sdk` depends on `google_cloud_firestore` by version range. Inside the workspace, that range resolves to the local package, so a lower bound that is too low doesn't show up locally.
 - The Pipeline tools need the Node.js version in their `engines` field, which CONTRIBUTING.md's prerequisites don't list.
 
@@ -62,18 +62,17 @@ sources:
 # Rules for agents
 
 - **Must:** to add a package, list it in `workspace:` in the root pubspec, give it `resolution: workspace`, and make sure a coverage script writes a `coverage.lcov` in it.
-- **Must:** when `firebase_admin_sdk` starts using a new `google_cloud_firestore` API, raise its lower bound on `google_cloud_firestore`. What that means for the release is in [the release process](/release/release-process.md).
+- **Must:** when `firebase_admin_sdk` starts using a new `google_cloud_firestore` API, raise its lower bound on `google_cloud_firestore`. What that means for the release is in [the release process](/release/releases-and-versioning.md).
 - **Must not:** add path dependencies or `pubspec_overrides.yaml` to link packages.
 - **Should:** install a missing tool only when the user asks, following CONTRIBUTING.md's setup sections.
-- **Must not:** set up or create credentials (see [Prod and WIF test runs](/tests/prod-and-wif.md)).
+- **Must not:** set up or create credentials (see [Prod and WIF test runs](/tests/tiers-and-tags.md)).
 
 # Related
 
-- [version.g.dart is generated from the pubspec](/generated/version-g-dart.md)
-- [Releases are manual and done by Google maintainers](/release/release-process.md)
+- [Releases, versioning, CHANGELOG and version.g.dart](/release/releases-and-versioning.md)
 - [Other generated, compiled or mirrored files, and API docs](/generated/other-generated-files.md)
-- [What CI runs, the coverage gate, and what gates merging](/ci/trigger-matrix.md)
-- [Minimum Dart SDK](/dependencies/min-dart-sdk.md)
+- [CI workflows: what runs, what gates merging, hardening](/ci/workflows.md)
+- [Dependency constraints: bounds, consumers and the SDK floor](/dependencies/constraints.md)
 
 [^workspace-members]: `workspace:` in the root pubspec
 [^melos-config]: Melos in the root pubspec

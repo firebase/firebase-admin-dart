@@ -5,7 +5,7 @@ description: Updates the knowledge base in .agents/knowledge (an Open Knowledge 
 
 # Update the knowledge base
 
-`.agents/knowledge/` holds one concept per architectural decision, per divergence from the Node.js Admin SDK, and per repository constraint. Agents read a concept before editing the files it `governs`. A concept that no longer matches the code misleads every agent after you, so fix it in the same PR as the change.
+`.agents/knowledge/` holds concepts: the architectural decisions, divergences from the Node.js Admin SDK, and repository constraints. Topics that govern the same files and are read together share one concept. Agents read a concept before editing the files it `governs`. A concept that no longer matches the code misleads every agent after you, so fix it in the same PR as the change.
 
 The code and its docs are the source of truth. A concept holds only what they don't say: the why, what Node.js does, rules that span files, process that isn't in the code, traps, and rejected alternatives. For everything else, it points to where the knowledge lives.
 
@@ -15,7 +15,7 @@ The code and its docs are the source of truth. A concept holds only what they do
 ./scripts/knowledge.sh for <each path you changed>
 ```
 
-Read each concept listed. If your change makes anything in one untrue, edit it. If your change is a new decision, divergence or constraint that an agent could get wrong, add a concept.
+Read each concept listed. If your change makes anything in one untrue, edit it. If your change is a new decision, divergence or constraint that an agent could get wrong, add it to the concept that already governs those files, as a `## <topic>` subsection under each section, or add a concept if none fits.
 
 ## 2. Edit or add a concept
 
@@ -34,7 +34,7 @@ Copy the shape of an existing concept of the same `type`. Keep the frontmatter's
     - No line numbers and no commit SHAs.
 - **Don't restate what the code says.** If the code, its dartdoc, a README, CONTRIBUTING.md or a workflow already says it (lists of fields, codes, files, jobs or steps; what a function does; a value), add a source and point to it instead. A copy drifts; a pointer is checked.
 - **Body sections:** every concept starts with `# Where it lives`:
-  - 1 to 5 bullets, each written as "what — `symbol` in `file`" and footnoted to a source.
+  - 1 to 5 bullets per topic, each written as "what — `symbol` in `file`" and footnoted to a source.
   - The first bullet names what enforces the rule, if anything: "Enforced by: `<test, job, lint or table>`", or "Enforced by: nothing; review only."
 
   Then, by type:
@@ -57,13 +57,11 @@ Copy the shape of an existing concept of the same `type`. Keep the frontmatter's
 
 A reversed decision isn't deleted. Set `status: deprecated`, say what replaced it, and link the new concept, so agents don't re-propose the old way. Remove its `governs` globs, so `for` stops listing it, and keep only the `sources` that still exist, or drop `sources` entirely.
 
-## 3. Regenerate, log and check
+## 3. Regenerate and check
 
 ```bash
 ./scripts/knowledge.sh index   # rewrites index.md from the frontmatter
 ./scripts/knowledge.sh check   # what CI runs
 ```
-
-Add a line under today's date at the top of `.agents/knowledge/log.md`, for example `* **Update**: [Title](/area/concept.md) now covers …`.
 
 If the concept is `agents_md: always`, check that AGENTS.md's rule still matches it.

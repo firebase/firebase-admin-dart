@@ -58,7 +58,7 @@ Rejected alternative: shell scripts that set variables around `dart test`. Zones
 # Related
 
 - [Emulators found only through standard environment variables](/environment/emulator-detection.md)
-- [Storage emulator host set in the native process environment](/environment/storage-emulator-native-env.md)
+- [Storage wraps google_cloud_storage; emulator via native env](/storage/google-cloud-storage-wrapper.md)
 - [One fixed project-ID resolution order](/app/project-id-resolution.md)
 - [Inject test doubles and use the guarded emulator helpers](/tests/helpers-and-injection.md)
 

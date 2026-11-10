@@ -63,7 +63,7 @@ Why a user-supplied client and the Auth, Functions and Storage emulator clients 
 
 # Related
 
-- [version.g.dart is generated from the pubspec](/generated/version-g-dart.md)
+- [Releases, versioning, CHANGELOG and version.g.dart](/release/releases-and-versioning.md)
 - [Firestore is a standalone package](/firestore/standalone-package.md)
 
 [^firebase-client-tag]: The header values in `utils.dart`

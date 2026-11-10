@@ -1,13 +1,16 @@
 ---
 type: Divergence
-title: Firestore runs over REST, with buffered streaming
-description: Node's Firestore uses gRPC by default, while Dart's uses only REST through the generated `google_cloud_firestore_v1` client, which has no bidirectional RPC and buffers every server-streaming response, so Node's `Readable` APIs aren't ported.
-tags: [firestore, transport, async, node-parity]
+title: "Firestore runs over REST: buffered streams, no listeners"
+description: "Node's Firestore uses gRPC by default, while Dart's uses only REST through the generated `google_cloud_firestore_v1` client, which buffers every server-streaming response, so Node's `Readable` APIs are not ported, and has no bidirectional `Listen` RPC, so realtime listeners are a transport limit and a gap, not out of scope."
+tags: [firestore, transport, async, node-parity, realtime]
 agents_md: when-touching
 governs:
   - packages/google_cloud_firestore/lib/src/**
   - packages/google_cloud_firestore/pubspec.yaml
   - packages/firebase_admin_sdk/lib/src/app/app_options.dart
+  - packages/google_cloud_firestore/lib/src/reference/**
+  - packages/google_cloud_firestore/lib/src/firestore_http_client.dart
+  - packages/firebase_admin_sdk/pubspec.yaml
 sources:
   - id: v1-dependency
     resource: ../../../packages/google_cloud_firestore/pubspec.yaml
@@ -41,6 +44,26 @@ sources:
     resource: https://github.com/googleapis/google-cloud-node/blob/main/handwritten/firestore/dev/src/pipelines/pipelines.ts
     symbol: "stream(): NodeJS.ReadableStream"
     title: Node's `pipeline.stream()`
+  - id: query-todo
+    resource: ../../../packages/google_cloud_firestore/lib/src/reference/query.dart
+    symbol: // TODO onSnapshot
+    title: The `onSnapshot` TODO on `Query`
+  - id: document-todo
+    resource: ../../../packages/google_cloud_firestore/lib/src/reference/document_reference.dart
+    symbol: // TODO snapshots
+    title: The snapshots TODO on `DocumentReference`
+  - id: http2-constraint
+    resource: ../../../packages/google_cloud_firestore/pubspec.yaml
+    symbol: "http2:"
+    title: The `http2` major the HTTP/2 pool needs
+  - id: node-on-snapshot
+    resource: https://github.com/googleapis/google-cloud-node/blob/main/handwritten/firestore/types/firestore.d.ts
+    symbol: onSnapshot(
+    title: Node's `onSnapshot()` declarations
+  - id: admin-node-index
+    resource: https://github.com/firebase/firebase-admin-node/blob/main/src/firestore/index.ts
+    symbol: QuerySnapshot
+    title: Node's Admin SDK re-exports `Query` and `QuerySnapshot` from `@google-cloud/firestore`
 ---
 
 # Where it lives
@@ -50,12 +73,22 @@ sources:
 - Buffered server streaming: the `postStreaming(…, enableSse: false)` calls in `google_cloud_firestore_v1`'s generated `api.g.dart`.[^generated-api]
 - The emulator transport: the `Plain HTTP/1.1, matching nodejs-firestore's REST mode` comment in `firestore_http_client.dart`.[^firestore-http-client]
 - The unported streaming APIs: `// TODO stream` in `query.dart`,[^query-stream-todo] and `'Pipeline.stream'` in `_pendingFixes` in `pipeline_api_parity_test.dart`.[^parity-pipeline-stream]
+- The missing listener APIs: `// TODO onSnapshot` in `query.dart`[^query-todo] and `// TODO snapshots` in `document_reference.dart`.[^document-todo]
+- The `http2` major that rules out `package:grpc`: `http2:` in each package's `pubspec.yaml`.[^http2-constraint]
 
 # Node.js
 
+## REST transport and buffered streaming
+
 Node's Firestore uses gRPC by default. With `Settings.preferRest` it uses HTTP/1.1 REST until a call needs gRPC, and the only call that does is a snapshot listener.[^node-prefer-rest] Its `Readable` APIs, `query.stream()`, `explainStream()` and `pipeline.stream()`, yield results as they arrive.[^node-pipeline-stream]
 
+## No realtime listeners (onSnapshot)
+
+Node's Admin SDK re-exports `@google-cloud/firestore`, so it has realtime listeners.[^admin-node-index] `DocumentReference`, `Query` and `CollectionReference` all have `onSnapshot`.[^node-on-snapshot] Listeners run over the bidirectional gRPC `Listen` RPC, through the `Watch` class.
+
 # Dart
+
+## REST transport and buffered streaming
 
 Dart's Firestore uses REST only, through Google's generated `google_cloud_firestore_v1` client rather than the `googleapis` discovery client. It doesn't depend on `grpc`.[^v1-dependency]
 
@@ -67,31 +100,49 @@ Dart's Firestore uses REST only, through Google's generated `google_cloud_firest
 - **No special-double interceptor.** An HTTP interceptor that rewrote Infinity, -Infinity and NaN for the `googleapis` client was dropped: the protobuf types carry those values, and int64, natively.
 - **Firestore ignores `AppOptions.httpClient`.** It builds its own client from `Settings.credential`; [the test helpers concept](/tests/helpers-and-injection.md) owns what that means for tests.
 
+## No realtime listeners (onSnapshot)
+
+Dart has no `onSnapshot` and no other listener API. The generated `google_cloud_firestore_v1` client has no `Listen` method and no bidirectional RPC at all, and no API Dart ships needs one. Server-streaming RPCs exist but are buffered; "REST transport and buffered streaming" above owns that, and Node's `query.stream()`-style APIs, which aren't listeners.
+
 # Why
+
+## REST transport and buffered streaming
 
 - **REST only.** Why the SDK uses REST rather than gRPC isn't recorded; ask a maintainer. A maintainer stated a related limit of the earlier `googleapis` client: the way the library talked to Google's API clients didn't support streaming APIs, and adding that support depended on Google. That explains the missing streaming APIs, not the choice of REST.
 - **The generated client.** The maintainers' stated intent: switching to it must not change the public API. The motive for the switch isn't recorded. One benefit was stated in review: protobuf supports int64, Infinity, -Infinity and NaN natively, so special doubles need no workaround. Likely context (not recorded as the reason): Google intends to take over the design of the Google API client dependencies.
 - **`Readable` as `Stream`.** Inferred from the existing mapping of Node's async iterables to `Stream`; no maintainer has decided it.
 
+## No realtime listeners (onSnapshot)
+
+This is a transport limit and a gap, not a choice that admin SDKs don't need listeners.
+
+- The maintainers' stated reason, about an earlier client library: it had no streaming API, and adding one was up to Google. The generated client has the same limit for the bidirectional `Listen` RPC.
+- A gRPC transport for `Listen` (`package:grpc`) has been explored as the way to add listeners. It can't ship while `package:grpc` forces an older major of `http2` than the SDK's HTTP/2 pool needs.[^http2-constraint]
+
 # Rules for agents
 
 - **Ask first:** before moving existing RPCs off REST. Everything Node's `preferRest` mode can do is in scope.
-- **Must:** treat anything that needs a bidirectional RPC as needing a new transport, as listeners do ([No realtime listeners](/firestore/no-realtime-listeners.md)).
+- **Must:** treat anything that needs a bidirectional RPC as needing a new transport, as listeners do (see "No realtime listeners" above).
 - **Must not:** present a buffered `runQuery` or `executePipeline` result as an incremental stream.
 - **Ask first:** before porting `query.stream()`, `explainStream()` or `pipeline.stream()`, and before porting any of them as callbacks rather than a `Stream`. An incremental port needs SSE (unverified for Firestore REST) or gRPC.
 - **Should:** port them as Dart `Stream`s. This is inferred; no maintainer has decided it.
 - **Must:** keep `handleFirestoreException` working with the shape of `google_cloud_rpc`'s `ServiceException`.
 - **Must not:** expose `firestore_v1` types in the public API.
 - **Must not:** bring back the special-double interceptor.
+- **Must not:** publish anything that depends on `grpc` while it forces an older major of `http2` than the SDK's HTTP/2 pool needs ([Pooled HTTP/2 by default](/architecture/http2-pooled-transport.md)).
+- **Must not:** document listeners as supported.
+- **Ask first:** before emulating listeners by polling or by looping `runQuery`.
+- **Must not:** call listeners out of scope.
+- **Ask first:** before choosing the listener API's shape, a `snapshots()` `Stream` or a Node-style `onSnapshot` callback. It hasn't been decided; ask a maintainer.
 
 # Related
 
-- [No realtime listeners](/firestore/no-realtime-listeners.md)
 - [Pooled HTTP/2 by default](/architecture/http2-pooled-transport.md), which owns the HTTP/2 transport
 - [Admin services use generated REST clients](/architecture/generated-rest-clients.md)
 - [Firestore errors](/errors/firestore-exception.md)
 - [Dart idioms win where Node's shape does not fit](/architecture/dart-idioms-over-node-shapes.md), which maps Promises to `Future` and async iterables to `Stream`
 - [Pipelines parity with Node](/firestore/pipelines/node-parity.md)
+- [Firebase services Node has and Dart does not](/scope/unsupported-services.md)
 
 [^v1-dependency]: The `google_cloud_firestore_v1` dependency
 [^generated-api]: The generated client's `postStreaming` calls
@@ -101,3 +152,8 @@ Dart's Firestore uses REST only, through Google's generated `google_cloud_firest
 [^parity-pipeline-stream]: `Pipeline.stream` in `_pendingFixes`
 [^node-prefer-rest]: Node's `preferRest` setting
 [^node-pipeline-stream]: Node's `pipeline.stream()`
+[^admin-node-index]: Node's Admin SDK re-exports `@google-cloud/firestore`
+[^node-on-snapshot]: Node's `onSnapshot()` declarations
+[^query-todo]: The `onSnapshot` TODO on `Query`
+[^document-todo]: The snapshots TODO on `DocumentReference`
+[^http2-constraint]: The `http2` constraint

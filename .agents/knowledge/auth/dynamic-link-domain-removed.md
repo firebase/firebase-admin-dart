@@ -45,8 +45,8 @@ This is a deliberate omission, not a gap.
 
 # Related
 
-- [Pre-GA versioning and CHANGELOG headings](/release/versioning-and-changelog.md)
-- [Topic management on the FCM v1 API](/messaging/topic-management-v1.md)
+- [Releases, versioning, CHANGELOG and version.g.dart](/release/releases-and-versioning.md)
+- [Messaging: no FID targets, topic management on FCM v1](/messaging/node-differences.md)
 
 [^node-dynamic-link-domain]: Node's `dynamicLinkDomain`
 [^dart-link-domain]: `ActionCodeSettings.linkDomain`

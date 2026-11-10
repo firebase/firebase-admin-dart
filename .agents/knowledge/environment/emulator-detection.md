@@ -61,13 +61,13 @@ sources:
 
 Emulators are found only through the standard Admin SDK environment variables, the same ones Node reads.[^node-auth-env] There is no `useEmulator(host, port)` API. App Check has no emulator.
 
-When the variables are read differs, in both SDKs: `AuthHttpClient` and `FunctionsHttpClient` pick the emulator client once per instance, `Storage` decides in its constructor, and `verifyIdToken` checks for the Auth emulator on each call. How Auth and Functions treat a user-supplied `AppOptions.httpClient` under their emulators is in [Who closes which HTTP client](/app/http-client-ownership.md).
+When the variables are read differs, in both SDKs: `AuthHttpClient` and `FunctionsHttpClient` pick the emulator client once per instance, `Storage` decides in its constructor, and `verifyIdToken` checks for the Auth emulator on each call. How Auth and Functions treat a user-supplied `AppOptions.httpClient` under their emulators is in [Who closes which HTTP client](/app/http-clients.md).
 
 **The Storage protocol error differs from Node's.** Both SDKs reject a host that contains `http://` or `https://`, with the same pattern and message.[^node-storage] Dart throws a `FirebaseAppException` with `app/failed-precondition`, whenever `FIREBASE_STORAGE_EMULATOR_HOST` is set. Node throws a `FirebaseStorageError` with `storage/invalid-emulator-host`, only when `STORAGE_EMULATOR_HOST` is unset.
 
 **Trap:** `getDownloadURL` uses `app.client` under the Storage emulator too, so it sends real credentials to the emulator.
 
-How the Storage emulator host reaches `google_cloud_storage`, and how that differs from Node, is in [Storage emulator host set in the native process environment](/environment/storage-emulator-native-env.md). How tests override the variables is in [Environment reads go through a zone override first](/environment/zone-injected-environment.md).
+How the Storage emulator host reaches `google_cloud_storage`, and how that differs from Node, is in [Storage emulator host set in the native process environment](/storage/google-cloud-storage-wrapper.md). How tests override the variables is in [Environment reads go through a zone override first](/environment/zone-injected-environment.md).
 
 # Why
 
@@ -88,8 +88,8 @@ Rejected alternatives: host and port parameters, reading `firebase.json`, and ha
 # Related
 
 - [Environment reads go through a zone override first](/environment/zone-injected-environment.md)
-- [Storage emulator host set in the native process environment](/environment/storage-emulator-native-env.md)
-- [Who closes which HTTP client, and lazy client creation](/app/http-client-ownership.md)
+- [Storage wraps google_cloud_storage; emulator via native env](/storage/google-cloud-storage-wrapper.md)
+- [App HTTP client: public access, ownership and lazy creation](/app/http-clients.md)
 - [Inject test doubles and use the guarded emulator helpers](/tests/helpers-and-injection.md)
 
 [^admin-env]: The admin package's `Environment`
