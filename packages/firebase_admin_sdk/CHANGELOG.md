@@ -1,5 +1,7 @@
 ## 0.5.7-wip
 
+- Fixed `updateUser` deleting the user's display name, photo URL and phone number whenever the `UpdateRequest` left them out, for example `UpdateRequest(disabled: true)`. Fields you leave out are now unchanged, and setting one to `null` still deletes it.
+- Fixed linking a provider with `UpdateRequest.providerToLink`. Federated providers such as `google.com` were rejected as invalid, and the `email` and `phone` providers threw. `UpdateRequest.copyWith` no longer throws a `TypeError`.
 - Fixed `FirebaseApp.close()` leaving the app half closed when a service fails to close. The app is now always marked deleted and its HTTP client closed, and the error is rethrown afterwards.
 - Migrate FCM topic management (`subscribeToTopic`, `unsubscribeFromTopic`) to FCM v1 REST API, and deprecate legacy IID methods (`subscribeToTopicLegacy`, `unsubscribeFromTopicLegacy`).
 - Use pooled HTTP/2 connections by default via `package:http2`'s `Http2Client` for `FirebaseApp.client`, multiplexing concurrent HTTPS requests over persistent connections while keeping plain HTTP endpoints (such as GCE metadata server) on HTTP/1.1 fallback.
