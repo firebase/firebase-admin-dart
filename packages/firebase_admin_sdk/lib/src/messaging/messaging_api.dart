@@ -33,13 +33,14 @@ abstract class _BaseMessage {
 }
 
 /// Payload for the [Messaging.send] operation. The payload contains all the fields
-/// in the BaseMessage type, and exactly one of token, topic or condition.
+/// in the BaseMessage type, and exactly one of fid, token, topic or condition.
 ///
 /// See also:
 /// - [Messaging.send], to send a message.
 /// - [TopicMessage], to send a message to a topic.
 /// - [ConditionMessage], to send a message to a condition.
 /// - [TokenMessage], to send a message to a device.
+/// - [FidMessage], to send a message to a Firebase installation.
 sealed class Message extends _BaseMessage {
   Message._({
     super.data,
@@ -51,6 +52,63 @@ sealed class Message extends _BaseMessage {
   }) : super._();
 
   fmc1.Message _toRequest();
+}
+
+/// A message targeting a Firebase Installation ID (FID).
+///
+/// Use this target when migrating from FCM registration tokens to FIDs.
+/// See [FCM registration token management](https://firebase.google.com/docs/cloud-messaging/manage-tokens).
+class FidMessage extends Message {
+  /// Creates a message for the non-empty Firebase Installation ID [fid].
+  FidMessage({
+    required this.fid,
+    super.data,
+    super.notification,
+    super.android,
+    super.webpush,
+    super.apns,
+    super.fcmOptions,
+  }) : super._() {
+    if (fid.isEmpty) {
+      throw ArgumentError.value(fid, 'fid', 'must be non-empty');
+    }
+  }
+
+  /// The Firebase Installation ID of the target device.
+  final String fid;
+
+  /// Returns the FCM HTTP v1 message payload.
+  Map<String, dynamic> toJson() =>
+      jsonDecode(jsonEncode(_toRequest())) as Map<String, dynamic>;
+
+  @override
+  fmc1.Message _toRequest() => _FidRequestMessage(
+    targetFid: fid,
+    data: data,
+    notification: notification?._toRequest(),
+    android: android?._toRequest(),
+    webpush: webpush?._toRequest(),
+    apns: apns?._toRequest(),
+    fcmOptions: fcmOptions?._toRequest(),
+  );
+}
+
+// googleapis 16 does not yet expose the FID field.
+class _FidRequestMessage extends fmc1.Message {
+  _FidRequestMessage({
+    required this.targetFid,
+    super.data,
+    super.notification,
+    super.android,
+    super.webpush,
+    super.apns,
+    super.fcmOptions,
+  });
+
+  final String targetFid;
+
+  @override
+  Map<String, dynamic> toJson() => {...super.toJson(), 'fid': targetFid};
 }
 
 /// A message targeting a specific registration token.
