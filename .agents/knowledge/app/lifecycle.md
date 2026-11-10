@@ -32,8 +32,8 @@ sources:
 # Where it lives
 
 - Enforced by: nothing; review only.
-- The Dart surface (`initializeApp`, `getApp`, `instance`, `apps`, `deleteApp`): the static members of `FirebaseApp` in `firebase_app.dart`.[^initialize-app]
-- Registry semantics and their error codes: the dartdoc of `AppRegistry.initializeApp` in `app_registry.dart`.[^registry-initialize]
+- The Dart surface: the static members of `FirebaseApp` in `firebase_app.dart`.[^initialize-app]
+- Registry semantics: the dartdoc of `AppRegistry.initializeApp` in `app_registry.dart`; their codes, `app/duplicate-app` for different options and `app/invalid-app-options` for mixing a `FIREBASE_CONFIG` app with an explicit one: the throws in its body.[^registry-initialize]
 - How `FIREBASE_CONFIG` is read: `fetchOptionsFromEnvironment` in `app_registry.dart`.[^firebase-config]
 - Cleanup that survives a failing service: the `finally` block in `FirebaseApp.close`.[^app-close]
 

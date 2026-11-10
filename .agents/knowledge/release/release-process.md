@@ -54,7 +54,7 @@ Who holds publish rights isn't recorded, nor why a proposed publish workflow was
 
 # Related
 
-- [Versioning and CHANGELOG headings](/release/versioning-and-changelog.md)
+- [Pre-GA versioning and CHANGELOG headings between releases](/release/versioning-and-changelog.md)
 - [The publish dry run](/release/publish-dry-run.md)
 - [The pub workspace, melos and local setup](/repo/workspace-and-melos.md)
 - [version.g.dart is generated from the pubspec](/generated/version-g-dart.md)

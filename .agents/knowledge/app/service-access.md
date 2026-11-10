@@ -54,7 +54,7 @@ Node has modular top-level accessors: `getAuth(app?)`, `getFirestore(app?|databa
 
 # Dart
 
-Services are instance methods on `FirebaseApp`, backed by `@internal` cached factories. There are no public service constructors and no top-level `getAuth()`. Sub-managers are getters. A new service follows the checklist in [Product libraries, parts and barrel exports](/conventions/product-libraries-and-barrels.md).
+Services are instance methods on `FirebaseApp`, backed by `@internal` cached factories. There are no public service constructors and no top-level `getAuth()`. Sub-managers are getters.
 
 **Trap:** `getOrInitService` accepts any string, and the `FirebaseService` dartdoc example registers `'my-service'` through a public factory.[^dartdoc-example] Every SDK service registers under its `FirebaseServiceType` name instead.
 
@@ -68,6 +68,7 @@ Why Dart uses methods on the app instead of Node's top-level functions isn't rec
 
 # Rules for agents
 
+- **Must:** give a new service everything in the [new-product checklist](/conventions/product-libraries-and-barrels.md).
 - **Ask first:** before adding public service constructors. They were removed on purpose; the likely reason (not recorded) is Node parity, where the service constructors are `@internal`.
 - **Must not:** register services with string names outside `FirebaseServiceType`. Don't copy the `FirebaseService` dartdoc example.
 - **Ask first:** before adding Node-style top-level `getX()` functions. Why Dart chose methods isn't recorded.

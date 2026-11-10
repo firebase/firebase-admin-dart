@@ -52,7 +52,7 @@ The likely mechanism (not recorded): CI's `melos bootstrap` rewrites the file, a
 
 - [Usage-tracking headers](/architecture/usage-tracking-headers.md)
 - [The pub workspace, melos and local setup](/repo/workspace-and-melos.md)
-- [Versioning and CHANGELOG headings](/release/versioning-and-changelog.md)
+- [Pre-GA versioning and CHANGELOG headings between releases](/release/versioning-and-changelog.md)
 - [The publish dry run](/release/publish-dry-run.md)
 
 [^version-file]: The generated version constant

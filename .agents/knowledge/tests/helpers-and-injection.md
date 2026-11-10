@@ -36,7 +36,7 @@ sources:
     title: The Storage unit tests' empty-environment zone
   - id: contributing-emulator
     resource: ../../../CONTRIBUTING.md
-    symbol: "#### `firebase_admin_sdk` emulator tests"
+    symbol: '"dart test -P firebase-emulator"'
     title: CONTRIBUTING's emulator commands, without `--concurrency=1`
 ---
 
@@ -46,7 +46,7 @@ sources:
 - Test apps, and Firestore settings for admin unit tests: `FirebaseApp createApp(` and `const mockFirestoreSettings` in `packages/firebase_admin_sdk/test/fixtures/helpers.dart`.[^create-app][^mock-firestore-settings]
 - The shared doubles: `class AuthRequestHandlerMock` and its neighbours in `test/fixtures/mock.dart`; other products declare theirs in their own test file.[^mocks]
 - How a Storage unit test keeps its double: `Future<T> _withoutEmulator<T>(` in `test/unit/storage/storage_test.dart`.[^storage-empty-zone]
-- CONTRIBUTING.md's out-of-date emulator commands: `` #### `firebase_admin_sdk` emulator tests `` and the Firestore section after it.[^contributing-emulator]
+- CONTRIBUTING.md's out-of-date emulator commands: `"dart test -P firebase-emulator"`, under `` #### `firebase_admin_sdk` emulator tests `` and the Firestore section after it.[^contributing-emulator]
 
 # Constraint
 

@@ -1,7 +1,7 @@
 ---
 type: Decision
 title: Firestore retries transient errors like Node
-description: A standalone `WriteBatch.commit()` retries Node's commit codes, transactions retry as a whole, and reads retry a dropped connection only before any partial result and outside a transaction, all with `package:retry`.
+description: A standalone `WriteBatch.commit()` retries Node's commit codes, transactions retry as a whole, and queries, aggregations and pipelines retry an `http.ClientException`, such as a dropped connection, only before any partial result and outside a transaction, all with `package:retry`.
 tags: [firestore, retries, node-parity]
 agents_md: when-touching
 governs:
@@ -36,6 +36,10 @@ sources:
     resource: ../../../packages/google_cloud_firestore/lib/src/document_reader.dart
     symbol: StatusCode.batchGetRetryCodes
     title: "`getAll()` retries only after progress, like Node's `document-reader.ts`"
+  - id: get-all
+    resource: ../../../packages/google_cloud_firestore/lib/src/firestore.dart
+    symbol: getAll<T>(
+    title: "`Firestore.getAll()`, which reads through `_DocumentReader`"
   - id: transaction-runner
     resource: ../../../packages/google_cloud_firestore/lib/src/transaction.dart
     symbol: _runTransaction
@@ -55,14 +59,14 @@ sources:
 - Enforced by: the `WriteBatch retry` group in `write_batch_test.dart`[^write-batch-tests] and `does not retry a read within an active transaction` in `transaction_aggregation_test.dart`.[^transaction-read-test]
 - Commit retry codes, and the transaction branch that skips them: `StatusCode.resourceExhaustedAbortedUnavailable` in `WriteBatch._commit`, `write_batch.dart`.[^write-batch-retry] The extra wait on RESOURCE_EXHAUSTED: `backOffHardOnResourceExhausted` in `firestore_exception.dart`.[^resource-exhausted-backoff]
 - When a read may retry: the dartdoc of `retryOnConnectionError` in `firestore_exception.dart`.[^read-retry]
-- `getAll()`'s codes and attempts: `StatusCode.batchGetRetryCodes` in `document_reader.dart`.[^document-reader]
+- `getAll()`'s codes and attempts: `StatusCode.batchGetRetryCodes` in the `retryIf` of `_DocumentReader`, `document_reader.dart`, which `getAll()` in `firestore.dart` uses.[^document-reader][^get-all]
 - Retries inside a transaction: `_runTransaction` in `transaction.dart`.[^transaction-runner]
 
 # Decision
 
 - **Writes.** A standalone `WriteBatch.commit()` retries Node's commit codes.[^write-batch-retry][^node-retry-codes]
 - **Transactions.** A commit inside a transaction isn't retried by the batch. The transaction runner retries the whole transaction.[^transaction-runner]
-- **Reads.** Queries, aggregations and pipelines retry a dropped connection, but only before any partial result has arrived and only outside a transaction.[^read-retry] `getAll()` follows Node's `document-reader.ts` instead, retrying only after progress.[^document-reader]
+- **Reads.** Queries, aggregations and pipelines retry an `http.ClientException`, such as a dropped connection, but only before any partial result has arrived and only outside a transaction.[^read-retry] `getAll()` follows Node's `document-reader.ts` instead, retrying only after progress.[^document-reader]
 
 `package:retry` replaced a hand-rolled retry loop.[^retry-dependency]
 
@@ -89,6 +93,7 @@ sources:
 [^resource-exhausted-backoff]: `backOffHardOnResourceExhausted`
 [^read-retry]: `retryOnConnectionError`
 [^document-reader]: `getAll()` retries in `document_reader.dart`
+[^get-all]: `Firestore.getAll()`
 [^transaction-runner]: The transaction runner
 [^retry-dependency]: The `package:retry` dependency
 [^node-retry-codes]: Node's commit retry codes

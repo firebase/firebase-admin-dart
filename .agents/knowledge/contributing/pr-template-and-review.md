@@ -69,7 +69,7 @@ sources:
 # Related
 
 - [Squash merges with Conventional Commit titles](/contributing/commit-and-pr-titles.md)
-- [Versioning and CHANGELOG headings](/release/versioning-and-changelog.md)
+- [Pre-GA versioning and CHANGELOG headings between releases](/release/versioning-and-changelog.md)
 - [Apache-2.0 header on every source file](/conventions/license-headers.md)
 - [What CI runs, the coverage gate, and what gates merging](/ci/trigger-matrix.md)
 

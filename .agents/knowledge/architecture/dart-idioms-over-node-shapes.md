@@ -55,7 +55,7 @@ Node's source is the reference (see [Port of the Node.js Admin SDK](/architectur
 | Trailing optional positionals | Named parameters | Some required Node positionals became named too. |
 | Options object | Pipelines: named parameters. Admin services: Node's options class, one to one. | Elsewhere, follow the service. |
 | Untyped option map | Typed options or named parameters | The Pipeline `rawOptions` is a deliberate escape hatch beside typed options.[^raw-options] |
-| Member with a Dart core-library equivalent (`toJSON`, `isEqual`, `toLower`, `deleteApp`) | The Dart name (`toJson`, `==`, `toLowerCase`, `close`) | |
+| Member with a Dart core-library equivalent (`toJSON`, `isEqual`, `toLower`, `app.delete()`) | The Dart name (`toJson`, `==`, `toLowerCase`, `close`) | |
 | Promise, `AsyncIterable` | `Future`, `Stream` | Docs use Dart terms: `Future`, `null`, `[name]`. A stray "undefined" in a dartdoc is a leftover. Node's `Readable` APIs are a gap; see [Firestore runs over REST, with buffered streaming](/firestore/rest-transport.md). |
 | JS Web SDK synonyms, such as `equalValue` | Not added | Only the Node Admin SDK is the reference. |
 | (an API Node lacks) | A Dart-only convenience beside the Node API, not instead of it | |
@@ -64,7 +64,7 @@ Node's source is the reference (see [Port of the Node.js Admin SDK](/architectur
 
 The maintainers' stated reasons:
 
-- The parity test states the Pipeline rules: an options object maps onto named parameters, a string union onto an enum's values, a rest parameter onto a trailing `Iterable`, overloads onto separate methods "since Dart has no overloads", and type tags give way to "sealed classes and `is`".
+- The parity test's header states the Pipeline rules.
 - Pipeline execution options became typed because a wrong key failed silently. `rawOptions` was added on purpose alongside them.
 - `toLowerCase()` and `toUpperCase()` deliberately keep Dart's `String` names.
 - Doc comments were cleaned up to use Dart terms instead of Node's.

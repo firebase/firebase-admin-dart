@@ -18,6 +18,10 @@ sources:
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/exception.dart
     symbol: Map<String, dynamic> toJson()
     title: "`FirebaseAdminException.toJson()`, with only `code` and `message`"
+  - id: auth-exception
+    resource: ../../../packages/firebase_admin_sdk/lib/src/auth/auth_exception.dart
+    symbol: final AuthClientErrorCode errorCode;
+    title: "`FirebaseAuthAdminException`, a subclass that exposes `errorCode`"
   - id: auth-code-table
     resource: ../../../packages/firebase_admin_sdk/lib/src/auth/auth_exception.dart
     symbol: const authServerToClientCode
@@ -43,7 +47,7 @@ sources:
 # Where it lives
 
 - Enforced by: nothing; review only.
-- The base class and its `toJson()`: `FirebaseAdminException` in `app/exception.dart`. Each service's subclass, its error-code enum, and whether it exposes `errorCode` or only `code`: its `*_exception.dart`.[^admin-exception][^admin-to-json]
+- The base class and its `toJson()`: `FirebaseAdminException` in `app/exception.dart`. Each service's subclass, its error-code enum, and whether it exposes `errorCode` or only `code`: its `*_exception.dart`, such as `FirebaseAuthAdminException` in `auth_exception.dart`.[^admin-exception][^admin-to-json][^auth-exception]
 - The server-to-client code tables, copied from Node: for example `authServerToClientCode` in `auth_exception.dart`.[^auth-code-table]
 - The written rules (typed exceptions, Node behaviour where applicable): CONTRIBUTING's `### Error Handling`.[^contributing-errors]
 
@@ -83,12 +87,13 @@ Why Node's error extras aren't ported isn't recorded.
 
 # Related
 
-- [FirestoreException is separate and maps HTTP to gRPC codes](/errors/firestore-exception.md)
+- [Firestore errors: FirestoreException, and Errors for misuse](/errors/firestore-exception.md)
 - [Re-initializing an app ignores a different credential](/app/reinit-ignores-credential.md)
 - [One cached Firestore per database, settings fixed](/firestore/multi-database.md)
 
 [^admin-exception]: `FirebaseAdminException`
 [^admin-to-json]: `FirebaseAdminException.toJson()`
+[^auth-exception]: `FirebaseAuthAdminException`
 [^auth-code-table]: `authServerToClientCode`
 [^contributing-errors]: CONTRIBUTING's `### Error Handling`
 [^node-firebase-error]: Node's `FirebaseError`

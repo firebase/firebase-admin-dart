@@ -96,6 +96,10 @@ check() {
       *) fail "$file" "status must be draft, stable or deprecated" ;;
     esac
 
+    # A plain YAML value can't contain ": " or " #", or start with ` or @: quote it.
+    value=$(frontmatter "$file" | grep -nE "^ *(- )?[A-Za-z_]+: ([^\"'[{|> ].*(: | #|:\$)|[\`@%&*!])" | head -n 1)
+    [ -z "$value" ] || fail "$file" "frontmatter line $value isn't valid YAML: quote the value"
+
     # The parsers below read block lists only, so reject anything they would skip.
     if frontmatter "$file" | grep -qE '^(governs|sources):[[:space:]]*[^[:space:]]'; then
       fail "$file" "write governs and sources as block lists, one '  - ' item per line"
@@ -139,6 +143,38 @@ check() {
       [ -z "$id" ] || printf '%s\n' "$cited" | grep -qxF -- "$id" ||
         fail "$file" "source $id isn't cited by any footnote"
     done < <(sources "$file")
+
+    # Every code name in a "Where it lives" bullet must be in a file that bullet
+    # footnotes, so renaming a pointed-to symbol fails here too.
+    while IFS=$'\t' read -r name ids; do
+      value=
+      for id in $ids; do
+        res=$(sources "$file" | awk -F'\t' -v id="$id" '$1 == id { print $2; exit }')
+        case "$res" in "" | http://* | https://*) continue ;; /*) target="$KB$res" ;; *) target="$dir/$res" ;; esac
+        if [ -e "$target" ] && grep -rqF -- "$name" "$target"; then value=1; break; fi
+      done
+      [ -n "$value" ] || [ -z "$ids" ] || fail "$file" "Where it lives names $name, which no file it footnotes contains"
+    done < <(awk '
+      function emit(   i, n, t, parts, ids, seg) {
+        ids = ""; rest = bullet
+        while (match(rest, /\[\^[^]]+\]/)) { ids = ids " " substr(rest, RSTART + 2, RLENGTH - 3); rest = substr(rest, RSTART + RLENGTH) }
+        rest = bullet
+        while (match(rest, /`[^`]+`/)) {
+          t = substr(rest, RSTART + 1, RLENGTH - 2); rest = substr(rest, RSTART + RLENGTH)
+          if (t ~ /\.(dart|ya?ml|md|json|sh|js|ts|txt|lcov|html)$/) continue
+          paren = sub(/\(\)$/, "", t)
+          if (t !~ /^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/) continue
+          # Code names only: camelCase, PascalCase, ALL_CAPS, _private, a.b or f().
+          if (!paren && t !~ /^_/ && t !~ /\./ && t !~ /[A-Z]/) continue
+          n = split(t, parts, "."); seg = parts[n]
+          print seg "\t" ids
+        }
+      }
+      /^# Where it lives$/ { inside = 1; next }
+      inside && /^# / { if (bullet != "") emit(); bullet = ""; exit }
+      inside && /^- / { if (bullet != "") emit(); bullet = $0; next }
+      inside && /^  / { bullet = bullet " " $0 }
+      END { if (inside && bullet != "") emit() }' "$file")
 
     while IFS= read -r link; do
       case "$link" in

@@ -65,7 +65,7 @@ Writing features from scratch was rejected in favour of a port. Matching Flutter
 
 - [Dart idioms win where Node's shape does not fit](/architecture/dart-idioms-over-node-shapes.md)
 - [Pipelines parity with Node is checked by machine](/firestore/pipelines/node-parity.md)
-- [Firestore follows Node, not FlutterFire](/firestore/node-not-flutterfire.md)
+- [Firestore follows Node, with a few FlutterFire look-alikes](/firestore/node-not-flutterfire.md)
 - [Compare with Node before changing a Dart API or behaviour](/playbooks/compare-with-node.md)
 
 [^pipeline-parity]: The Pipeline API parity test

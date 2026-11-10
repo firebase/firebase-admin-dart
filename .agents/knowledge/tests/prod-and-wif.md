@@ -61,7 +61,7 @@ sources:
 
 **`-P wif`** (admin only) runs a single file, in the `test-wif` job in CI.
 
-**Key files.** The root `.gitignore` ignores `service-account.json` in every directory. `service-account-key.json` is ignored only inside the two packages and the admin examples; elsewhere, such as at the repo root, it isn't. In `firebase_admin_sdk`, pub doesn't honour that ignore (see [the publish dry run](/release/publish-dry-run.md)).
+**Trap: the ignore rules miss some key files.** A `service-account-key.json` at the repo root isn't git-ignored, and in `firebase_admin_sdk` pub doesn't honour the package's ignore (see [the publish dry run](/release/publish-dry-run.md)).
 
 # Why
 

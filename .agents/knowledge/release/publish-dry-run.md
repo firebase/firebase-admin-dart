@@ -24,7 +24,7 @@ sources:
   - id: admin-pubignore
     resource: ../../../packages/firebase_admin_sdk/.pubignore
     symbol: test/credential_test.dart
-    title: The admin package's `.pubignore`, which names a file that no longer exists
+    title: The admin package's `.pubignore`, which names a file that doesn't exist
   - id: golden-pubignore
     resource: ../../../packages/google_cloud_firestore/tool/pipeline_golden/.pubignore
     title: Excludes the Node fixture generator from the package
@@ -48,9 +48,9 @@ Not caught by the dry run: a description outside 50–180 characters (pub.dev's 
 
 **Traps:**
 
-- The admin `.pubignore` names `test/credential_test.dart`, a path that no longer exists. The fake keys are covered by `false_secrets`, not by `.pubignore`.
-- Because that `.pubignore` exists, pub skips `packages/firebase_admin_sdk/.gitignore`. A `service-account-key.json` in that directory, which git ignores, is listed for publishing; the dry run shows it.
-- Only `tool/pipeline_golden/` has a `.pubignore`. `tool/pipeline_api_parity/`, with its `package.json` and lockfile, ships in the published `google_cloud_firestore`.
+- The admin `.pubignore` names `test/credential_test.dart`, a path that doesn't exist. The fake keys are covered by `false_secrets`, not by `.pubignore`.
+- Because that `.pubignore` exists, pub skips `packages/firebase_admin_sdk/.gitignore`. A git-ignored `service-account-key.json` anywhere in the package, subdirectories included, is listed for publishing; only `example/` and `example_server_app/` are covered, by their own `.gitignore`. The dry run lists the file, and pub's leak detector fails the dry run when the file holds a private key.
+- In `google_cloud_firestore`, only `tool/pipeline_golden/` has a `.pubignore`. `tool/pipeline_api_parity/`, with its `package.json` and lockfile, ships in the published `google_cloud_firestore`.
 
 # Why
 
@@ -68,8 +68,8 @@ The likely reason the listed failures block CI (not recorded): the dry run exits
 # Related
 
 - [version.g.dart is generated from the pubspec](/generated/version-g-dart.md)
-- [No committed lockfiles or overrides](/dependencies/no-lockfiles-or-overrides.md)
-- [Release process](/release/release-process.md)
+- [No committed lockfiles or dependency overrides](/dependencies/no-lockfiles-or-overrides.md)
+- [Releases are manual and done by Google maintainers](/release/release-process.md)
 - [Inject test doubles and use the guarded emulator helpers](/tests/helpers-and-injection.md)
 
 [^publish-job]: The `publish` job

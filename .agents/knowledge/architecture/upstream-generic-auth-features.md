@@ -56,7 +56,7 @@ The likely reason (not recorded): Google maintains those packages, so the featur
 # Related
 
 - [Sign locally with the key, else through IAM signBlob](/app/signing.md)
-- [How ID tokens, session cookies and App Check tokens are verified](/auth/jwt-verification.md)
+- [Verifying ID tokens, session cookies and App Check tokens](/auth/jwt-verification.md)
 - [Keep the dependency set small](/dependencies/minimal-dependencies.md)
 - [Credential is a sealed class with factories](/app/credential-sealed-hierarchy.md)
 

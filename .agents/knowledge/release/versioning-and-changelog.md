@@ -39,9 +39,9 @@ Between releases, the two packages follow different conventions:
 
 - `firebase_admin_sdk` carries the next version as `X.Y.Z-wip`, in its pubspec and as its top CHANGELOG heading. The first user-visible change after a release bumps `version:` to `X.Y.Z-wip`, adds the `## X.Y.Z-wip` heading, and regenerates `version.g.dart`.
 - `google_cloud_firestore` keeps its last released version, and collects entries under `## Unreleased`.
-- The release PR drops `-wip`, or renames `## Unreleased` to the version.
-- A change's entry goes under the unreleased heading, never under a released version. Dependency changes get their own entry.
-- The PR template's CHANGELOG example matches neither package.
+- A change's entry goes under the unreleased heading, never under a released version. Breaking entries start with `**Breaking:**`, as in the Firestore CHANGELOG. Dependency changes get their own entry.
+
+What the release PR does to these headings is in [the release process](/release/release-process.md).
 
 # Why
 
@@ -60,9 +60,9 @@ Why the two packages use different conventions isn't recorded. Ask a maintainer 
 # Related
 
 - [version.g.dart is generated from the pubspec](/generated/version-g-dart.md)
-- [Release process](/release/release-process.md)
+- [Releases are manual and done by Google maintainers](/release/release-process.md)
 - [PR template, review, licence and CLA](/contributing/pr-template-and-review.md)
-- [`dynamicLinkDomain` removed, not deprecated](/auth/dynamic-link-domain-removed.md)
+- [ActionCodeSettings has linkDomain, not dynamicLinkDomain](/auth/dynamic-link-domain-removed.md)
 
 [^admin-version]: The admin package version
 [^admin-changelog]: The admin CHANGELOG

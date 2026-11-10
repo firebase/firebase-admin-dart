@@ -51,7 +51,7 @@ sources:
 
 # Decision
 
-`FirebaseApp` owns the default client it creates. A service's `delete()` closes only clients that service built (emulator clients) and is idempotent. Authenticated clients are created on first use, never in constructors.
+`FirebaseApp` owns the default client it creates. A service's `delete()` is meant to close only clients that service built (emulator clients), and to be idempotent; Auth and Functions break the first half (see the trap below). Authenticated clients are created on first use, never in constructors.
 
 **Trap: Auth and Functions close a user-supplied client under their emulators.**
 
@@ -81,7 +81,7 @@ Eager construction is the rejected alternative: when ADC was missing, it raised 
 
 - [Public authenticated app client and transport options](/app/app-client-and-transport-options.md)
 - [Storage is a thin wrapper over google_cloud_storage](/storage/google-cloud-storage-wrapper.md)
-- [Emulators are detected from environment variables only](/environment/emulator-detection.md)
+- [Emulators found only through standard environment variables](/environment/emulator-detection.md)
 
 [^app-close]: The `FirebaseApp.close()` dartdoc
 [^storage-lazy]: Storage's lazy `_delegate`

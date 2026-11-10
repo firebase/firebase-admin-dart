@@ -1,7 +1,7 @@
 ---
 type: Constraint
 title: What CI runs, the coverage gate, and what gates merging
-description: The workflow files say what runs where; beyond them, docs-only PRs skip Build, a green PR doesn't mean prod, WIF or E2E tests ran, the coverage threshold is copied as text in two places, and merging is gated only by the `cla/google` status and an Alphabet zizmor scan.
+description: The workflow files say what runs where, and a green PR doesn't mean every suite ran; beyond them, the coverage threshold is copied as text in two places, and merging is gated only by the `cla/google` status and an Alphabet zizmor scan.
 tags: [ci, workflows, coverage]
 agents_md: when-touching
 governs:
@@ -55,13 +55,7 @@ sources:
 
 **Merge gates live outside the repo.** Branch protection on `main` requires only the `cla/google` status. An Alphabet enterprise ruleset also requires the zizmor workflow, `github_actions_scan.yml`, which lives in another Google repository. No workflow in this repo gates merging.
 
-**Docs-only PRs skip Build.** `build.yml` ignores Markdown, so a PR that only edits AGENTS.md or the knowledge bundle runs no Build. `knowledge.yml`, which has no path filter, is what checks it.
-
-**A green PR doesn't mean everything ran.** Forks and Dependabot skip `test-wif` and the Pipeline E2E suite, the Firestore workflows run only on Firestore changes, and admin prod tests never run in CI (see [Prod and WIF test runs](/tests/prod-and-wif.md)).
-
-**`dart_version` does nothing.** The `workflow_dispatch` input of `build.yml` is read by no job, so a manual run uses the same SDK matrix as any other run.
-
-**The coverage gate** runs only in the stable `test` job. Codecov, which the same job uploads to, never blocks. The script holds the threshold; the PR-comment text and CONTRIBUTING.md repeat it, and neither reads it from the script.
+**The coverage gate** runs only in the stable `test` job. The script holds the threshold; the PR-comment text and CONTRIBUTING.md repeat it, and neither reads it from the script.
 
 **CONTRIBUTING.md's CI table is out of date.** It names the jobs `test-integration` and `build`; they are `test-wif` and `publish`.
 
@@ -73,7 +67,7 @@ sources:
 # Rules for agents
 
 - **Must:** expect a docs-only PR to skip Build.
-- **Must not:** assume a green PR means the prod, WIF or E2E tests ran.
+- **Must not:** assume a green PR means the prod, WIF or E2E tests ran. Which suites CI never runs is in [Prod and WIF test runs](/tests/prod-and-wif.md).
 - **Must not:** treat CI as a merge gate it is not.
 - **Must not:** lower the coverage threshold.
 - **Must:** if a maintainer changes the threshold, update the PR-comment text in `build.yml` and CONTRIBUTING.md in the same PR.

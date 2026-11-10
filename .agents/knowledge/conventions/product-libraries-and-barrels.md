@@ -1,7 +1,7 @@
 ---
 type: Decision
 title: Product libraries, parts and barrel exports
-description: Each admin product is one Dart library, mostly built from `part` files with a transport file and a request-handler file, exported through a barrel with a `hide` deny-list or a plain re-export, while `google_cloud_firestore` uses a `show` allow-list, so exporting a new public name must be a deliberate choice.
+description: Each admin product is a Dart library, mostly built from `part` files (App Check also has standalone libraries), with a transport file and a request-handler file, exported through a barrel with a `hide` deny-list or a plain re-export, while `google_cloud_firestore` uses a `show` allow-list, so exporting a new public name must be a deliberate choice.
 tags: [conventions, public-api, libraries, services]
 agents_md: always
 governs:
@@ -37,6 +37,10 @@ sources:
     resource: ../../../packages/google_cloud_firestore/lib/google_cloud_firestore.dart
     symbol: show Credential
     title: "`google_cloud_firestore`'s `show` allow-list barrel"
+  - id: app-check-libraries
+    resource: ../../../packages/firebase_admin_sdk/lib/src/app_check/app_check.dart
+    symbol: import 'token_verifier.dart';
+    title: App Check's root imports its standalone libraries
   - id: e2e-barrel-guard
     resource: ../../../packages/google_cloud_firestore/test/pipeline_e2e_coverage_test.dart
     symbol: public in lib/src/pipeline.dart but not exported from
@@ -67,6 +71,8 @@ sources:
 
 **Parts share private names.** A product's `*_http_client.dart`, `*_request_handler.dart` and `*_exception.dart` are parts of one library, so they share `_private` names. In Auth, methods shared by project-level and tenant-level auth live on `_BaseAuth`, mirroring Node's `BaseAuth`.
 
+**App Check is the exception:** `app_check_api.dart`, `token_generator.dart` and `token_verifier.dart` are standalone libraries that `app_check.dart` imports, and `lib/app_check.dart` re-exports `app_check_api.dart` whole.[^app-check-libraries]
+
 **Transport and logic are split.** A REST service's `*_http_client.dart` handles HTTP, emulator routing, the generated client and the project ID, through a `_run` helper. Its `*_request_handler.dart` handles validation, transformation and business logic. The split isn't uniform: some HTTP clients, such as `AuthHttpClient`, validate their own arguments.
 
 **A new admin product touches:**
@@ -74,8 +80,8 @@ sources:
 - a `FirebaseServiceType` value;
 - a `FirebaseApp.x()` method, plus an `@internal factory X.internal(app, {requestHandler})` through `getOrInitService`;
 - `delete()`, for `close()`;
-- a product root with parts, and its import in `lib/src/app.dart`;
-- a `lib/x.dart` barrel (choose `hide` or a plain re-export);
+- a product root with parts;
+- a `lib/x.dart` barrel (choose `hide` or a plain re-export), imported in `lib/src/app.dart`;
 - the README's "Supported Services" table;
 - an example in `example/lib/`;
 - unit and emulator tests;
@@ -111,6 +117,7 @@ sources:
 
 [^e2e-barrel-guard]: The E2E-coverage guard's export check
 [^auth-parts]: `lib/src/auth.dart` and its parts
+[^app-check-libraries]: App Check's standalone libraries
 [^auth-barrel]: `lib/auth.dart`
 [^functions-barrel]: `lib/functions.dart`
 [^firestore-barrel]: `lib/google_cloud_firestore.dart`

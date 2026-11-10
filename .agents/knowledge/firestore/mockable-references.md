@@ -1,7 +1,7 @@
 ---
 type: Decision
 title: Firestore reference classes are mockable interfaces
-description: The Firestore reference classes `Query`, `CollectionReference`, `DocumentReference` and `CollectionGroup` are `interface class`es so users can mock them, while value types stay `final`.
+description: The Firestore reference classes `Query`, `CollectionReference`, `DocumentReference` and `CollectionGroup` are `interface class`es so users can mock them, while the value types `Timestamp` and `GeoPoint` stay `final`.
 tags: [firestore, testing, api-shape]
 agents_md: when-touching
 governs:
@@ -36,7 +36,7 @@ sources:
 
 # Where it lives
 
-- Enforced by: the `mocktail` mocks in `example/test/examples_test.dart`, which stop compiling if `Query`, `CollectionReference` or `DocumentReference` becomes `final` or `base`. Nothing mocks `CollectionGroup`.[^example-mocks]
+- Enforced by: the `mocktail` mocks in `example/test/examples_test.dart`, which stop compiling if `Query`, `CollectionReference` or `DocumentReference` becomes `final` or `base`. Nothing mocks `CollectionGroup`.[^example-mocks][^collection-group]
 - The `interface class` declarations: `query.dart`, `collection_reference.dart`, `document_reference.dart` and `collection_group.dart`.[^query][^collection-reference][^document-reference][^collection-group]
 - A value type that stays `final`: `final class Timestamp` in `timestamp.dart`.[^timestamp]
 

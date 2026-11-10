@@ -48,7 +48,7 @@ These have been removed:
 
 **No code generation.** Library code in both packages is written by hand. No library type uses `freezed`, `json_serializable` or another generator. `version.g.dart` is the one generated file, and a shell script writes it, not a builder (see [version.g.dart](/generated/version-g-dart.md)).
 
-**Traps.** `asn1lib` is declared, but nothing under `lib/` imports it. `build_runner` is still a dev dependency of both packages, although there is no builder for it to run.
+**Traps.** `asn1lib` is declared, but nothing under `lib/` imports it. `build_runner` is a dev dependency of both packages, with no builder to run.
 
 A dependency bump that users need ships with a CHANGELOG entry in each package it affects.
 

@@ -35,7 +35,7 @@ sources:
 
 # Dart
 
-Dart has only the map form. **Trap:** the `DocumentReference.update` dartdoc still describes Node's varargs form, which Dart doesn't have.[^update-dartdoc]
+Dart has only the map form. **Trap:** the `DocumentReference.update` dartdoc describes Node's varargs form, which Dart doesn't have.[^update-dartdoc]
 
 # Why
 

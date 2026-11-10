@@ -44,13 +44,13 @@ sources:
 - Enforced by: `scripts/process_coverage.dart`, which fails when a `packages/*` directory has no `coverage.lcov`.[^process-coverage] The rest is review only.
 - The members, and melos's scripts and hooks: `workspace:` and `melos:` in the root `pubspec.yaml`.[^workspace-members][^melos-config]
 - The admin package's range on Firestore: `google_cloud_firestore: '>=` in `packages/firebase_admin_sdk/pubspec.yaml`.[^admin-firestore-range]
-- The tools a checkout needs: `### Prerequisites` in `CONTRIBUTING.md`,[^prerequisites] and, for the Pipeline tools, `"engines"` in `tool/pipeline_golden/package.json` and `tool/pipeline_api_parity/package.json`.[^golden-node-engine]
-- CONTRIBUTING.md's out-of-date global melos install: `dart pub global activate melos`, in Prerequisites and Setup.[^contributing-melos]
+- The tools a checkout needs: `### Prerequisites` in `CONTRIBUTING.md` (addlicense is under `### License Headers`),[^prerequisites] and, for the Pipeline tools, `"engines"` in `tool/pipeline_golden/package.json` and `tool/pipeline_api_parity/package.json`.[^golden-node-engine]
+- CONTRIBUTING.md's global melos install, which is optional: `dart pub global activate melos`, in Prerequisites and Setup.[^contributing-melos]
 
 # Constraint
 
 - A plain `dart pub get` at the repo root resolves the whole workspace, and is enough to develop.
-- Melos is a root dev dependency, so `dart run melos …` works without a global install. CONTRIBUTING.md's `dart pub global activate melos` step is out of date. `melos bootstrap` also regenerates `version.g.dart` (see [version.g.dart](/generated/version-g-dart.md)).
+- CONTRIBUTING.md installs melos globally; that's optional, since `dart run melos …` works from the root dev dependency, though CI uses the global install. What `melos bootstrap` regenerates is in [version.g.dart is generated from the pubspec](/generated/version-g-dart.md).
 - `firebase_admin_sdk` depends on `google_cloud_firestore` by version range. Inside the workspace, that range resolves to the local package, so a lower bound that is too low doesn't show up locally.
 - The Pipeline tools need the Node.js version in their `engines` field, which CONTRIBUTING.md's prerequisites don't list.
 
@@ -62,7 +62,7 @@ sources:
 # Rules for agents
 
 - **Must:** to add a package, list it in `workspace:` in the root pubspec, give it `resolution: workspace`, and make sure a coverage script writes a `coverage.lcov` in it.
-- **Must:** when `firebase_admin_sdk` starts using a new `google_cloud_firestore` API, raise its lower bound on `google_cloud_firestore`. Firestore then has to be released first (see [the release process](/release/release-process.md)).
+- **Must:** when `firebase_admin_sdk` starts using a new `google_cloud_firestore` API, raise its lower bound on `google_cloud_firestore`. What that means for the release is in [the release process](/release/release-process.md).
 - **Must not:** add path dependencies or `pubspec_overrides.yaml` to link packages.
 - **Should:** install a missing tool only when the user asks, following CONTRIBUTING.md's setup sections.
 - **Must not:** set up or create credentials (see [Prod and WIF test runs](/tests/prod-and-wif.md)).

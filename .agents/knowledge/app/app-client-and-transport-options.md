@@ -42,7 +42,7 @@ Node's `AppOptions.httpAgent` takes a Node `http.Agent`. There is no public auth
 
 # Dart
 
-`FirebaseApp.client` is public, and `AppOptions.httpClient`, `AppOptions.additionalScopes` and `Credential.createClient(scopes)` add transport options. Users can call Google APIs the SDK doesn't wrap while sharing the app's token lifecycle.
+`FirebaseApp.client` is public, and `AppOptions.httpClient`, `AppOptions.additionalScopes` and `Credential.createClient(scopes)` add transport options. Through `FirebaseApp.client`, users can call Google APIs the SDK doesn't wrap while sharing the app's token lifecycle.
 
 The default transport is pooled HTTP/2; see [Pooled HTTP/2 by default](/architecture/http2-pooled-transport.md). Who closes a supplied client is in [Who closes which HTTP client](/app/http-client-ownership.md).
 

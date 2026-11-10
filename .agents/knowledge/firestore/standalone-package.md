@@ -58,7 +58,7 @@ The maintainers' stated reason is to align with the Node.js Admin SDK, where Fir
 # Rules for agents
 
 - **Must not:** import `firebase_admin_sdk` from `google_cloud_firestore`.
-- **Ask first:** before moving shared code into a dependency the Firestore package would have to take on, instead of duplicating it or passing it in through `Settings`. Sharing `Timestamp` and `GeoPoint` through a common package has been raised and isn't decided.
+- **Ask first:** before moving shared code into a dependency the Firestore package would have to take on, instead of duplicating it or passing it in through `Settings`. Sharing value types with FlutterFire is in [Firestore follows Node, with a few FlutterFire look-alikes](/firestore/node-not-flutterfire.md).
 - **Ask first:** before re-exporting `google_cloud_firestore` from the admin package.
 
 # Related

@@ -33,7 +33,7 @@ okf_version: "0.2"
 # CI
 
 * [Lints, analysis and formatting](ci/lint-and-format.md) - One root `analysis_options.yaml` applies to every package, but CI analyzes and format-checks only `packages/firebase_admin_sdk/`, with `--fatal-infos` and the format check on the dev SDK only, so format only the files you change and check ignores against every analysis SDK.
-* [What CI runs, the coverage gate, and what gates merging](ci/trigger-matrix.md) - The workflow files say what runs where; beyond them, docs-only PRs skip Build, a green PR doesn't mean prod, WIF or E2E tests ran, the coverage threshold is copied as text in two places, and merging is gated only by the `cla/google` status and an Alphabet zizmor scan.
+* [What CI runs, the coverage gate, and what gates merging](ci/trigger-matrix.md) - The workflow files say what runs where, and a green PR doesn't mean every suite ran; beyond them, the coverage threshold is copied as text in two places, and merging is gated only by the `cla/google` status and an Alphabet zizmor scan.
 * [Workflow security rules and Dependabot](ci/workflow-hardening.md) - Workflow edits must pass the mandatory Alphabet zizmor scan and the org Actions allow-list, both configured outside the repo; Dependabot updates only GitHub Actions, and Dart and npm dependencies are updated by hand.
 
 # Contributing
@@ -43,9 +43,9 @@ okf_version: "0.2"
 
 # Conventions
 
-* [URL casing; JSON keys stay Node's](conventions/acronym-casing.md) - Most public members keep Node's `URL` casing but `photoUrl` uses Dart casing, and every `toJson()` encodes like Node's `toJSON()`, with Node's keys and dates as strings.
+* [URL casing; JSON keys stay Node's](conventions/acronym-casing.md) - Most public members keep Node's `URL` casing but `photoUrl` uses Dart casing, and Auth records' and config classes' `toJson()` encodes like Node's `toJSON()`, with Node's keys and dates as strings.
 * [Apache-2.0 header on every source file](conventions/license-headers.md) - Every source file carries the Apache-2.0 header from `scripts/header_template.txt` (the text in that file), checked in CI with addlicense.
-* [Product libraries, parts and barrel exports](conventions/product-libraries-and-barrels.md) - Each admin product is one Dart library, mostly built from `part` files with a transport file and a request-handler file, exported through a barrel with a `hide` deny-list or a plain re-export, while `google_cloud_firestore` uses a `show` allow-list, so exporting a new public name must be a deliberate choice.
+* [Product libraries, parts and barrel exports](conventions/product-libraries-and-barrels.md) - Each admin product is a Dart library, mostly built from `part` files (App Check also has standalone libraries), with a transport file and a request-handler file, exported through a barrel with a `hide` deny-list or a plain re-export, while `google_cloud_firestore` uses a `show` allow-list, so exporting a new public name must be a deliberate choice.
 
 # Dependencies
 
@@ -69,19 +69,19 @@ okf_version: "0.2"
 # Firestore
 
 * [Settings.ignoreUndefinedProperties is never read](firestore/ignore-undefined-properties.md) - Dart declares Node's `Settings.ignoreUndefinedProperties`, but nothing reads it and `null` is always written as `nullValue`.
-* [Firestore reference classes are mockable interfaces](firestore/mockable-references.md) - The Firestore reference classes `Query`, `CollectionReference`, `DocumentReference` and `CollectionGroup` are `interface class`es so users can mock them, while value types stay `final`.
+* [Firestore reference classes are mockable interfaces](firestore/mockable-references.md) - The Firestore reference classes `Query`, `CollectionReference`, `DocumentReference` and `CollectionGroup` are `interface class`es so users can mock them, while the value types `Timestamp` and `GeoPoint` stay `final`.
 * [One cached Firestore per database, settings fixed](firestore/multi-database.md) - The admin `app.firestore()` caches one `Firestore` per database ID; asking for it again with settings that differ in a field `_areSettingsEqual` compares throws, and other setting changes are silently ignored.
 * [No realtime listeners (onSnapshot)](firestore/no-realtime-listeners.md) - Node's Admin SDK supports Firestore realtime listeners through the bidirectional `Listen` RPC, which the generated REST client Dart uses doesn't have, so listeners are a transport limit and a gap, not out of scope.
 * [Firestore follows Node, with a few FlutterFire look-alikes](firestore/node-not-flutterfire.md) - The Firestore API follows Node rather than FlutterFire's `cloud_firestore`, and matching FlutterFire to share code with Flutter clients was declined, yet the aggregate API, `withConverter` and some Pipeline aliases look like FlutterFire's.
 * [Firestore runs over REST, with buffered streaming](firestore/rest-transport.md) - Node's Firestore uses gRPC by default, while Dart's uses only REST through the generated `google_cloud_firestore_v1` client, which has no bidirectional RPC and buffers every server-streaming response, so Node's `Readable` APIs aren't ported.
-* [Firestore retries transient errors like Node](firestore/retries.md) - A standalone `WriteBatch.commit()` retries Node's commit codes, transactions retry as a whole, and reads retry a dropped connection only before any partial result and outside a transaction, all with `package:retry`.
+* [Firestore retries transient errors like Node](firestore/retries.md) - A standalone `WriteBatch.commit()` retries Node's commit codes, transactions retry as a whole, and queries, aggregations and pipelines retry an `http.ClientException`, such as a dropped connection, only before any partial result and outside a transaction, all with `package:retry`.
 * [Firestore is a standalone package](firestore/standalone-package.md) - Firestore ships as `google_cloud_firestore`, which works without the Admin SDK and never imports it; `firebase_admin_sdk` wraps it through `app.firestore()`.
 * [Timestamp shape and its Node JSON keys](firestore/timestamp.md) - Dart's `Timestamp` uses named parameters and `DateTime` and adds `fromMicros`, but `toJson()` keeps Node's `_seconds` and `_nanoseconds` keys on purpose.
 * [No field-value-pairs form of update()](firestore/update-field-value-pairs.md) - Node's alternating `update(field, value, ...)` varargs form has no Dart equivalent; Dart has only the map form.
 
 # Firestore pipelines
 
-* [Pipelines parity with Node is checked by machine](firestore/pipelines/node-parity.md) - Firestore Pipelines are checked against the pinned Node SDK in CI, by golden requests, an API-signature snapshot, a single-implementation test and a live E2E coverage guard, and every difference from Node is a table entry with its reason.
+* [Pipelines parity with Node is checked by machine](firestore/pipelines/node-parity.md) - Firestore Pipelines are checked against the pinned Node SDK in CI, by golden requests, an API-signature snapshot, a single-implementation test and a live E2E coverage guard, and every difference from Node is a table entry.
 
 # Functions
 

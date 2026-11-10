@@ -24,9 +24,13 @@ sources:
     resource: ../../../CONTRIBUTING.md
     symbol: RUN_PROD_TESTS
     title: CONTRIBUTING's testing requirements, with two out-of-date lines
+  - id: contributing-integration
+    resource: ../../../CONTRIBUTING.md
+    symbol: files named `*_integration_test.dart`
+    title: CONTRIBUTING's integration-test naming, which matches no file
   - id: contributing-layout
     resource: ../../../CONTRIBUTING.md
-    symbol: "### Repo Organization"
+    symbol: "# Auth unit & integration tests"
     title: CONTRIBUTING's repository tree, with an out-of-date test layout
 ---
 
@@ -34,20 +38,20 @@ sources:
 
 - Enforced by: the default `exclude_tags` and the presets in each `dart_test.yaml`, `exclude_tags: firebase-emulator || prod || wif` in `packages/firebase_admin_sdk/dart_test.yaml`[^admin-default-run] and `exclude_tags: firebase-emulator || prod` in `packages/google_cloud_firestore/dart_test.yaml`.[^firestore-default-run] Each tag's description says what it needs.
 - The presets as a table: `### Running Tests` in `CONTRIBUTING.md`.[^contributing-running-tests]
-- The testing requirements, with two out-of-date lines: `## Testing Requirements` in `CONTRIBUTING.md`, at `RUN_PROD_TESTS`.[^contributing-testing]
-- An out-of-date test layout: `### Repo Organization` in `CONTRIBUTING.md`.[^contributing-layout]
+- The testing requirements, with two out-of-date lines: `## Testing Requirements` in `CONTRIBUTING.md`, at `*_integration_test.dart` and `RUN_PROD_TESTS`.[^contributing-integration][^contributing-testing]
+- An out-of-date test layout: the `test/` tree under `### Repo Organization` in `CONTRIBUTING.md`.[^contributing-layout]
 
 # Constraint
 
-Tests are split into tiers by `dart_test` tags, never by environment variables. The default `dart test` runs unit tests only.
+Tests are split into tiers by `dart_test` tags, never by environment variables.
 
 - **Trap:** an untagged test that needs an emulator lands in the default run, and fails for everyone without emulators.
 - CONTRIBUTING.md's Testing Requirements are out of date in two lines: there are no `*_integration_test.dart` files, since integration tests live in `test/integration/` and are tagged; and prod tests are gated by the `prod` tag, not `RUN_PROD_TESTS`.
-- CONTRIBUTING.md's Repo Organization tree is out of date: admin tests live under `test/unit/<product>/` and `test/integration/<product>/`, and the shared helpers in `test/fixtures/`. Firestore's tests are flat `test/*.dart` files, with the live Pipeline suite in `test/e2e/`.
+- CONTRIBUTING.md's Repo Organization tree is out of date: admin tests live under `test/unit/<product>/` (plus `test/unit/utils_test.dart`) and `test/integration/<product>/`, and the shared helpers in `test/fixtures/`. Firestore's tests are flat `test/*.dart` files, with the live Pipeline suite in `test/e2e/`.
 
 # Why
 
-The maintainers' stated reasons: reviewers ask for tests before merging, and CONTRIBUTING.md makes them mandatory. Production tests are quota-heavy and not required in CI, so they are an explicit opt-in. An earlier `RUN_PROD_TESTS`/`hasProdEnv` environment-variable guard was dropped in favour of tags.
+The maintainers' stated reasons: reviewers ask for tests before merging, and CONTRIBUTING.md makes them mandatory. Why production tests are an explicit opt-in is in [Prod and WIF test runs](/tests/prod-and-wif.md). An earlier `RUN_PROD_TESTS`/`hasProdEnv` environment-variable guard was dropped in favour of tags.
 
 # Rules for agents
 
@@ -68,5 +72,6 @@ The maintainers' stated reasons: reviewers ask for tests before merging, and CON
 [^admin-default-run]: The admin package's `dart_test.yaml`
 [^firestore-default-run]: The Firestore package's `dart_test.yaml`
 [^contributing-running-tests]: CONTRIBUTING's presets table
+[^contributing-integration]: CONTRIBUTING's integration-test naming
 [^contributing-testing]: CONTRIBUTING's testing requirements
 [^contributing-layout]: CONTRIBUTING's repository tree

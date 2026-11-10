@@ -28,11 +28,15 @@ sources:
   - id: state-error
     resource: ../../../packages/google_cloud_firestore/lib/src/firestore_http_client.dart
     symbol: throw StateError('FirestoreHttpClient has already been closed.')
-    title: A request after `terminate()` throws `StateError`
+    title: A request on a closed `FirestoreHttpClient` throws `StateError`
   - id: transaction-misuse
     resource: ../../../packages/google_cloud_firestore/lib/src/transaction.dart
     symbol: FirestoreClientErrorCode.failedPrecondition
     title: Transaction misuse throws `FirestoreException`
+  - id: credential-misuse
+    resource: ../../../packages/google_cloud_firestore/lib/src/credential.dart
+    symbol: FirestoreClientErrorCode.invalidArgument
+    title: Invalid service-account input to `Credential` throws `FirestoreException`
   - id: node-status-code
     resource: https://github.com/googleapis/google-cloud-node/blob/main/handwritten/firestore/dev/src/status-code.ts
     symbol: StatusCode
@@ -48,7 +52,7 @@ sources:
 - Enforced by: nothing; review only.
 - The exception, its fields and its error codes: `FirestoreException` and `FirestoreClientErrorCode` in `firestore_exception.dart`.[^firestore-exception]
 - How REST and HTTP errors become gRPC-style codes: `handleFirestoreException` in the same file.[^handle-exception]
-- Misuse: `ArgumentError` in `validate.dart`, `StateError` after `terminate()` in `firestore_http_client.dart`, and `FirestoreException` for transaction misuse in `transaction.dart`.[^argument-error][^state-error][^transaction-misuse]
+- Misuse: `ArgumentError` in `validate.dart`, `StateError` from a closed `FirestoreHttpClient` in `firestore_http_client.dart`, and `FirestoreException` for transaction misuse in `transaction.dart` and for invalid service-account input in `credential.dart`.[^argument-error][^state-error][^transaction-misuse][^credential-misuse]
 
 # Node.js
 
@@ -62,7 +66,7 @@ Node Firestore's validation throws a plain `Error`: `throw new Error(invalidArgu
 
 The code strings mix styles: `already-exists` and `data-loss` are kebab-case, while most others, such as `deadline_exceeded`, use underscores.[^code-strings] Whether that is intended, and which form is canonical, is undecided; ask a maintainer.
 
-**Misuse throws a Dart `Error`, not an `Exception`:** `ArgumentError` for invalid arguments and `StateError` for invalid state. Two cases throw `FirestoreException` instead, where Node throws a plain `Error`: transaction misuse (a read after a write, a write in a read-only transaction) and an invalid `desiredPartitionCount`. Validation messages are often Node's text verbatim.
+**Misuse throws a Dart `Error`, not an `Exception`:** `ArgumentError` for invalid arguments and `StateError` for invalid state. Some misuse throws `FirestoreException` instead (`invalid_argument` or `failed_precondition`): transaction misuse (a read after a write, a write in a read-only transaction), an invalid `desiredPartitionCount`, and invalid service-account input to `Credential`. Node throws a plain `Error` for the first two. Validation messages are often Node's text verbatim.
 
 The admin package differs: it throws its typed exceptions with `invalid-*` codes, mirroring the Node Admin SDK.
 
@@ -92,5 +96,6 @@ The Firestore CHANGELOG states that requests made after `terminate()` throw a `S
 [^handle-exception]: `handleFirestoreException`
 [^code-strings]: `FirestoreClientErrorCode` code strings
 [^argument-error]: `ArgumentError` in `validate.dart`
-[^state-error]: `StateError` after `terminate()`
+[^state-error]: `StateError` from a closed `FirestoreHttpClient`
 [^transaction-misuse]: Transaction misuse in `transaction.dart`
+[^credential-misuse]: Invalid service-account input in `credential.dart`

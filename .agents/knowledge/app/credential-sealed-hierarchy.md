@@ -37,11 +37,15 @@ sources:
     resource: https://github.com/firebase/firebase-admin-node/blob/main/src/app/credential.ts
     symbol: getAccessToken
     title: Node's public `Credential.getAccessToken()`
+  - id: node-firestore-options
+    resource: https://github.com/firebase/firebase-admin-node/blob/main/src/firestore/firestore-internal.ts
+    symbol: getFirestoreOptions
+    title: Node's Firestore accepts only service-account and application-default credentials
 ---
 
 # Where it lives
 
-- Enforced by: the compiler, for every `switch` over the sealed class. The `app.firestore()` mapping is an `if` chain that throws for unknown subtypes, so nothing flags it.[^firestore-mapping]
+- Enforced by: nothing; review only. No `switch` in `lib/` covers the subtypes, and the `app.firestore()` mapping is an `if` chain that throws for other subtypes, so the compiler flags neither.[^firestore-mapping]
 - The factories and subtypes: `sealed class Credential` in `credential.dart`.[^sealed-credential]
 - The subtypes are kept out of the public API by the `hide` list in `firebase_admin_sdk.dart`.[^barrel-hide]
 - `serviceAccountId` for Workload Identity Federation: `Credential.fromApplicationDefaultCredentials` in `credential.dart`.[^adc-factory]
@@ -71,7 +75,7 @@ A `GoogleCredential` from the same short-lived `googleapis_auth_utils` package w
 # Rules for agents
 
 - **Must:** keep Dart's way. A new credential source is a new factory and a new sealed subtype, and every `switch` over `Credential` must stay exhaustive.
-- **Must:** when you add a subtype, also update the Firestore credential mapping in `app.firestore()`, which the compiler doesn't check.
+- **Must:** when you add a subtype, also update the Firestore credential mapping in `app.firestore()`, which the compiler doesn't check. As in Node, Firestore accepts only service-account and ADC credentials.[^node-firestore-options]
 - **Must not:** assume `serviceAccountCredentials` is non-null. It is null for ADC, WIF and refresh-token credentials.
 - **Ask first:** before adding a public `getAccessToken()`, for Node parity or otherwise. Whether dropping it was deliberate isn't recorded.
 
@@ -90,3 +94,4 @@ A `GoogleCredential` from the same short-lived `googleapis_auth_utils` package w
 [^adc-factory]: The ADC factory
 [^create-client]: `Credential.createClient`
 [^firestore-mapping]: `app.firestore()` credential mapping
+[^node-firestore-options]: Node's `getFirestoreOptions`

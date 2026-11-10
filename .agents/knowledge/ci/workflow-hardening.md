@@ -37,9 +37,7 @@ sources:
 - no `${{ }}` interpolation of secrets or untrusted values inside `run:` or `script:` blocks; pass them through `env:`;
 - a Dependabot `cooldown`.
 
-**The org Actions allow-list** permits only allow-listed actions, and `codecov/codecov-action` only at v4.
-
-**Dependabot updates GitHub Actions only.** Dart and npm dependencies are updated by hand.
+**The org Actions allow-list** permits only allow-listed actions. The codecov ignore in `dependabot.yaml` says which `codecov/codecov-action` major it allows.
 
 **Not enforced:** read-only top-level `permissions`, escalated per job, and `persist-credentials: false` on checkouts are repo practice. Whether the scan requires them isn't stated, and `build.yml`'s checkouts pass without the latter.
 

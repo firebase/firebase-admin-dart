@@ -42,7 +42,7 @@ The original API required an explicit credential; making it optional, with disco
 # Related
 
 - [Credential is a sealed class with factories](/app/credential-sealed-hierarchy.md)
-- [Stay resolvable for firebase_functions and Flutter workspaces](/dependencies/flutter-and-functions-consumers.md)
+- [Resolvable in Flutter workspaces and for firebase_functions](/dependencies/flutter-and-functions-consumers.md)
 
 [^credential-from-env]: Discovery from `GOOGLE_APPLICATION_CREDENTIALS`
 [^null-credential-case]: Discovery for options without a credential

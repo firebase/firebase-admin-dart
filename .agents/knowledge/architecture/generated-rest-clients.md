@@ -62,7 +62,7 @@ Why there is no retry layer isn't recorded. Ask a maintainer before changing it.
 
 # Related
 
-- [Firestore runs over REST, not gRPC](/firestore/rest-transport.md)
+- [Firestore runs over REST, with buffered streaming](/firestore/rest-transport.md)
 - [Firestore retries transient errors like Node](/firestore/retries.md)
 - [Storage is a thin wrapper over google_cloud_storage](/storage/google-cloud-storage-wrapper.md)
 - [Firebase services Node has and Dart does not](/scope/unsupported-services.md)

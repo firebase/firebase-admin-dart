@@ -24,13 +24,13 @@ sources:
 
 - Enforced by: nothing; review only.
 - Scheme routing (`https` over HTTP/2, anything else over HTTP/1.1), why plain-`http` credential endpoints need HTTP/1.1, and the `@experimental` pin: the dartdoc and file comment of `Http2WithHttp1FallbackClient` in `http2_client.dart`.[^admin-transport]
-- Firestore's copy of the same class, in `firestore_http_client.dart`.[^firestore-transport]
+- Firestore's copy, `Http2WithHttp1FallbackClient` in `firestore_http_client.dart`.[^firestore-transport]
 
 # Decision
 
 By default, HTTPS traffic goes over pooled HTTP/2 connections, through `package:http2`'s `Http2Client`. Plain-HTTP endpoints, the emulators among them, stay on HTTP/1.1.
 
-The wrapper is duplicated in both packages, because `google_cloud_firestore` can't import the admin package. A change to one copy needs the same change in the other.
+The wrapper is duplicated in both packages, because `google_cloud_firestore` can't import the admin package. The copies already differ: only the admin copy rejects requests after `close()`. A change to one copy needs the same change in the other.
 
 # Why
 
@@ -51,7 +51,7 @@ Alternatives that were tried or rejected:
 
 - [Public authenticated app client and transport options](/app/app-client-and-transport-options.md)
 - [Firestore is a standalone package](/firestore/standalone-package.md)
-- [Firestore runs over REST, not gRPC](/firestore/rest-transport.md)
+- [Firestore runs over REST, with buffered streaming](/firestore/rest-transport.md)
 - [No realtime listeners](/firestore/no-realtime-listeners.md)
 
 [^admin-transport]: The app client's transport

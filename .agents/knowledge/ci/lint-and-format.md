@@ -34,8 +34,8 @@ sources:
     title: A blanket ignore whose need depends on the resolved `googleapis`
   - id: contributing-format
     resource: ../../../CONTRIBUTING.md
-    symbol: "### Code Formatting and Analysis"
-    title: CONTRIBUTING's formatting advice, which runs `dart format .`
+    symbol: dart format .
+    title: CONTRIBUTING's `dart format .`, under Code Formatting and Analysis
 ---
 
 # Where it lives
@@ -43,13 +43,13 @@ sources:
 - Enforced by: the `lint` job, `name: Lint (Dart` in `.github/workflows/build.yml`, which runs only in `packages/firebase_admin_sdk`.[^lint-job] `dart analyze --fatal-infos`[^fatal-infos] and `dart format --set-exit-if-changed`[^format-check] run there on dev only.
 - The lint set, strict modes and analysis excludes: `dart_flutter_team_lints` and `unnecessary_ignore` in the root `analysis_options.yaml`.[^analysis-options][^unnecessary-ignore]
 - An ignore whose need depends on the resolved `googleapis`: `ignore_for_file: deprecated_member_use` in `test/unit/messaging/messaging_test.dart`.[^messaging-ignore]
-- CONTRIBUTING.md's out-of-date formatting advice: `### Code Formatting and Analysis`, and the Local Validation section after it.[^contributing-format]
+- CONTRIBUTING.md's `dart format .`, which rewrites every file: under Code Formatting and Analysis.[^contributing-format]
 
 # Constraint
 
 **CI checks only the admin package.** The `lint` job takes in `firebase_admin_sdk`'s `example/` for both checks, and its `example_server_app/` for the format check only, since analysis excludes it. CI neither analyzes nor format-checks `packages/google_cloud_firestore/` or `scripts/`.
 
-**Formatter skew.** Formatter output differs between SDK versions, and CI checks formatting on dev only. A contributor on stable can produce diffs CI rejects, or rewrite files CI accepts. CONTRIBUTING.md's `dart format .`, under Code Formatting and Analysis and Local Validation, is out of date: format only the files you change.
+**Formatter skew.** Formatter output differs between SDK versions, and CI checks formatting on dev only. A contributor on stable can produce diffs CI rejects, or rewrite files CI accepts. CONTRIBUTING.md's `dart format .` (under Code Formatting and Analysis) rewrites every file with your SDK's formatter. Unless you're on the dev SDK that CI checks with, format only the files you change.
 
 **Ignore skew.** `unnecessary_ignore` is on, analysis runs on three SDKs, and dependencies aren't locked. An `// ignore:` needed with one SDK or dependency version can be flagged as unnecessary with another, which is fatal on dev because of `--fatal-infos`.
 
@@ -73,7 +73,7 @@ Why the format and `--fatal-infos` checks run only on dev, and why `example_serv
 
 - [Minimum Dart SDK](/dependencies/min-dart-sdk.md)
 - [Dependency constraint style](/dependencies/constraint-style.md)
-- [No committed lockfiles or overrides](/dependencies/no-lockfiles-or-overrides.md)
+- [No committed lockfiles or dependency overrides](/dependencies/no-lockfiles-or-overrides.md)
 
 [^lint-job]: The `lint` job in `build.yml`
 [^fatal-infos]: `--fatal-infos` in the `lint` job
@@ -81,4 +81,4 @@ Why the format and `--fatal-infos` checks run only on dev, and why `example_serv
 [^analysis-options]: The root analysis options
 [^unnecessary-ignore]: The `unnecessary_ignore` lint
 [^messaging-ignore]: The messaging test's blanket ignore
-[^contributing-format]: CONTRIBUTING's formatting advice
+[^contributing-format]: CONTRIBUTING's `dart format .`

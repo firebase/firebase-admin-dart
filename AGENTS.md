@@ -51,7 +51,7 @@ Each rule links to the concept that explains it.
   - Never add a numbered release heading.
   - If the admin package has no `-wip` heading, bump to the next patch `-wip` and regenerate `version.g.dart` (below).
 - **Releases.** Never publish, tag, or prepare a release unless the user asks. [More](.agents/knowledge/release/release-process.md)
-- **License header.** Every new `.dart` file, Dockerfile and `.mjs` file starts with the text in `scripts/header_template.txt`. [More](.agents/knowledge/conventions/license-headers.md)
+- **License header.** Every new `.dart` file, Dockerfile and `.mjs` file starts with the text in `scripts/header_template.txt`, except `*.g.dart` files. [More](.agents/knowledge/conventions/license-headers.md)
 - **Lint and format.** Keep to the one root `analysis_options.yaml`. Don't add per-package options or disable rules. [More](.agents/knowledge/ci/lint-and-format.md)
 - **Commits and PRs.** [Titles](.agents/knowledge/contributing/commit-and-pr-titles.md), [template](.agents/knowledge/contributing/pr-template-and-review.md)
   - PR titles, and the commit of a single-commit PR, are Conventional Commits (`type(scope): summary`).

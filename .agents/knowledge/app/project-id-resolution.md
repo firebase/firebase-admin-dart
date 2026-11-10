@@ -39,7 +39,7 @@ Every service resolves the project ID through `FirebaseApp.resolveProjectIdSync(
 
 Per-service discovery, such as an earlier `ProjectIdProvider`, was replaced by this shared resolver. The discovery sources themselves live upstream in `google_cloud`.
 
-**Trap:** the dartdoc of the `projectId` getter still tells services to use `ProjectIdProvider.discoverProjectId()`, which no longer exists.[^stale-getter-doc] Use the resolver.
+**Trap:** the dartdoc of the `projectId` getter tells services to use `ProjectIdProvider.discoverProjectId()`, which doesn't exist.[^stale-getter-doc] Use the resolver.
 
 # Why
 

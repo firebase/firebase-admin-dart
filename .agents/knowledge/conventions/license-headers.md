@@ -49,7 +49,7 @@ Every source file starts with the Apache-2.0 header in `scripts/header_template.
 
 # Related
 
-- [PR template and review](/contributing/pr-template-and-review.md)
+- [PR template, review, licence and CLA](/contributing/pr-template-and-review.md)
 - [Published as firebase_admin_sdk, owned by Google](/architecture/package-name-and-ownership.md)
 
 [^license-job]: The `check-license-header` job

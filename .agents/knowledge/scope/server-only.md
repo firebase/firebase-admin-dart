@@ -62,7 +62,7 @@ Web support for test setups was requested and declined; the maintainers suggeste
 # Related
 
 - [Resolvable in Flutter workspaces and for firebase_functions](/dependencies/flutter-and-functions-consumers.md)
-- [Storage emulator host written to the native process environment](/environment/storage-emulator-native-env.md)
+- [Storage emulator host set in the native process environment](/environment/storage-emulator-native-env.md)
 
 [^admin-readme]: The README's server framing
 [^admin-dart-io]: `dart:io` in the admin SDK

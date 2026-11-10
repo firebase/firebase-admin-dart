@@ -9,7 +9,6 @@ governs:
   - packages/firebase_admin_sdk/test/fixtures/task_queue_functions/**
   - doc/**
   - scripts/generate-docs.sh
-  - .github/workflows/**
 sources:
   - id: fixture-source
     resource: ../../../packages/firebase_admin_sdk/test/fixtures/task_queue_functions/src/index.ts
@@ -70,7 +69,7 @@ sources:
 
 # Related
 
-- [No committed lockfiles or overrides](/dependencies/no-lockfiles-or-overrides.md)
+- [No committed lockfiles or dependency overrides](/dependencies/no-lockfiles-or-overrides.md)
 - [Inject test doubles and use the guarded emulator helpers](/tests/helpers-and-injection.md)
 - [The pub workspace, melos and local setup](/repo/workspace-and-melos.md)
 - [version.g.dart is generated from the pubspec](/generated/version-g-dart.md)

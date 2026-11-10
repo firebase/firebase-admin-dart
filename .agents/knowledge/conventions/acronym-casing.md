@@ -1,7 +1,7 @@
 ---
 type: Divergence
 title: URL casing; JSON keys stay Node's
-description: Most public members keep Node's `URL` casing but `photoUrl` uses Dart casing, and every `toJson()` encodes like Node's `toJSON()`, with Node's keys and dates as strings.
+description: Most public members keep Node's `URL` casing but `photoUrl` uses Dart casing, and Auth records' and config classes' `toJson()` encodes like Node's `toJSON()`, with Node's keys and dates as strings.
 tags: [conventions, naming, json, node-parity]
 agents_md: when-touching
 governs:
@@ -56,7 +56,7 @@ Why `photoUrl` differs isn't recorded. Which casing new public members should us
 # Rules for agents
 
 - **Ask first:** before choosing the acronym casing of a new public member, or changing an existing one.
-- **Must:** keep JSON keys and value formats as Node's `toJSON()` has them.
+- **Must:** in Auth records and config classes, keep the JSON keys and value formats Node's `toJSON()` has.
 - **Must not:** emit `DateTime` objects from `toJson()`.
 - **Must not:** rename existing public members to satisfy a lint. It's a breaking change.
 

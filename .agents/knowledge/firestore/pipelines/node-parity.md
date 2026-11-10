@@ -1,7 +1,7 @@
 ---
 type: Decision
 title: Pipelines parity with Node is checked by machine
-description: Firestore Pipelines are checked against the pinned Node SDK in CI, by golden requests, an API-signature snapshot, a single-implementation test and a live E2E coverage guard, and every difference from Node is a table entry with its reason.
+description: Firestore Pipelines are checked against the pinned Node SDK in CI, by golden requests, an API-signature snapshot, a single-implementation test and a live E2E coverage guard, and every difference from Node is a table entry.
 tags: [firestore, pipelines, node-parity, tests, generated]
 agents_md: when-touching
 governs:
@@ -33,6 +33,10 @@ sources:
     resource: ../../../../packages/google_cloud_firestore/test/pipeline_api_parity_test.dart
     symbol: const _knownDifferences
     title: "`_knownDifferences`: deliberate signature differences and their reasons"
+  - id: dart-only
+    resource: ../../../../packages/google_cloud_firestore/test/pipeline_api_parity_test.dart
+    symbol: const _dartOnly
+    title: "`_dartOnly`: public Dart members Node lacks, and why"
   - id: node-version
     resource: ../../../../packages/google_cloud_firestore/test/pipeline_api_parity_test.dart
     symbol: const _nodeVersion
@@ -89,19 +93,19 @@ sources:
 # Where it lives
 
 - Enforced by: four unit tests, for the wire format (`pipeline_golden_test.dart`),[^golden-test] the signatures (`pipeline_api_parity_test.dart`),[^api-parity-test] one implementation per function (`pipeline_single_implementation_test.dart`)[^single-implementation-test] and a live case per public member (`pipeline_e2e_coverage_test.dart`);[^e2e-coverage-test] and the `pipeline_golden.yml`[^golden-workflow] and `pipeline_api_snapshot.yml`[^snapshot-workflow] workflows, which fail on stale generated files.
-- The golden fixtures, how to regenerate them and the wire-format tables: `tool/pipeline_golden/README.md`, under `## When Dart and Node differ`.[^golden-readme]
-- The API snapshot, how to regenerate it or bump Node, and the signature tables: `tool/pipeline_api_parity/README.md`, under `## Triaging a failure`.[^parity-readme]
-- The live suite, its database, secrets, index and skip guards: `test/e2e/README.md`, under `## Coverage guard`,[^e2e-readme] and `e2e_pipeline.yml`.[^e2e-workflow]
+- The golden fixtures and how to regenerate them: `tool/pipeline_golden/README.md`; its wire-format tables are under `## When Dart and Node differ`.[^golden-readme]
+- The API snapshot and how to regenerate it or bump Node: `tool/pipeline_api_parity/README.md`; the tables under `## Triaging a failure`.[^parity-readme]
+- The live suite: `test/e2e/README.md` (the coverage guard and vector index under `## Coverage guard`; the database, secrets and skip guards under `## CI`),[^e2e-readme] and `e2e_pipeline.yml`.[^e2e-workflow]
 - The Node pins: `@google-cloud/firestore` in each tool's `package.json`,[^golden-pin][^parity-pin] and `_nodeVersion` in `pipeline_api_parity_test.dart`.[^node-version]
 
 # Decision
 
-Firestore Pipelines are checked against Node by machine, in CI. No other product is ([Port of the Node.js Admin SDK](/architecture/node-port.md)). The tests, their tables and the READMEs above are the source of truth; this concept keeps only what they don't say outright.
+Firestore Pipelines are checked against Node by machine, in CI; for the other products, see [Port of the Node.js Admin SDK](/architecture/node-port.md). The tests, their tables and the READMEs above are the source of truth; this concept keeps only what they don't say outright.
 
-- **Every difference from Node is a table entry, with its reason.** Each test lists its allowed differences in tables, and a stale entry fails the test. The READMEs say which table takes which kind of difference.[^golden-readme][^parity-readme]
+- **Every difference from Node is a table entry.** `_knownDivergences`, `_dartApiGaps`, `_dartOnly`, `_knownDifferences` and `_pendingFixes` give a reason for each entry; `_renames` and `_classes` only where a comment does. Each test lists its allowed differences in tables, and a stale entry fails the test. The READMEs say which table takes which kind of difference.[^golden-readme][^parity-readme]
 - **`_knownDivergences` entries are deliberate, not bugs.** Where the pinned Node SDK sends a request the backend rejects, or that drops or misapplies an option, Dart sends what the backend accepts.[^node-pipelines] Each entry records why, usually as the backend's error, and a check asserts the shape Dart sends.[^golden-test]
 - **`_pendingFixes` and `_dartApiGaps` entries are unresolved, not decisions.** Most are gaps: Node APIs that Dart lacks or gets wrong, such as `pipeline.stream()`.[^api-parity-test][^golden-gaps] The parity test's `_pendingFixes` also holds Dart-only functions waiting for a backend check, to keep or drop.
-- **`_knownDifferences` holds Dart's deliberate additions,** such as `Pipeline.execute(readTime:)` and the options `Transaction.executePipeline` takes.[^known-differences] Query-level options go to `execute()`, not onto the Pipeline; the package README gives the reason.[^execute-options-readme]
+- **`_dartOnly` and `_knownDifferences` hold Dart's deliberate additions:** members Node lacks,[^dart-only] and signature differences such as `Pipeline.execute(readTime:)` and the options `Transaction.executePipeline` takes.[^known-differences] Query-level options go to `execute()`, not onto the Pipeline; the package README gives the reason.[^execute-options-readme]
 - **The tables are complete only for the pinned Node release.** APIs Node adds later appear only when the pin is bumped.[^node-version] The two tools pin `@google-cloud/firestore` separately, and nothing checks that the pins match.[^golden-pin][^parity-pin]
 
 # Why
@@ -113,7 +117,7 @@ The maintainers' stated reasons are in the tool READMEs, the test-file headers a
 - **Must:** match Node by default. Record each deliberate difference in the right table, with its reason. A new `_knownDivergences` entry needs a reason, ideally the backend's error, and a check of the shape Dart sends.
 - **Must not:** "fix" a `_knownDivergences` entry back to Node's wire format, or make a failing golden test pass by changing its expected side.
 - **Must:** when you implement a Node API listed in `_pendingFixes` or `_dartApiGaps`, match Node's signature and wire format, then delete the entry.
-- **Must:** keep Dart's additions in `_knownDifferences`, and keep query-level options on `execute()`.
+- **Must:** record Dart's additions in `_dartOnly` (a member Node lacks) or `_knownDifferences` (a signature difference), and keep query-level options on `execute()`.
 - **Must not:** add a public Pipeline API without a golden case and a live case in its family's E2E file.
 - **Must:** regenerate the fixtures and the snapshot with their tools, in the same PR as a change to `cases.js`, the extractor or a pin, and review the diff.
 - **Must not:** edit the fixtures or the snapshot by hand.
@@ -133,6 +137,7 @@ The maintainers' stated reasons are in the tool READMEs, the test-file headers a
 [^golden-gaps]: `_dartApiGaps`
 [^api-parity-test]: The API-signature parity test
 [^known-differences]: `_knownDifferences`
+[^dart-only]: `_dartOnly`
 [^node-version]: `_nodeVersion`
 [^single-implementation-test]: The single-implementation test
 [^e2e-coverage-test]: The E2E coverage guard

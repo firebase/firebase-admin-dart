@@ -22,7 +22,11 @@ sources:
   - id: bearer-owner
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/emulator_client.dart
     symbol: "'Bearer owner'"
-    title: The `owner` bearer token on emulator requests
+    title: The `owner` bearer token on Auth and Cloud Tasks emulator requests
+  - id: firestore-bearer-owner
+    resource: ../../../packages/google_cloud_firestore/lib/src/firestore_http_client.dart
+    symbol: "'Bearer owner'"
+    title: The `owner` bearer token on Firestore emulator requests
   - id: storage-protocol-check
     resource: ../../../packages/firebase_admin_sdk/lib/src/storage/storage.dart
     symbol: FIREBASE_STORAGE_EMULATOR_HOST should not contain a protocol
@@ -49,7 +53,7 @@ sources:
 
 - Enforced by: nothing; review only.
 - The variables and their lookups: `environment.dart` in each package.[^admin-env][^firestore-env]
-- The `owner` bearer token on Auth, Firestore and Cloud Tasks emulator requests: `emulator_client.dart`.[^bearer-owner]
+- The `owner` bearer token on Auth, Firestore and Cloud Tasks emulator requests: `EmulatorClient` and `CloudTasksEmulatorClient` in the admin `emulator_client.dart`, and `google_cloud_firestore`'s own `EmulatorClient` in `firestore_http_client.dart`.[^bearer-owner][^firestore-bearer-owner]
 - Revocation always checked under the emulator, as in Node: `checkRevoked || isEmulator` in `base_auth.dart`.[^check-revoked][^node-check-revoked]
 - The Storage host's protocol check: the `Storage` constructor in `storage.dart`.[^storage-protocol-check]
 
@@ -57,7 +61,7 @@ sources:
 
 Emulators are found only through the standard Admin SDK environment variables, the same ones Node reads.[^node-auth-env] There is no `useEmulator(host, port)` API. App Check has no emulator.
 
-When the variables are read differs, in both SDKs: `AuthHttpClient` and `FunctionsHttpClient` pick the emulator client once per instance, `Storage` decides in its constructor, and `verifyIdToken` checks for the Auth emulator on each call. Auth and Functions use a user-supplied `AppOptions.httpClient` as is, even under their emulators; see [Who closes which HTTP client](/app/http-client-ownership.md).
+When the variables are read differs, in both SDKs: `AuthHttpClient` and `FunctionsHttpClient` pick the emulator client once per instance, `Storage` decides in its constructor, and `verifyIdToken` checks for the Auth emulator on each call. How Auth and Functions treat a user-supplied `AppOptions.httpClient` under their emulators is in [Who closes which HTTP client](/app/http-client-ownership.md).
 
 **The Storage protocol error differs from Node's.** Both SDKs reject a host that contains `http://` or `https://`, with the same pattern and message.[^node-storage] Dart throws a `FirebaseAppException` with `app/failed-precondition`, whenever `FIREBASE_STORAGE_EMULATOR_HOST` is set. Node throws a `FirebaseStorageError` with `storage/invalid-emulator-host`, only when `STORAGE_EMULATOR_HOST` is unset.
 
@@ -90,7 +94,8 @@ Rejected alternatives: host and port parameters, reading `firebase.json`, and ha
 
 [^admin-env]: The admin package's `Environment`
 [^firestore-env]: Firestore's `Environment`
-[^bearer-owner]: `EmulatorClient`
+[^bearer-owner]: The admin `EmulatorClient` and `CloudTasksEmulatorClient`
+[^firestore-bearer-owner]: Firestore's `EmulatorClient`
 [^check-revoked]: Revocation check under the emulator
 [^node-check-revoked]: Node's revocation check under the emulator
 [^storage-protocol-check]: The `Storage` constructor's protocol check

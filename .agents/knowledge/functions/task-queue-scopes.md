@@ -29,7 +29,7 @@ sources:
 
 - Enforced by: nothing; review only.
 - The public scopes and the private Kit scope: `FunctionScope` and `_KitFunctionScope` in `functions_api.dart`.[^kit-scope]
-- The Kit variable: `FIREBASE_KIT_INSTANCE_ID` in `app/environment.dart`. Nothing reads `EXT_INSTANCE_ID`.[^kit-instance-env]
+- The Kit variable: `FIREBASE_KIT_INSTANCE_ID` in `app/environment.dart`. Nothing reads EXT_INSTANCE_ID.[^kit-instance-env]
 
 # Node.js
 

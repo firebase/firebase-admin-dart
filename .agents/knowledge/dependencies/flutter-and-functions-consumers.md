@@ -32,7 +32,7 @@ sources:
 
 # Why
 
-- The maintainers' stated reason: the `meta` constraint was lowered to allow workspaces with stable Flutter, as both packages' CHANGELOGs record, towards making `firebase_functions` usable in Flutter workspaces.
+- The maintainers' stated reason, recorded in both packages' CHANGELOGs: the `meta` constraint was lowered to allow workspaces with stable Flutter. The likely reason (not recorded) it matters here: `firebase_functions` depends on the admin package, so it must resolve in those workspaces too.
 - The likely mechanism (not recorded): the Flutter SDK pins `meta` and friends to exact versions, so a dependency demanding a newer one makes the shared workspace unsolvable.
 - The likely use case (not recorded): Dart Cloud Functions or shared model packages living in the same workspace as a Flutter app. Users do share models between Flutter and `google_cloud_firestore`.
 
@@ -45,7 +45,7 @@ sources:
 
 - [Dependency constraint style](/dependencies/constraint-style.md)
 - [Keep the dependency set small](/dependencies/minimal-dependencies.md)
-- [How tokens are verified](/auth/jwt-verification.md)
+- [Verifying ID tokens, session cookies and App Check tokens](/auth/jwt-verification.md)
 - [Credential discovery when none is passed](/app/credential-autodiscovery.md)
 
 [^admin-meta]: `meta` in `firebase_admin_sdk`'s pubspec

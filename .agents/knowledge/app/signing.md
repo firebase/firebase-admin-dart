@@ -42,7 +42,7 @@ sources:
 # Where it lives
 
 - Enforced by: nothing; review only.
-- The signer choice (emulator, local key, else IAM `signBlob` through `googleapis_auth`): `sign()` and its comments in `app_extension.dart`.[^app-sign][^local-sign]
+- The signer choice (emulator, local key, else IAM signBlob through `googleapis_auth`): `sign()` and its comments in `app_extension.dart`.[^app-sign][^local-sign]
 - The emulator short-circuit, which checks only the Auth emulator: the first line of `sign()`.[^emulator-short-circuit]
 - The callers: the Auth and App Check token generators.[^auth-token-generator][^app-check-token-generator]
 
@@ -75,7 +75,7 @@ Several signers were tried and replaced:
 
 - [Generic Google-auth features live upstream, not in this repo](/architecture/upstream-generic-auth-features.md)
 - [Credential is a sealed class with factories](/app/credential-sealed-hierarchy.md)
-- [How ID tokens, session cookies and App Check tokens are verified](/auth/jwt-verification.md)
+- [Verifying ID tokens, session cookies and App Check tokens](/auth/jwt-verification.md)
 - [Keep the dependency set small](/dependencies/minimal-dependencies.md)
 
 [^auth-token-generator]: Auth's token generator

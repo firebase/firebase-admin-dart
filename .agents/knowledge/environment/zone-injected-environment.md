@@ -60,7 +60,7 @@ Rejected alternative: shell scripts that set variables around `dart test`. Zones
 - [Emulators found only through standard environment variables](/environment/emulator-detection.md)
 - [Storage emulator host set in the native process environment](/environment/storage-emulator-native-env.md)
 - [One fixed project-ID resolution order](/app/project-id-resolution.md)
-- [Tests inject doubles through internal factories and use guarded emulator helpers](/tests/helpers-and-injection.md)
+- [Inject test doubles and use the guarded emulator helpers](/tests/helpers-and-injection.md)
 
 [^admin-lookup]: The admin package's lookups
 [^firestore-lookup]: Firestore's lookup

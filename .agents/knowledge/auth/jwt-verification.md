@@ -12,7 +12,7 @@ sources:
   - id: jwt-header-check
     resource: ../../../packages/firebase_admin_sdk/lib/src/utils/jwt.dart
     symbol: Firebase session cookies omit the
-    title: The `checkHeaderType: false` call and its comment, which is wrong about expiry
+    title: "The `checkHeaderType: false` call and its comment, which is wrong about expiry"
   - id: url-key-fetcher
     resource: ../../../packages/firebase_admin_sdk/lib/src/utils/jwt.dart
     symbol: class UrlKeyFetcher
@@ -51,7 +51,7 @@ Firebase ID tokens, session cookies and App Check tokens are verified with `dart
 
 **Trap:** the comment at the `checkHeaderType: false` call says that expiry is validated separately. It isn't: `JWT.verify` checks expiry, and the catch around that call maps every failure, an expired token included, to an invalid-signature error.
 
-**Custom claims, unlike Node.** Node's `DecodedIdToken` has an index signature, `[key: string]: any`, so a custom claim is read as `decoded.isAdmin`.[^node-decoded-id-token] Dart's has typed fields for the standard claims plus a `claims` map of every other claim, read as `decoded.claims['isAdmin']`.
+**Custom claims, unlike Node.** Node's `DecodedIdToken` has an index signature, `[key: string]: any`, so a custom claim is read as `decoded.isAdmin`.[^node-decoded-id-token] Dart's has typed fields for the standard claims plus a `claims` map of every other claim, read as `decoded.claims['isAdmin']`. Token claims without a typed field, such as `name` and `user_id`, stay in that map beside the custom claims, though the `_extractCustomClaims` dartdoc says it holds only custom claims.[^dart-extract-claims]
 
 # Why
 

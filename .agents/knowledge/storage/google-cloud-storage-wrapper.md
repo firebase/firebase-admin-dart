@@ -12,10 +12,10 @@ sources:
     resource: ../../../packages/firebase_admin_sdk/lib/src/storage/storage.dart
     symbol: Future<String> getDownloadURL(
     title: "`Storage.getDownloadURL(bucket, objectName)`"
-  - id: gcs-import
+  - id: bucket
     resource: ../../../packages/firebase_admin_sdk/lib/src/storage/storage.dart
-    symbol: package:google_cloud_storage/google_cloud_storage.dart
-    title: The wrapper around `google_cloud_storage`
+    symbol: gcs.Bucket bucket([String? name])
+    title: "`Storage.bucket()`, which falls back to `AppOptions.storageBucket`"
   - id: gcs-dependency
     resource: ../../../packages/firebase_admin_sdk/pubspec.yaml
     symbol: "google_cloud_storage:"
@@ -29,7 +29,7 @@ sources:
 # Where it lives
 
 - Enforced by: nothing; review only.
-- The Firebase helpers (`bucket()` with the default bucket, `getDownloadURL`): their dartdoc in `storage.dart`.[^gcs-import][^get-download-url]
+- The Firebase helpers: `bucket()`, which falls back to `AppOptions.storageBucket` (in its body), and `getDownloadURL` (its dartdoc), in `storage.dart`.[^bucket][^get-download-url]
 - The `google_cloud_storage` version range: the admin `pubspec.yaml`.[^gcs-dependency]
 
 # Decision
@@ -55,12 +55,12 @@ In Node, `getStorage().bucket()` returns a `@google-cloud/storage` `Bucket`, and
 
 # Related
 
-- [Storage emulator host written to the native process environment](/environment/storage-emulator-native-env.md)
+- [Storage emulator host set in the native process environment](/environment/storage-emulator-native-env.md)
 - [Public authenticated app client and transport options](/app/app-client-and-transport-options.md)
 - [Dependency constraint style](/dependencies/constraint-style.md)
 - [Who closes which HTTP client](/app/http-client-ownership.md)
 
-[^gcs-import]: The wrapper's import of `google_cloud_storage`
+[^bucket]: `Storage.bucket()`
 [^get-download-url]: `Storage.getDownloadURL`
 [^node-get-download-url]: Node's `getDownloadURL`
 [^gcs-dependency]: The `google_cloud_storage` range in the admin pubspec
