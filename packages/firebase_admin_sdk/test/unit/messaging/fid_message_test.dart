@@ -12,8 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:convert';
+
 import 'package:firebase_admin_sdk/messaging.dart';
 import 'package:test/test.dart';
+
+class _CustomPayload {
+  Map<String, Object?> toJson() => {
+    'items': [1, true, null],
+  };
+}
 
 void main() {
   test('serializes an FID and all supported payload fields', () {
@@ -39,6 +47,56 @@ void main() {
         'headers': {'apns-priority': '10'},
       },
       'fcmOptions': {'analyticsLabel': 'campaign'},
+    });
+  });
+
+  test('recursively serializes nested configuration and custom data', () {
+    final message = FidMessage(
+      fid: 'installation-id',
+      android: AndroidConfig(
+        fcmOptions: AndroidFcmOptions(analyticsLabel: 'android'),
+        notification: AndroidNotification(
+          title: 'Title',
+          lightSettings: LightSettings(
+            color: (red: 0.5, green: 0.25, blue: 1.0, alpha: null),
+            lightOnDurationMillis: '1s',
+            lightOffDurationMillis: '2s',
+          ),
+        ),
+      ),
+      apns: ApnsConfig(
+        fcmOptions: ApnsFcmOptions(analyticsLabel: 'ios'),
+        payload: ApnsPayload(aps: Aps(badge: 1)),
+      ),
+      webpush: WebpushConfig(
+        fcmOptions: WebpushFcmOptions(link: 'https://example.com'),
+        notification: WebpushNotification(data: _CustomPayload()),
+      ),
+    );
+
+    final json = message.toJson();
+    expect(jsonDecode(jsonEncode(json)), json);
+    expect(json['android'], {
+      'fcmOptions': {'analyticsLabel': 'android'},
+      'notification': {
+        'title': 'Title',
+        'lightSettings': {
+          'color': {'red': 0.5, 'green': 0.25, 'blue': 1.0},
+          'lightOnDuration': '1s',
+          'lightOffDuration': '2s',
+        },
+      },
+    });
+    expect((json['apns'] as Map<String, dynamic>)['fcmOptions'], {
+      'analyticsLabel': 'ios',
+    });
+    expect((json['webpush'] as Map<String, dynamic>)['fcmOptions'], {
+      'link': 'https://example.com',
+    });
+    final webpush = json['webpush'] as Map<String, dynamic>;
+    final notification = webpush['notification'] as Map<String, dynamic>;
+    expect(notification['data'], {
+      'items': [1, true, null],
     });
   });
 
