@@ -1,6 +1,6 @@
 ## 0.5.7-wip
 
-- Added FidMessage to support sending messages via Firebase Installation ID (FID).
+- Add FidMessage to support sending messages via Firebase Installation ID (FID). (thanks to @jt274)
 - Fixed `updateUser` deleting the user's display name, photo URL and phone number whenever the `UpdateRequest` left them out, for example `UpdateRequest(disabled: true)`. Fields you leave out are now unchanged, and setting one to `null` still deletes it.
 - Fixed linking a provider with `UpdateRequest.providerToLink`. Federated providers such as `google.com` were rejected as invalid, and the `email` and `phone` providers threw. `UpdateRequest.copyWith` no longer throws a `TypeError`.
 - Fixed `FirebaseApp.close()` leaving the app half closed when a service fails to close. The app is now always marked deleted and its HTTP client closed, and the error is rethrown afterwards.
