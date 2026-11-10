@@ -36,7 +36,7 @@ Each rule links to the concept that explains it.
 - **Errors** are typed per service, under `FirebaseAdminException`, with Node's `service/code` strings. [More](.agents/knowledge/errors/admin-exceptions.md)
   - Map from the server's error code, and fall back to the HTTP status only when there is none.
   - Don't remove codes Node has. Don't throw a bare `Exception` in new code. Use `rethrow`, not `throw e`.
-- **Barrels.** When you add a public name, check how its barrel exports it (`hide`, `show` or a plain re-export), so that exporting it is deliberate. Never export transport, request-handler or generated-client types. `lib/functions.dart` already exports `FunctionsHttpClient` and `FunctionsRequestHandler`; ask before hiding them, because removing an export is a breaking change. [More](.agents/knowledge/conventions/product-libraries-and-barrels.md)
+- **Libraries and barrels.** Follow the layout of the product you're editing. When you add a public name, check how its barrel exports it (`hide`, `show` or a plain re-export), so that exporting it is deliberate. Never export transport, request-handler or generated-client types. `lib/functions.dart` already exports `FunctionsHttpClient` and `FunctionsRequestHandler`; ask before hiding them, because removing an export is a breaking change. [More](.agents/knowledge/conventions/product-libraries-and-barrels.md)
 - **Dependencies.** [More](.agents/knowledge/dependencies/flutter-and-functions-consumers.md)
   - The packages must keep resolving in Flutter workspaces and for `firebase_functions`.
   - Don't raise the lower bounds of Flutter-pinned packages (`meta`, `collection`, `intl`) above what stable Flutter pins.

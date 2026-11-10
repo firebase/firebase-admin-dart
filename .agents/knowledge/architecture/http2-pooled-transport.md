@@ -30,7 +30,7 @@ sources:
 
 By default, HTTPS traffic goes over pooled HTTP/2 connections, through `package:http2`'s `Http2Client`. Plain-HTTP endpoints, the emulators among them, stay on HTTP/1.1.
 
-The wrapper is duplicated in both packages, because `google_cloud_firestore` can't import the admin package. The copies already differ: only the admin copy rejects requests after `close()`. A change to one copy needs the same change in the other.
+The wrapper is duplicated in both packages, because `google_cloud_firestore` can't import the admin package. The copies differ: only the admin copy rejects requests after `close()`. A change to one copy needs the same change in the other.
 
 # Why
 

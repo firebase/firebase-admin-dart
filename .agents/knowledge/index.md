@@ -28,7 +28,7 @@ okf_version: "0.2"
 
 * [ActionCodeSettings has linkDomain, not dynamicLinkDomain](auth/dynamic-link-domain-removed.md) - Dart's `ActionCodeSettings` has only `linkDomain`, with no `dynamicLinkDomain`, where Node keeps `dynamicLinkDomain` as deprecated.
 * [Verifying ID tokens, session cookies and App Check tokens](auth/jwt-verification.md) - Tokens are verified with `dart_jsonwebtoken` against Google's public keys, without the JWT `typ` header check, mapping errors from exception types (the emulator verifier also matches message text), accepting unsigned ID tokens and session cookies under the Auth emulator, and exposing custom claims as a map where Node has an index signature.
-* [Unset versus null in Auth updates (sentinel and _Box)](auth/unset-vs-null-sentinel.md) - `_BaseUpdateRequest` encodes Node's three states for `displayName`, `photoURL` and `phoneNumber` with a `_sentinel` default and `_Box` (omitted leaves a field unchanged, a value sets it, `null` clears it), so every public constructor must make that default reachable.
+* [Unset versus null in Auth updates (sentinel and _Box)](auth/unset-vs-null-sentinel.md) - `_BaseUpdateRequest` encodes Node's three states for `displayName`, `photoURL` and `phoneNumber` with a `_sentinel` default and `_Box` (omitted leaves a field unchanged, a value sets it, `null` clears it), so every public constructor must keep that default reachable.
 
 # CI
 

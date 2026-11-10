@@ -49,7 +49,7 @@ sources:
 
 **CI checks only the admin package.** The `lint` job takes in `firebase_admin_sdk`'s `example/` for both checks, and its `example_server_app/` for the format check only, since analysis excludes it. CI neither analyzes nor format-checks `packages/google_cloud_firestore/` or `scripts/`.
 
-**Formatter skew.** Formatter output differs between SDK versions, and CI checks formatting on dev only. A contributor on stable can produce diffs CI rejects, or rewrite files CI accepts. CONTRIBUTING.md's `dart format .` (under Code Formatting and Analysis) rewrites every file with your SDK's formatter. Unless you're on the dev SDK that CI checks with, format only the files you change.
+**Formatter skew.** Formatter output differs between SDK versions, and CI checks formatting on dev only. A contributor on stable can produce diffs CI rejects, or rewrite files CI accepts. CONTRIBUTING.md's `dart format .` (under Code Formatting and Analysis) rewrites every file with your SDK's formatter, including files CI never checks. Format only the files you change.
 
 **Ignore skew.** `unnecessary_ignore` is on, analysis runs on three SDKs, and dependencies aren't locked. An `// ignore:` needed with one SDK or dependency version can be flagged as unnecessary with another, which is fatal on dev because of `--fatal-infos`.
 
