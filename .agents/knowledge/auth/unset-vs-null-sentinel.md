@@ -12,7 +12,7 @@ governs:
 sources:
   - id: update-request-test
     resource: ../../../packages/firebase_admin_sdk/test/unit/auth/update_request_test.dart
-    symbol: UpdateRequest(disabled: true) deletes nothing
+    symbol: "UpdateRequest(disabled: true) deletes nothing"
     title: The tests that an omitted field sends no delete
   - id: update-request-factory
     resource: ../../../packages/firebase_admin_sdk/lib/src/auth/auth_config.dart
