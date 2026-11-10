@@ -1,12 +1,20 @@
 ---
 type: Divergence
 title: Timestamp shape and its Node JSON keys
-description: Dart's `Timestamp` uses named parameters and `DateTime`, but `toJson()` keeps Node's `_seconds` and `_nanoseconds` keys on purpose.
+description: Dart's `Timestamp` uses named parameters and `DateTime` and adds `fromMicros`, but `toJson()` keeps Node's `_seconds` and `_nanoseconds` keys on purpose.
 tags: [firestore, timestamp, json, node-parity]
 agents_md: when-touching
 governs:
   - packages/google_cloud_firestore/lib/src/timestamp.dart
 sources:
+  - id: json-test
+    resource: ../../../packages/google_cloud_firestore/test/timestamp_test.dart
+    symbol: toJson() returns correct JSON representation
+    title: The test that pins `toJson()`'s keys
+  - id: timestamp-class
+    resource: ../../../packages/google_cloud_firestore/lib/src/timestamp.dart
+    symbol: final class Timestamp
+    title: The Dart `Timestamp` class
   - id: json-keys
     resource: ../../../packages/google_cloud_firestore/lib/src/timestamp.dart
     symbol: "'_seconds': seconds"
@@ -21,23 +29,30 @@ sources:
     title: Node's `Timestamp`, including `valueOf()`
 ---
 
+# Where it lives
+
+- Enforced by: the `toJson() returns correct JSON representation` test in `timestamp_test.dart`, for the JSON keys only.[^json-test]
+- The constructor, the conversions and `==`: `final class Timestamp` in `timestamp.dart`.[^timestamp-class]
+- The JSON keys: `toJson()` in `timestamp.dart`.[^json-keys]
+- The Dart-only `fromMicros`: `factory Timestamp.fromMicros` in `timestamp.dart`.[^from-micros]
+
 # Node.js
 
-`new Timestamp(seconds, nanoseconds)` takes positional arguments. It has `fromDate(Date)`, `fromMillis`, `toDate(): Date`, `toMillis`, `isEqual` and `valueOf()`, which makes `<` and `>` work.[^node-value-of]
+`new Timestamp(seconds, nanoseconds)` takes positional arguments. It has `isEqual` and `valueOf()`, which makes `<` and `>` work, and no `fromMicros`.[^node-value-of]
 
 Its private `_seconds` and `_nanoseconds` fields make `JSON.stringify` emit `{"_seconds": …, "_nanoseconds": …}`.
 
 # Dart
 
-- `Timestamp({required seconds, required nanoseconds})` takes named parameters. It has `fromDate(DateTime)`, `fromMillis`, and a Dart-only `fromMicros`.[^from-micros]
-- `toDate()` returns a UTC `DateTime` with millisecond precision.
-- It has `==` and `hashCode`, but no `isEqual`, `valueOf` or `Comparable`. It is a `final class`.
-- `toJson()` returns `{'_seconds': …, '_nanoseconds': …}`, Node's keys.[^json-keys]
+`Timestamp` takes named parameters and converts to and from `DateTime`.[^timestamp-class] It has `==` and `hashCode`, but no `isEqual`, `valueOf` or `Comparable`. It adds `fromMicros`, which Node lacks.[^from-micros]
+
+`toJson()` returns Node's keys, `_seconds` and `_nanoseconds`.[^json-keys]
 
 # Why
 
 - **JSON keys.** The stated reason, from the contributor's request this implements: a `Timestamp` returned from a Cloud Function, through `Response.ok` or `CallableResult`, must serialize to a map of seconds and nanoseconds, as it does in Node, instead of throwing.
 - **Bundles.** A maintainer stated that `toJson()` must not be used for bundle serialization, which needs `seconds` and `nanos` keys.
+- **`fromMicros`.** The stated reason, in the contribution the maintainers accepted: to keep microsecond precision.
 - **Constructor and conversions.** The likely reason (not recorded): Dart idioms.
 
 # Rules for agents
@@ -50,10 +65,11 @@ Its private `_seconds` and `_nanoseconds` fields make `JSON.stringify` emit `{"_
 
 # Related
 
-- [Firestore value types use Dart types and named parameters](/firestore/value-types.md)
-- [Dart core-library names replace Node member names](/conventions/dart-member-names.md)
+- [Dart idioms win where Node's shape does not fit](/architecture/dart-idioms-over-node-shapes.md)
 - [Firestore reference classes are mockable interfaces](/firestore/mockable-references.md)
 
-[^node-value-of]: Node's `Timestamp`
-[^from-micros]: `Timestamp.fromMicros`
+[^json-test]: The `toJson()` test
+[^timestamp-class]: The Dart `Timestamp`
 [^json-keys]: `Timestamp.toJson()`
+[^from-micros]: `Timestamp.fromMicros`
+[^node-value-of]: Node's `Timestamp`

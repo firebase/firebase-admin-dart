@@ -1,7 +1,7 @@
 ---
 type: Constraint
 title: Pre-GA versioning and CHANGELOG headings between releases
-description: Packages stay on 0.x until GA with no fixed release cadence; between releases `firebase_admin_sdk` carries a `-wip` version and heading, while `google_cloud_firestore` keeps its released version under `## Unreleased`.
+description: Packages stay on 0.x until GA with no fixed release cadence; between releases `firebase_admin_sdk` carries a `-wip` version and heading, while `google_cloud_firestore` keeps its released version under `## Unreleased`, and the PR template's example matches neither.
 tags: [release, changelog, versioning]
 agents_md: always
 governs:
@@ -18,7 +18,18 @@ sources:
     resource: ../../../packages/firebase_admin_sdk/pubspec.yaml
     symbol: "version:"
     title: The admin package version
+  - id: pr-template-example
+    resource: ../../../.github/PULL_REQUEST_TEMPLATE.md
+    symbol: "## Unreleased fix/major/minor"
+    title: The PR template's CHANGELOG example, which matches neither package
 ---
+
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The admin version between releases: `version:` in `packages/firebase_admin_sdk/pubspec.yaml`.[^admin-version]
+- The headings to add entries under: the top of `packages/firebase_admin_sdk/CHANGELOG.md`[^admin-changelog] and of `packages/google_cloud_firestore/CHANGELOG.md`.[^firestore-changelog]
+- An example heading that matches neither package: `## Unreleased fix/major/minor` in `.github/PULL_REQUEST_TEMPLATE.md`.[^pr-template-example]
 
 # Constraint
 
@@ -26,25 +37,17 @@ Both packages stay on 0.x until GA, and releases have no fixed cadence.
 
 Between releases, the two packages follow different conventions:
 
-| | `firebase_admin_sdk` | `google_cloud_firestore` |
-| --- | --- | --- |
-| pubspec `version:` | the next version, as `X.Y.Z-wip`[^admin-version] | the last released version |
-| Top CHANGELOG heading | `## X.Y.Z-wip`[^admin-changelog] | `## Unreleased`[^firestore-changelog] |
-
-- In `firebase_admin_sdk`, the first user-visible change after a release bumps `version:` to `X.Y.Z-wip`, adds the `## X.Y.Z-wip` heading, and regenerates `version.g.dart`.
+- `firebase_admin_sdk` carries the next version as `X.Y.Z-wip`, in its pubspec and as its top CHANGELOG heading. The first user-visible change after a release bumps `version:` to `X.Y.Z-wip`, adds the `## X.Y.Z-wip` heading, and regenerates `version.g.dart`.
+- `google_cloud_firestore` keeps its last released version, and collects entries under `## Unreleased`.
 - The release PR drops `-wip`, or renames `## Unreleased` to the version.
-- A change's entry goes under the unreleased heading, never under a released version.
-- Breaking entries start with `**Breaking:**`. Dependency changes get their own entry.
+- A change's entry goes under the unreleased heading, never under a released version. Dependency changes get their own entry.
+- The PR template's CHANGELOG example matches neither package.
 
 # Why
 
 The maintainers' stated reasons: `firebase_admin_sdk` is not GA, so releases have no fixed cycle. Reviewers move entries under a new `-wip` section because the previous version is already released and the release commit strips the suffix. A user proposed a weekly release schedule; a maintainer answered that releases have no fixed cycle before GA.
 
 Why the two packages use different conventions isn't recorded. Ask a maintainer before changing either. The likely reason (not recorded): `-wip` keeps the version in the usage-tracking headers distinct from the released one, which matters only for the admin package, the only one with `version.g.dart`.
-
-# Enforced by
-
-Not enforced; a convention. The CHANGELOG example in `.github/PULL_REQUEST_TEMPLATE.md` (`## Unreleased fix/major/minor`) matches neither package.
 
 # Rules for agents
 
@@ -56,10 +59,12 @@ Not enforced; a convention. The CHANGELOG example in `.github/PULL_REQUEST_TEMPL
 
 # Related
 
-- [version.g.dart](/generated/version-g-dart.md)
+- [version.g.dart is generated from the pubspec](/generated/version-g-dart.md)
 - [Release process](/release/release-process.md)
+- [PR template, review, licence and CLA](/contributing/pr-template-and-review.md)
 - [`dynamicLinkDomain` removed, not deprecated](/auth/dynamic-link-domain-removed.md)
 
 [^admin-version]: The admin package version
 [^admin-changelog]: The admin CHANGELOG
 [^firestore-changelog]: The Firestore CHANGELOG
+[^pr-template-example]: The PR template's CHANGELOG example

@@ -1,7 +1,7 @@
 ---
 type: Constraint
-title: The admin examples are workspace members tested in CI
-description: "`packages/firebase_admin_sdk/example/` and `example_server_app/` are unpublished workspace members whose tests CI runs, while `google_cloud_firestore/example/` has no CI coverage."
+title: The admin examples are tested in CI, Firestore's is not
+description: "CI runs the tests of `firebase_admin_sdk`'s `example/` and `example_server_app/`, while `google_cloud_firestore/example/` is not a workspace member and nothing in CI analyzes or runs it."
 tags: [tests, examples, ci]
 agents_md: when-touching
 governs:
@@ -9,6 +9,10 @@ governs:
   - packages/firebase_admin_sdk/example_server_app/**
   - packages/google_cloud_firestore/example/**
 sources:
+  - id: ci-example-tests
+    resource: ../../../.github/workflows/build.yml
+    symbol: example_server_app
+    title: The example test steps in the `test` job
   - id: admin-example
     resource: ../../../packages/firebase_admin_sdk/example
     symbol: "publish_to: none"
@@ -17,26 +21,20 @@ sources:
     resource: ../../../packages/firebase_admin_sdk/example_server_app
     symbol: "publish_to: none"
     title: The example server app, unpublished
-  - id: ci-example-tests
-    resource: ../../../.github/workflows/build.yml
-    symbol: example_server_app
-    title: The example test steps in the `test` job
 ---
+
+# Where it lives
+
+- Enforced by: the example test steps in the `test` job, which name `example_server_app` in `.github/workflows/build.yml`.[^ci-example-tests] Nothing covers the Firestore example.
+- The admin examples, unpublished workspace members: `packages/firebase_admin_sdk/example/`[^admin-example] and `packages/firebase_admin_sdk/example_server_app/`.[^server-example]
 
 # Constraint
 
-- `packages/firebase_admin_sdk/example/` and `packages/firebase_admin_sdk/example_server_app/` are members of the pub workspace and are never published (`publish_to: none`).[^admin-example][^server-example]
-- CI runs `dart test` in both, in the `test` job of `.github/workflows/build.yml`.[^ci-example-tests]
-- `example_server_app` has a Dockerfile, and the root `analysis_options.yaml` excludes it from analysis.
-- `packages/google_cloud_firestore/example/` is not a workspace member, and nothing in CI runs or tests it.
+`packages/google_cloud_firestore/example/` holds plain Dart files inside the Firestore package. It isn't a workspace member, and CI neither analyzes it, since CI analyzes only `firebase_admin_sdk`, nor runs it.
 
 # Why
 
-The maintainers' stated reason: the example server's test assertions went stale after its routes changed, because CI ran only the SDK and Firestore unit tests.
-
-# Enforced by
-
-The two example test steps in the `test` job of `.github/workflows/build.yml`.
+The maintainers' stated reason for testing the admin examples: the example server's test assertions went stale after its routes changed, because CI ran only the SDK and Firestore unit tests.
 
 # Rules for agents
 
@@ -46,6 +44,6 @@ The two example test steps in the `test` job of `.github/workflows/build.yml`.
 
 - [Lints, analysis and formatting](/ci/lint-and-format.md)
 
+[^ci-example-tests]: The example test steps in CI
 [^admin-example]: The admin example package
 [^server-example]: The example server app
-[^ci-example-tests]: The example test steps in CI

@@ -14,8 +14,12 @@ governs:
 sources:
   - id: app-close
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/firebase_app.dart
-    symbol: Future<void> close() async
-    title: "`FirebaseApp.close()` and which client it closes"
+    symbol: be closed automatically. You are responsible
+    title: The `FirebaseApp.close()` dartdoc, which never closes a user-supplied client
+  - id: storage-lazy
+    resource: ../../../packages/firebase_admin_sdk/lib/src/storage/storage.dart
+    symbol: perform an auth handshake
+    title: Storage builds its `google_cloud_storage` delegate on first use, and why
   - id: storage-delete
     resource: ../../../packages/firebase_admin_sdk/lib/src/storage/storage.dart
     symbol: if (_isDeleted) return;
@@ -38,24 +42,29 @@ sources:
     title: "`Functions.delete()` closes its client whenever the Cloud Tasks emulator variable is set"
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- What `FirebaseApp.close()` closes, and that a second call throws `app/app-deleted` as in Node: the `close()` dartdoc and `_checkDestroyed` in `firebase_app.dart`.[^app-close]
+- Lazy, idempotent service clients: the `_delegate` getter and `delete()` in `storage.dart`, and `FirestoreHttpClient.close` in `firestore_http_client.dart`.[^storage-lazy][^storage-delete][^firestore-close]
+- The emulator path that reaches a user-supplied client: `AuthHttpClient._createClient`, `Auth.delete` and `Functions.delete`.[^auth-create-client][^auth-delete][^functions-delete]
+
 # Decision
 
-- `FirebaseApp` owns the default client it creates and closes it in `close()`. `FirebaseApp.close()` itself never closes a client the user passes in `AppOptions.httpClient`.[^app-close]
-- A service's `delete()` is meant to close only clients that service created (emulator clients), and is idempotent. In production, Storage's delegate holds `app.client`, whose lifecycle belongs to the app.[^storage-delete]
-- Auth and Functions close a user-supplied client in one path:
-  - `AuthHttpClient._createClient()` and `FunctionsHttpClient._createClient()` return `app.client` whenever `app.options.httpClient` is set, even under an emulator.[^auth-create-client]
-  - `Auth.delete()` closes its request handler's client whenever `FIREBASE_AUTH_EMULATOR_HOST` is set, and `Functions.delete()` whenever `CLOUD_TASKS_EMULATOR_HOST` is set.[^auth-delete][^functions-delete] Both decide from the variable alone.
-  - So with a user-supplied client and one of those variables set, `app.close()` closes the user's client if the app has an Auth or Functions instance. `delete()` creates the client first if no request has, so a request isn't needed.
-- `FirestoreHttpClient.close()` is idempotent, and closing a Firestore that never created its client does no credential lookup.[^firestore-close]
-- `FirebaseApp.close()` throws `app/app-deleted` on a second call, as Node does.
-- Authenticated clients are created on first use, never in constructors.
+`FirebaseApp` owns the default client it creates. A service's `delete()` closes only clients that service built (emulator clients) and is idempotent. Authenticated clients are created on first use, never in constructors.
+
+**Trap: Auth and Functions close a user-supplied client under their emulators.**
+
+- `AuthHttpClient._createClient()` and `FunctionsHttpClient._createClient()` return `app.client` whenever `app.options.httpClient` is set, even under an emulator.
+- `Auth.delete()` closes its request handler's client whenever `FIREBASE_AUTH_EMULATOR_HOST` is set, and `Functions.delete()` whenever `CLOUD_TASKS_EMULATOR_HOST` is set. Both decide from the variable alone.
+- So with a user-supplied client and one of those variables set, `app.close()` closes the user's client if the app has an Auth or Functions instance. `delete()` creates the client first if no request has, so a request isn't needed.
 
 # Why
 
 The maintainers' stated reasons:
 
 - `FirebaseApp` promises in its dartdoc that a user-provided `options.httpClient` is not closed automatically. A change that made `Storage.delete()` close `app.client` was blocked for that reason.
-- `gcs.Storage` starts resolving credentials as soon as it is built, so building it eagerly "would make `app.storage()` alone perform an auth handshake" (code comment in `storage.dart`).[^storage-delete]
+- Building a client eagerly starts a credential lookup; the Storage delegate's dartdoc gives the example.
 - Closing an unused Firestore must not resolve credentials: without credentials, closing the app failed.
 - A double close is a bug; the idempotency guards prevent it.
 
@@ -72,9 +81,11 @@ Eager construction is the rejected alternative: when ADC was missing, it raised 
 
 - [Public authenticated app client and transport options](/app/app-client-and-transport-options.md)
 - [Storage is a thin wrapper over google_cloud_storage](/storage/google-cloud-storage-wrapper.md)
+- [Emulators are detected from environment variables only](/environment/emulator-detection.md)
 
-[^app-close]: `FirebaseApp.close()`
-[^storage-delete]: `Storage.delete()` and the lazy delegate
+[^app-close]: The `FirebaseApp.close()` dartdoc
+[^storage-lazy]: Storage's lazy `_delegate`
+[^storage-delete]: `Storage.delete()`
 [^firestore-close]: `FirestoreHttpClient.close()`
 [^auth-create-client]: `AuthHttpClient._createClient()`
 [^auth-delete]: `Auth.delete()`

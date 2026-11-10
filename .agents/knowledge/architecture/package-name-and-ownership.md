@@ -22,17 +22,20 @@ sources:
     title: The license header, with Google LLC as copyright holder
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The package name: `name:` in the admin `pubspec.yaml`.[^pubspec-name]
+- The copyright holder: `scripts/header_template.txt`.[^header-template]
+- Where the code came from, and thanks to the name's previous owner: `## Package history` in the admin README.[^readme-history]
+
 # Decision
 
-- The package is published on pub.dev as `firebase_admin_sdk`.[^pubspec-name] Its former name, `dart_firebase_admin`, is not used.
-- pub.dev also lists older, unrelated `firebase_admin_sdk` versions by the name's previous owner. This package's versions start above them.
-- The repository is `firebase/firebase-admin-dart`, owned by Google.
-- Source headers say "Copyright … Google LLC", from `scripts/header_template.txt`.[^header-template]
-- The README ends with a Package history section. It says the code evolved from `dart_firebase_admin` by Invertase, and thanks the previous owner of the `firebase_admin_sdk` name.[^readme-history]
+`dart_firebase_admin` is the retired name and is not used. pub.dev also lists older, unrelated `firebase_admin_sdk` versions by the name's previous owner; this package's versions start above them.
 
 # Why
 
-The maintainers' stated reason, in part: the name had churned and needed to be settled, and `firebase_admin_sdk` was the outcome. The README thanks the name's previous owner "for letting us take over the `firebase_admin_sdk` name". The headers name Google LLC to align with legal guidance.
+The maintainers' stated reason, in part: the name had churned and needed to be settled, and `firebase_admin_sdk` was the outcome. The headers name Google LLC to align with legal guidance.
 
 Why this name was chosen over others isn't recorded; ask a maintainer. The rule on the Package history section and Invertase branding rests only on the change that renamed the package.
 

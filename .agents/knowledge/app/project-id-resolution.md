@@ -10,33 +10,36 @@ governs:
 sources:
   - id: resolve-sync
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/firebase_app.dart
-    symbol: String? resolveProjectIdSync(
-    title: The synchronous resolver, with the order in its dartdoc
+    symbol: Covers every source that can be read synchronously
+    title: The `resolveProjectIdSync` dartdoc, with the order and Node's `getExplicitProjectId`
   - id: get-project-id
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/firebase_app.dart
     symbol: Future<String> getProjectId(
     title: The async resolver, which adds discovery
+  - id: env-non-empty
+    resource: ../../../packages/firebase_admin_sdk/lib/src/app/firebase_app.dart
+    symbol: if (value != null && value.isNotEmpty) return value;
+    title: "`_projectIdFromEnvironment` skips empty variables"
+  - id: stale-getter-doc
+    resource: ../../../packages/firebase_admin_sdk/lib/src/app/firebase_app.dart
+    symbol: ProjectIdProvider.discoverProjectId()
+    title: The `projectId` getter's dartdoc, which names the removed `ProjectIdProvider`
 ---
+
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The order, how an injected environment replaces the process environment, and the sync/async split: the dartdoc of `resolveProjectIdSync` in `firebase_app.dart`.[^resolve-sync]
+- Async discovery last: `getProjectId` in `firebase_app.dart`, through `package:google_cloud`.[^get-project-id]
+- Empty variables are skipped: `_projectIdFromEnvironment` in `firebase_app.dart`.[^env-non-empty]
 
 # Decision
 
-Every service resolves the project ID through `FirebaseApp.resolveProjectIdSync()` and `getProjectId()`, in one fixed order:[^resolve-sync][^get-project-id]
-
-1. an `environment` argument or a zone-injected environment (tests);
-2. a `projectIdOverride` argument;
-3. `AppOptions.projectId`;
-4. the credential's service-account project;
-5. non-empty `GOOGLE_CLOUD_PROJECT`-style environment variables;
-6. the credentials file;
-7. async discovery through `package:google_cloud` (the gcloud CLI and the GCE metadata server).
-
-An injected environment replaces the process environment instead of layering on it: when one is supplied, `resolveProjectIdSync()` skips steps 5 and 6 and returns null after step 4.
-
-`resolveProjectIdSync()` stops before step 7 and returns null when only discovery could answer. `getProjectId()` falls back to step 7.
-
-An explicit credential outranks the ambient environment, so a service account for one project resolves to that project even on Google Cloud infrastructure that belongs to another.
+Every service resolves the project ID through `FirebaseApp.resolveProjectIdSync()` and `getProjectId()`. An explicit credential outranks the ambient environment.
 
 Per-service discovery, such as an earlier `ProjectIdProvider`, was replaced by this shared resolver. The discovery sources themselves live upstream in `google_cloud`.
+
+**Trap:** the dartdoc of the `projectId` getter still tells services to use `ProjectIdProvider.discoverProjectId()`, which no longer exists.[^stale-getter-doc] Use the resolver.
 
 # Why
 
@@ -47,7 +50,6 @@ The maintainers' stated reason: apps configured with a service account for one p
 - **Must not:** let ambient environment variables override an explicit credential's project.
 - **Must not:** do async discovery on a synchronous construction path.
 - **Must not:** add per-service discovery logic.
-- **Must not:** treat an empty environment variable as a project ID.
 
 # Related
 
@@ -55,5 +57,7 @@ The maintainers' stated reason: apps configured with a service account for one p
 - [Generic Google-auth features live upstream, not in this repo](/architecture/upstream-generic-auth-features.md)
 - [Port of the Node.js Admin SDK](/architecture/node-port.md)
 
-[^resolve-sync]: `resolveProjectIdSync()`
+[^resolve-sync]: The `resolveProjectIdSync()` dartdoc
 [^get-project-id]: `getProjectId()`
+[^env-non-empty]: `_projectIdFromEnvironment`
+[^stale-getter-doc]: The `projectId` getter's dartdoc

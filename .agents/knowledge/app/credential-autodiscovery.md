@@ -18,14 +18,15 @@ sources:
     title: Discovery also runs for options without a credential
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The discovery order: `_credentialFromEnv` in `app_registry.dart`.[^credential-from-env]
+- Discovery for options without a credential: the `AppOptions(credential: null)` case of `AppRegistry.initializeApp`.[^null-credential-case]
+
 # Decision
 
-When the caller passes no credential, the SDK discovers one:[^credential-from-env]
-
-1. If `GOOGLE_APPLICATION_CREDENTIALS` points to a service-account file, that file becomes the credential.
-2. Otherwise, the SDK falls back to Application Default Credentials.
-
-Discovery runs both for `initializeApp()` without options and for `AppOptions` whose `credential` is null, so setting other options doesn't turn it off.[^null-credential-case]
+When the caller passes no credential, the SDK discovers one from the environment, as Node does. It does so both for `initializeApp()` without options and for `AppOptions` whose `credential` is null, so setting other options doesn't turn discovery off.
 
 # Why
 

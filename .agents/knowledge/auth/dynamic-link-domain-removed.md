@@ -17,13 +17,18 @@ sources:
     title: Node's deprecated `dynamicLinkDomain`
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The field Dart has: `linkDomain` in `action_code_settings_builder.dart`.[^dart-link-domain]
+
 # Node.js
 
 `ActionCodeSettings` has `linkDomain` and keeps `dynamicLinkDomain`, marked `@deprecated use linkDomain instead`.[^node-dynamic-link-domain]
 
 # Dart
 
-`ActionCodeSettings` has only `linkDomain`.[^dart-link-domain] `dynamicLinkDomain` is not there, not even as `@Deprecated`: it was removed outright rather than deprecated.
+`ActionCodeSettings` has only `linkDomain`. `dynamicLinkDomain` is not there, not even as `@Deprecated`: it was removed outright rather than deprecated.
 
 This is a deliberate omission, not a gap.
 
@@ -31,8 +36,6 @@ This is a deliberate omission, not a gap.
 
 - The maintainers' stated reason: it was dropped during review, because a breaking major release was coming anyway, so a deprecation cycle wasn't needed. The change describes `linkDomain` as its replacement.
 - The likely background (not recorded): Firebase Dynamic Links is deprecated and shut down upstream, Node added `linkDomain`, and Dart had no users of `dynamicLinkDomain` to deprecate it for.
-
-There is no general rule for APIs Node has deprecated. `dynamicLinkDomain` was dropped by a review decision, while the `*Legacy` topic-management methods were ported as `@Deprecated`.
 
 # Rules for agents
 

@@ -25,18 +25,23 @@ sources:
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/environment.dart
     symbol: Zone.current[envSymbol] as Map<String, String>? ?? Platform.environment
     title: The admin package's zone-first lookup
+  - id: firestore-symbol
+    resource: ../../../packages/google_cloud_firestore/lib/google_cloud_firestore.dart
+    symbol: "const envSymbol = #_envSymbol;"
+    title: Firestore's `envSymbol`
 ---
+
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The zone-first lookups: `environment.dart` in each package.[^admin-lookup][^firestore-lookup]
+- The two keys: `envSymbol` in the admin `credential.dart` and in `lib/google_cloud_firestore.dart`, each the library-private `#_envSymbol`.[^admin-symbol][^firestore-symbol]
 
 # Decision
 
-Code that reads environment variables checks `Zone.current[envSymbol]` before `Platform.environment`, so tests can inject or remove variables.[^admin-lookup][^firestore-lookup] An injected map replaces the process environment instead of layering on top of it.
+Code that reads environment variables checks `Zone.current[envSymbol]` before `Platform.environment`, so tests can inject or remove variables. An injected map replaces the process environment instead of layering on top of it.
 
-Each package declares its own `envSymbol` constant, whose value is a library-private symbol, `#_envSymbol`:[^admin-symbol]
-
-- `firebase_admin_sdk` in `lib/src/app/credential.dart`;
-- `google_cloud_firestore` in `lib/google_cloud_firestore.dart`.
-
-Private symbols are scoped to their library, so these are two different zone keys: a zone override made for `firebase_admin_sdk` doesn't reach `google_cloud_firestore`. Pass Firestore's environment through `Settings.environmentOverride`.
+**Two keys, not one.** Each package declares its own `envSymbol`, and private symbols are scoped to their library, so a zone override made for `firebase_admin_sdk` doesn't reach `google_cloud_firestore`. Pass Firestore's environment through `Settings.environmentOverride`.
 
 Consumers that read the environment natively, such as `google_cloud_storage`, ignore zones.
 
@@ -60,3 +65,4 @@ Rejected alternative: shell scripts that set variables around `dart test`. Zones
 [^admin-lookup]: The admin package's lookups
 [^firestore-lookup]: Firestore's lookup
 [^admin-symbol]: The admin `envSymbol`
+[^firestore-symbol]: Firestore's `envSymbol`

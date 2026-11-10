@@ -18,19 +18,19 @@ sources:
   - id: get-or-init
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/firebase_app.dart
     symbol: T getOrInitService<T extends FirebaseService>(
-    title: "`getOrInitService`, the per-app service cache"
+    title: "`getOrInitService`, the per-app service cache keyed by a string"
   - id: service-type
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/firebase_service.dart
     symbol: enum FirebaseServiceType
     title: The `FirebaseServiceType` enum, whose names the services register under
+  - id: dartdoc-example
+    resource: ../../../packages/firebase_admin_sdk/lib/src/app/firebase_service.dart
+    symbol: "'my-service',"
+    title: The `FirebaseService` dartdoc example, which registers a raw string through a public factory
   - id: auth-internal
     resource: ../../../packages/firebase_admin_sdk/lib/src/auth/auth.dart
     symbol: factory Auth.internal(
-    title: Auth's `@internal` cached factory
-  - id: tenant-manager
-    resource: ../../../packages/firebase_admin_sdk/lib/src/auth/auth.dart
-    symbol: TenantManager get tenantManager
-    title: The `tenantManager` getter
+    title: Auth's `@internal` cached factory and its sub-manager getters
   - id: node-get-auth
     resource: https://github.com/firebase/firebase-admin-node/blob/main/src/auth/index.ts
     symbol: export function getAuth
@@ -41,17 +41,22 @@ sources:
     title: Node's `tenantManager()` method
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The `app.x()` methods and the per-app cache: `getOrInitService` in `firebase_app.dart`.[^get-or-init]
+- The names services register under: `FirebaseServiceType` in `firebase_service.dart`.[^service-type]
+- The `@internal` factory and getter pattern: `Auth.internal` and the `tenantManager` getter in `auth.dart`.[^auth-internal]
+
 # Node.js
 
 Node has modular top-level accessors: `getAuth(app?)`, `getFirestore(app?|databaseId)` and so on. With no argument they use the default app. Each caches its service through `FirebaseApp.getOrInitService`, and the service constructors are `@internal`.[^node-get-auth] Sub-managers are methods: `auth.tenantManager()` and `auth.projectConfigManager()`.[^node-tenant-manager]
 
 # Dart
 
-Services are instance methods on `FirebaseApp`: `app.auth()`, `app.firestore({settings, databaseId})`, `app.messaging()` and so on. The default app is `FirebaseApp.instance`. There are no public service constructors and no top-level `getAuth()`.
+Services are instance methods on `FirebaseApp`, backed by `@internal` cached factories. There are no public service constructors and no top-level `getAuth()`. Sub-managers are getters. A new service follows the checklist in [Product libraries, parts and barrel exports](/conventions/product-libraries-and-barrels.md).
 
-Each method calls an `@internal factory X.internal(app)`, which caches one instance per app through `getOrInitService(String name, …)`.[^get-or-init][^auth-internal] The cache is keyed by that string, and `getOrInitService` accepts any string. Every SDK service registers under its `FirebaseServiceType` name, such as `FirebaseServiceType.auth.name`.[^service-type] The `FirebaseService` dartdoc example doesn't: it registers `'my-service'` through a public factory.
-
-Sub-managers are getters: `auth.tenantManager` and `auth.projectConfigManager`.[^tenant-manager]
+**Trap:** `getOrInitService` accepts any string, and the `FirebaseService` dartdoc example registers `'my-service'` through a public factory.[^dartdoc-example] Every SDK service registers under its `FirebaseServiceType` name instead.
 
 # Why
 
@@ -63,19 +68,19 @@ Why Dart uses methods on the app instead of Node's top-level functions isn't rec
 
 # Rules for agents
 
-- **Must:** give a new service an `X app.x()` method plus an `@internal factory X.internal(FirebaseApp)` that goes through `getOrInitService` with a new `FirebaseServiceType` value's `name`.
 - **Ask first:** before adding public service constructors. They were removed on purpose; the likely reason (not recorded) is Node parity, where the service constructors are `@internal`.
-- **Must not:** register services with string names outside `FirebaseServiceType`. Don't copy the `FirebaseService` dartdoc example, which uses `'my-service'` and a public factory.
+- **Must not:** register services with string names outside `FirebaseServiceType`. Don't copy the `FirebaseService` dartdoc example.
 - **Ask first:** before adding Node-style top-level `getX()` functions. Why Dart chose methods isn't recorded.
 
 # Related
 
 - [Node-style app lifecycle and registry](/app/lifecycle.md)
+- [Product libraries, parts and barrel exports](/conventions/product-libraries-and-barrels.md)
 - [Firebase services Node has and Dart does not](/scope/unsupported-services.md)
 
 [^node-get-auth]: Node's `getAuth`
 [^node-tenant-manager]: Node's `tenantManager()`
 [^get-or-init]: `getOrInitService`
 [^service-type]: `FirebaseServiceType`
+[^dartdoc-example]: The `FirebaseService` dartdoc example
 [^auth-internal]: `Auth.internal`
-[^tenant-manager]: The `tenantManager` getter

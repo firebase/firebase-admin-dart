@@ -10,43 +10,38 @@ sources:
   - id: initialize-app
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/firebase_app.dart
     symbol: static FirebaseApp initializeApp(
-    title: "`FirebaseApp.initializeApp`, with only optional arguments"
-  - id: delete-app
-    resource: ../../../packages/firebase_admin_sdk/lib/src/app/firebase_app.dart
-    symbol: static Future<void> deleteApp(
-    title: "`FirebaseApp.deleteApp`, which closes the app"
+    title: The static members of `FirebaseApp`, with their dartdoc
   - id: app-close
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/firebase_app.dart
     symbol: Future<void> close() async
     title: "`app.close()`, which deletes the services in a `try`/`finally`"
+  - id: registry-initialize
+    resource: ../../../packages/firebase_admin_sdk/lib/src/app/app_registry.dart
+    symbol: "Throws `FirebaseAppException` if:"
+    title: The registry's re-initialization rules, in the `AppRegistry.initializeApp` dartdoc
   - id: firebase-config
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/app_registry.dart
-    symbol: env['FIREBASE_CONFIG']
-    title: The registry reads `FIREBASE_CONFIG` as inline JSON or a file path
+    symbol: Loads app options from the FIREBASE_CONFIG environment variable.
+    title: "`fetchOptionsFromEnvironment`: `FIREBASE_CONFIG` as inline JSON or a file path"
   - id: node-lifecycle
     resource: https://github.com/firebase/firebase-admin-node/blob/main/src/app/lifecycle.ts
     symbol: export function initializeApp
     title: Node's app lifecycle
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The Dart surface (`initializeApp`, `getApp`, `instance`, `apps`, `deleteApp`): the static members of `FirebaseApp` in `firebase_app.dart`.[^initialize-app]
+- Registry semantics and their error codes: the dartdoc of `AppRegistry.initializeApp` in `app_registry.dart`.[^registry-initialize]
+- How `FIREBASE_CONFIG` is read: `fetchOptionsFromEnvironment` in `app_registry.dart`.[^firebase-config]
+- Cleanup that survives a failing service: the `finally` block in `FirebaseApp.close`.[^app-close]
+
 # Decision
 
-The app API keeps Node's semantics and error codes, with a Dart surface of static members on `FirebaseApp`:[^initialize-app][^node-lifecycle]
+The app API keeps Node's semantics and error codes, with a Dart surface of static members on `FirebaseApp` and `app.close()` in place of Node's top-level functions and internal `delete()`.[^node-lifecycle]
 
-| Node | Dart |
-| --- | --- |
-| `initializeApp(options?, appName?)` | `FirebaseApp.initializeApp({AppOptions? options, String? name})` |
-| `getApp(name?)` | `FirebaseApp.getApp([name])`, and `FirebaseApp.instance` for the default app |
-| `getApps()` | `FirebaseApp.apps` (a getter) |
-| `deleteApp(app)` | `FirebaseApp.deleteApp(app)`[^delete-app] |
-| `FirebaseApp.delete()` (internal) | `app.close()` |
-
-Semantics shared with Node:
-
-- Every argument is optional. With no options, the app is configured from `FIREBASE_CONFIG`, read as inline JSON or as a file path, as Node does.[^firebase-config] One code differs: a `FIREBASE_CONFIG` that can't be read or parsed throws `app/invalid-argument` in Dart, where Node throws `app/invalid-app-options`.
-- Apps live in a named registry. Re-initializing with equal options returns the existing app. Different options throw `app/duplicate-app`. Mixing an auto-initialized app (from `FIREBASE_CONFIG`) with an explicit one throws `app/invalid-app-options`.
-- One exception: re-initializing with a different credential or `httpClient` silently returns the existing app.
-- `app.close()` deletes every service of the app and removes it from the registry.[^app-close] Its cleanup runs in a `finally` block, so a service that fails to close doesn't leave the app half-closed.
+One code differs: a `FIREBASE_CONFIG` that can't be read or parsed throws `app/invalid-argument` in Dart, where Node throws `app/invalid-app-options`. Re-initializing with a different credential also differs; see [Re-initializing an app ignores a different credential](/app/reinit-ignores-credential.md).
 
 This API replaced `FirebaseAdminApp.initializeApp(projectId, credential)` and its required positional arguments.
 
@@ -69,8 +64,8 @@ The likely reason (not recorded) for static members and `close()`: Dart conventi
 - [Services only through app methods, no public constructors](/app/service-access.md)
 - [Who closes which HTTP client, and lazy client creation](/app/http-client-ownership.md)
 
-[^initialize-app]: `FirebaseApp.initializeApp`
+[^initialize-app]: `FirebaseApp`'s static members
 [^node-lifecycle]: Node's `lifecycle.ts`
-[^firebase-config]: `FIREBASE_CONFIG` parsing
-[^delete-app]: `FirebaseApp.deleteApp`
+[^registry-initialize]: `AppRegistry.initializeApp`
+[^firebase-config]: `fetchOptionsFromEnvironment`
 [^app-close]: `app.close()`

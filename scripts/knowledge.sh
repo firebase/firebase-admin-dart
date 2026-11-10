@@ -51,13 +51,14 @@ list() {
     inside && !/^  / { inside = 0 }'
 }
 
-# sources <file>: "resource<TAB>symbol" for each `sources` entry.
+# sources <file>: "id<TAB>resource<TAB>symbol" for each `sources` entry.
 sources() {
   frontmatter "$1" | awk '
-    function flush() { if (item) print res "\t" sym; res = ""; sym = ""; item = 0 }
+    function flush() { if (item) print id "\t" res "\t" sym; id = ""; res = ""; sym = ""; item = 0 }
     function value(line) { sub(/^[^:]*:[[:space:]]*/, "", line); gsub(/^["'\'']|["'\'']$/, "", line); return line }
     $0 == "sources:" { inside = 1; next }
     inside && /^  - / { flush(); item = 1; line = $0; sub(/^  - /, "    ", line); $0 = line }
+    inside && /^    id:/ { id = value($0); next }
     inside && /^    resource:/ { res = value($0); next }
     inside && /^    symbol:/ { sym = value($0); next }
     inside && !/^  / { flush(); inside = 0 }
@@ -70,7 +71,7 @@ matches() {
 }
 
 check() {
-  local problems=0 file dir type value glob res sym target link
+  local problems=0 file dir type value glob id res sym target link cited
   fail() {
     echo "✗ $1: $2"
     problems=$((problems + 1))
@@ -110,7 +111,8 @@ check() {
       [ -n "$(matches "$glob")" ] || fail "$file" "governs $glob, which matches no file"
     done < <(list "$file" governs)
 
-    while IFS=$'\t' read -r res sym; do
+    while IFS=$'\t' read -r id res sym; do
+      [ -n "$id" ] || fail "$file" "a sources entry has no id: line"
       [ -n "$res" ] || { fail "$file" "a sources entry has no resource: line"; continue; }
       case "$res" in
         http://* | https://*) continue ;;
@@ -120,8 +122,22 @@ check() {
       if [ ! -e "$target" ]; then
         fail "$file" "source $res doesn't exist"
       elif [ -n "$sym" ] && ! grep -rqF -- "$sym" "$target"; then
+        # -r: a directory source checks the symbol anywhere under it.
         fail "$file" "source $res doesn't contain $sym"
       fi
+    done < <(sources "$file")
+
+    # Footnotes point at sources, and every repo source is cited by one, so a pointer
+    # in the text never comes loose from a checked file and symbol.
+    cited=$(grep -oE '\[\^[A-Za-z0-9_.-]+\]' "$file" | sed -E 's/^\[\^//; s/\]$//' | sort -u)
+    while IFS= read -r id; do
+      [ -z "$id" ] || sources "$file" | cut -f1 | grep -qxF -- "$id" ||
+        fail "$file" "footnote [^$id] names no source"
+    done <<<"$cited"
+    while IFS=$'\t' read -r id res sym; do
+      case "$res" in http://* | https://*) continue ;; esac
+      [ -z "$id" ] || printf '%s\n' "$cited" | grep -qxF -- "$id" ||
+        fail "$file" "source $id isn't cited by any footnote"
     done < <(sources "$file")
 
     while IFS= read -r link; do
@@ -130,7 +146,7 @@ check() {
         *) target="$dir/$link" ;;
       esac
       [ -e "${target%%#*}" ] || fail "$file" "links to $link, which doesn't exist"
-    done < <(grep -oE '\]\([^)#[:space:]]+\.md(#[^)]*)?\)' "$file" | sed -E 's/^\]\(//; s/\)$//')
+    done < <(grep -oE '\]\([^)#[:space:]]+\.md(#[^)]*)?\)' "$file" | sed -E 's/^\]\(//; s/\)$//' | grep -vE '^https?:')
 
     # `#123`, `owner/repo#123`, "PR 123" or "issue 123", a pull or issue URL, or a date.
     history='(^|[^&[:alnum:]_])#[0-9]+([^[:alnum:]_-]|$)|[[:alnum:]_.-]+/[[:alnum:]_.-]+#[0-9]+([^[:alnum:]_-]|$)|\b(PR|[Pp]ull request|[Ii]ssue) #?[0-9]+\b|/(pull|issues)/[0-9]|\b20[0-9]{2}-[01][0-9]-[0-3][0-9]\b'
@@ -216,6 +232,8 @@ for_paths() {
   local arg path file glob kind value pairs paths resolved=0
   pairs=$(mktemp)
   paths=$(mktemp)
+  # Expanded now: `pairs` and `paths` are local and gone by the time EXIT fires.
+  trap "rm -f '$pairs' '$paths'" EXIT
 
   while IFS= read -r file; do
     while IFS= read -r glob; do
@@ -272,6 +290,11 @@ for_paths() {
     while IFS=$'\t' read -r kind value; do
       if [ "$kind" = concept ]; then
         echo "$value  ($(field "$value" agents_md)): $(field "$value" description)"
+        # Where the knowledge lives in the code: the concept's repo sources.
+        while IFS=$'\t' read -r _ res sym; do
+          case "$res" in http://* | https://* | /*) continue ;; esac
+          echo "    $(relative "$ROOT/$(dirname "$value")/$res")${sym:+  ($sym)}"
+        done < <(sources "$value")
       else
         echo "No concept governs $value. AGENTS.md's rules still apply."
       fi

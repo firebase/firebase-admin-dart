@@ -9,19 +9,25 @@ governs:
   - packages/google_cloud_firestore/lib/src/reference/document_reference.dart
   - packages/google_cloud_firestore/lib/src/transaction.dart
 sources:
+  - id: update-dartdoc
+    resource: ../../../packages/google_cloud_firestore/lib/src/reference/document_reference.dart
+    symbol: or a variable number of arguments
+    title: "`DocumentReference.update`, map form only, with a dartdoc that describes Node's varargs form"
   - id: write-batch-todo
     resource: ../../../packages/google_cloud_firestore/lib/src/write_batch.dart
     symbol: // TODO support update(ref, List<(FieldPath, value)>)
     title: The TODO naming the intended list-of-records shape
-  - id: document-update
-    resource: ../../../packages/google_cloud_firestore/lib/src/reference/document_reference.dart
-    symbol: Future<WriteResult> update(
-    title: "`DocumentReference.update`, map form only"
   - id: node-update
     resource: https://github.com/googleapis/google-cloud-node/blob/main/handwritten/firestore/dev/src/reference/document-reference.ts
     symbol: preconditionOrValues
     title: Node's varargs `update()`
 ---
+
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The map-only `update`: `DocumentReference.update` in `document_reference.dart`.[^update-dartdoc]
+- The intended shape: the `TODO` in `write_batch.dart`.[^write-batch-todo]
 
 # Node.js
 
@@ -29,12 +35,7 @@ sources:
 
 # Dart
 
-Dart has only the map form:
-
-- `DocumentReference.update(Map<Object?, Object?> data, [Precondition?])`;[^document-update]
-- `WriteBatch.update(ref, UpdateMap, {precondition})`.
-
-The `DocumentReference.update` dartdoc describes Node's varargs form, which Dart doesn't have.
+Dart has only the map form. **Trap:** the `DocumentReference.update` dartdoc still describes Node's varargs form, which Dart doesn't have.[^update-dartdoc]
 
 # Why
 
@@ -46,8 +47,8 @@ The intended shape is stated in a `TODO` in `WriteBatch`: "support update(ref, L
 
 # Related
 
-- [Node overloads become separate methods; rest parameters become lists](/conventions/no-overloads-or-rest-params.md)
+- [Dart idioms win where Node's shape does not fit](/architecture/dart-idioms-over-node-shapes.md), which maps Node's overloads and rest parameters
 
-[^node-update]: Node's varargs `update()`
-[^document-update]: `DocumentReference.update`
+[^update-dartdoc]: `DocumentReference.update` and its dartdoc
 [^write-batch-todo]: The `WriteBatch` TODO
+[^node-update]: Node's varargs `update()`

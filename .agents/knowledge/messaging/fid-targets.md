@@ -21,6 +21,11 @@ sources:
     title: Node's `enableLegacyHttpTransport()`
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The message targets Dart has: `sealed class Message` in `messaging_api.dart`.[^dart-message]
+
 # Node.js
 
 - `Message = FidMessage | TokenMessage | ...`, and `FidMulticastMessage`. The token form is deprecated in favour of FIDs.[^node-fid-message]
@@ -29,7 +34,7 @@ sources:
 
 # Dart
 
-- `sealed class Message` has `TokenMessage`, `TopicMessage` and `ConditionMessage`. There are no FID message types.[^dart-message]
+- `Message` has token, topic and condition targets. There are no FID message types.
 - There is no `enableLegacyHttpTransport`.
 - `subscribeToTopic` and `unsubscribeFromTopic` take a `List<String>` only.
 
@@ -46,7 +51,8 @@ The reason isn't recorded. Ask a maintainer before changing it. Whether FID-base
 # Related
 
 - [Topic management on the FCM v1 API](/messaging/topic-management-v1.md)
-- [TypeScript object unions become sealed classes](/conventions/unions-to-sealed-classes.md)
+- [Dart idioms win where Node's shape does not fit](/architecture/dart-idioms-over-node-shapes.md)
+- [ActionCodeSettings has linkDomain, not dynamicLinkDomain](/auth/dynamic-link-domain-removed.md)
 
 [^node-fid-message]: Node's `FidMessage`
 [^node-legacy-transport]: Node's `enableLegacyHttpTransport()`

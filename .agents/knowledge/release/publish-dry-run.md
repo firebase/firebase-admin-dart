@@ -1,7 +1,7 @@
 ---
 type: Constraint
 title: The publish dry run must pass for both packages
-description: CI's `publish` job runs `dart pub publish --dry-run` for both packages, which fails on fake keys not listed in `false_secrets`, modified checked-in files and other pub validator warnings.
+description: CI runs `dart pub publish --dry-run` for both packages, which fails on fake keys not listed in `false_secrets`, modified checked-in files and other pub validator warnings, but not on a bad description length or dependency overrides.
 tags: [release, publishing, ci]
 agents_md: when-touching
 governs:
@@ -21,37 +21,42 @@ sources:
     resource: ../../../packages/google_cloud_firestore/pubspec.yaml
     symbol: "false_secrets:"
     title: The Firestore package's `false_secrets`
+  - id: admin-pubignore
+    resource: ../../../packages/firebase_admin_sdk/.pubignore
+    symbol: test/credential_test.dart
+    title: The admin package's `.pubignore`, which names a file that no longer exists
   - id: golden-pubignore
     resource: ../../../packages/google_cloud_firestore/tool/pipeline_golden/.pubignore
     title: Excludes the Node fixture generator from the package
-  - id: admin-pubignore
-    resource: ../../../packages/firebase_admin_sdk/.pubignore
-    title: The admin package's `.pubignore`
 ---
+
+# Where it lives
+
+- Enforced by: the `publish` job, `publish --dry-run` in `.github/workflows/build.yml`, after the workflow's other jobs pass.[^publish-job]
+- The fake keys the dry run must ignore: `false_secrets:` in each package's `pubspec.yaml`.[^admin-false-secrets][^firestore-false-secrets]
+- What each package leaves out: its `.pubignore` files, such as `packages/firebase_admin_sdk/.pubignore`[^admin-pubignore] and `tool/pipeline_golden/.pubignore`.[^golden-pubignore]
 
 # Constraint
 
-`dart pub publish --dry-run` must pass in both packages. The `publish` job of `.github/workflows/build.yml` runs it after the other jobs of that workflow pass; a skipped `test-wif` counts as passing.[^publish-job]
+`dart pub publish --dry-run` must pass in both packages. It fails on:
 
-The dry run fails on:
-
-- a fake private key in a test file that isn't listed under `false_secrets` in the package pubspec;[^admin-false-secrets][^firestore-false-secrets]
+- a fake private key in a test file that isn't listed under `false_secrets` in the package pubspec;
 - a modified checked-in file, such as a stale `version.g.dart`;
 - other pub validator warnings.
 
 Not caught by the dry run: a description outside 50–180 characters (pub.dev's scoring asks for that length) and dependency overrides (only a hint).
 
-`.pubignore` files shape what is published.[^admin-pubignore] `tool/pipeline_golden/.pubignore` excludes that tool entirely.[^golden-pubignore]
+**Traps:**
+
+- The admin `.pubignore` names `test/credential_test.dart`, a path that no longer exists. The fake keys are covered by `false_secrets`, not by `.pubignore`.
+- Because that `.pubignore` exists, pub skips `packages/firebase_admin_sdk/.gitignore`. A `service-account-key.json` in that directory, which git ignores, is listed for publishing; the dry run shows it.
+- Only `tool/pipeline_golden/` has a `.pubignore`. `tool/pipeline_api_parity/`, with its `package.json` and lockfile, ships in the published `google_cloud_firestore`.
 
 # Why
 
-The maintainers' stated reasons: `false_secrets` lists the fixtures so the publish check doesn't flag the mock RSA test key; pub.dev asks for a description between 50 and 180 characters; and `tool/pipeline_golden/.pubignore` says "The Node.js fixture generator is a development tool, not part of the package."
+The maintainers' stated reasons: `false_secrets` lists the fixtures so the publish check doesn't flag the mock RSA test key, and pub.dev asks for a description between 50 and 180 characters.
 
 The likely reason the listed failures block CI (not recorded): the dry run exits non-zero on warnings.
-
-# Enforced by
-
-The `publish` job in `.github/workflows/build.yml`, and the `false_secrets` lists in both package pubspecs.
 
 # Rules for agents
 
@@ -62,9 +67,10 @@ The `publish` job in `.github/workflows/build.yml`, and the `false_secrets` list
 
 # Related
 
-- [version.g.dart](/generated/version-g-dart.md)
+- [version.g.dart is generated from the pubspec](/generated/version-g-dart.md)
 - [No committed lockfiles or overrides](/dependencies/no-lockfiles-or-overrides.md)
 - [Release process](/release/release-process.md)
+- [Inject test doubles and use the guarded emulator helpers](/tests/helpers-and-injection.md)
 
 [^publish-job]: The `publish` job
 [^admin-false-secrets]: The admin package's `false_secrets`

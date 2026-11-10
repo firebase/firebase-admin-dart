@@ -39,23 +39,22 @@ sources:
     title: Node's `deleteAttribute` and `deleteProvider` handling
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only. No test checks that an omitted field sends no delete.
+- The three states and how they are stored: `_BaseUpdateRequest`, whose parameters default to `_sentinel`, and the `_Box` dartdoc, in `auth_config.dart`.[^base-update-request][^box]
+- The public constructor whose typed super-parameters drop the default: `UpdateRequest` in `auth_config.dart`.[^update-request][^update-request-typed]
+- How a cleared field is sent: `deleteAttribute` and `deleteProvider` in `auth_request_handler.dart`.[^dart-delete-attribute]
+
 # Node.js
 
 In `UpdateRequest`, `displayName`, `photoURL` and `phoneNumber` are `string | null`. `undefined` leaves the field unchanged; `null` deletes it, through `deleteAttribute` for the display name and photo URL and `deleteProvider: ['phone']` for the phone number.[^node-delete-attribute] `setCustomUserClaims(uid, null)` clears the custom claims.
 
 # Dart
 
-The intended semantics are Node's. `_BaseUpdateRequest` provides the three states:
+The intended semantics are Node's, encoded with a `_sentinel` default and `_Box`. `setCustomUserClaims(uid, customUserClaims: null)` clears the claims, as in Node.[^set-custom-user-claims]
 
-| Caller passes | Field stored | Effect |
-| --- | --- | --- |
-| nothing | `null` | left unchanged |
-| a value | `_Box(value)` | set |
-| `null` | `_Box(null)` | cleared |
-
-Its constructor declares these parameters as `Object? displayName = _sentinel` (and the same for `photoURL` and `phoneNumber`).[^base-update-request] `_Box.unwrap` stores a parameter that still holds `_sentinel` as `null`, and any value the caller passed, `null` included, as `_Box(value)`.[^box] The request handler turns a `_Box(null)` into `deleteAttribute` (`PHOTO_URL`, `DISPLAY_NAME`) or `deleteProvider: ['phone']`.[^dart-delete-attribute] `setCustomUserClaims(uid, customUserClaims: null)` clears the claims, as in Node.[^set-custom-user-claims]
-
-**The pitfall.** The public `UpdateRequest` builds on `_BaseUpdateRequest`.[^update-request] An omitted field only reaches the base class as "omitted" if the `_sentinel` default is still reachable from the public constructor. A typed super-parameter such as `String? super.displayName` drops it: Dart doesn't inherit a default whose type (`_Sentinel`) isn't assignable to the declared type, so the parameter defaults to `null`. An omitted field then becomes `_Box(null)` and is sent as a delete. An untyped `super.displayName` keeps the default, and so does a redirecting factory whose target constructor keeps it. The public `UpdateRequest` constructor declares `String? super.displayName`, `String? super.phoneNumber` and `String? super.photoURL`, so through it an omitted field is sent as a delete.[^update-request-typed]
+**The pitfall.** An omitted field only reaches `_BaseUpdateRequest` as "omitted" if the `_sentinel` default is still reachable from the public constructor. A typed super-parameter such as `String? super.displayName` drops it: Dart doesn't inherit a default whose type (`_Sentinel`) isn't assignable to the declared type, so the parameter defaults to `null`. An omitted field then becomes `_Box(null)` and is sent as a delete. An untyped `super.displayName` keeps the default, and so does a redirecting factory whose target constructor keeps it. The public `UpdateRequest` constructor declares `String? super.displayName`, `String? super.phoneNumber` and `String? super.photoURL`, so through it an omitted field is sent as a delete.
 
 # Why
 
@@ -72,7 +71,7 @@ The maintainers' stated reason is in the doc comment on `_Box`: "An object used 
 
 # Related
 
-- [Auth records encode JSON like Node's toJSON()](/auth/user-record-tojson.md)
+- [URL casing; JSON keys stay Node's](/conventions/acronym-casing.md)
 
 [^node-delete-attribute]: Node's `deleteAttribute` and `deleteProvider` handling
 [^base-update-request]: `_BaseUpdateRequest` and its `_sentinel` defaults

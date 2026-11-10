@@ -25,6 +25,12 @@ sources:
     title: Node's `current` scope, which prefixes the queue inside an extension or kit
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The public scopes and the private Kit scope: `FunctionScope` and `_KitFunctionScope` in `functions_api.dart`.[^kit-scope]
+- The Kit variable: `FIREBASE_KIT_INSTANCE_ID` in `app/environment.dart`. Nothing reads `EXT_INSTANCE_ID`.[^kit-instance-env]
+
 # Node.js
 
 `taskQueue(name, extensionId)` checks `EXT_INSTANCE_ID` and `FIREBASE_KIT_INSTANCE_ID`. When a function targets its own extension or kit, Node rewrites the scope and logs a warning.[^node-ext-instance]
@@ -35,8 +41,8 @@ The `current()` scope also reads both variables: it prefixes the queue with `ext
 
 Dart ports Node's scope logic, with three cuts:
 
-- It never reads `EXT_INSTANCE_ID`. It drops both Node branches that use it: the `taskQueue` rewrite for a function targeting its own extension, and the `ext-<EXT_INSTANCE_ID>-` queue prefix that Node's `current` scope adds inside an extension. It keeps the `FIREBASE_KIT_INSTANCE_ID` checks.[^kit-instance-env]
-- The Kit scope is private (`_KitFunctionScope`). There is no public `FunctionScope.kit`; the public factories are `current()`, `global()` and `extension(id)`.[^kit-scope]
+- It never reads `EXT_INSTANCE_ID`. It drops both Node branches that use it: the `taskQueue` rewrite for a function targeting its own extension, and the `ext-<EXT_INSTANCE_ID>-` queue prefix that Node's `current` scope adds inside an extension. It keeps the `FIREBASE_KIT_INSTANCE_ID` checks.
+- The Kit scope is private. There is no public `FunctionScope.kit`.
 - The self-targeting warning is printed with `print()`.
 
 These are deliberate omissions.
@@ -59,8 +65,7 @@ The port also flattens Node's error-handling flows, for readability.
 
 # Related
 
-- [TypeScript object unions become sealed classes](/conventions/unions-to-sealed-classes.md)
-- [Overloads become separate methods; rest params become lists](/conventions/no-overloads-or-rest-params.md)
+- [Dart idioms win where Node's shape does not fit](/architecture/dart-idioms-over-node-shapes.md)
 
 [^node-ext-instance]: Node's `taskQueue` self-targeting
 [^node-current-scope]: Node's `current` scope

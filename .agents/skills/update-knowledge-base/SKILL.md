@@ -7,6 +7,8 @@ description: Updates the knowledge base in .agents/knowledge (an Open Knowledge 
 
 `.agents/knowledge/` holds one concept per architectural decision, per divergence from the Node.js Admin SDK, and per repository constraint. Agents read a concept before editing the files it `governs`. A concept that no longer matches the code misleads every agent after you, so fix it in the same PR as the change.
 
+The code and its docs are the source of truth. A concept holds only what they don't say: the why, what Node.js does, rules that span files, process that isn't in the code, traps, and rejected alternatives. For everything else, it points to where the knowledge lives.
+
 ## 1. Find the concepts your change touches
 
 ```bash
@@ -24,16 +26,21 @@ Copy the shape of an existing concept of the same `type`. Keep the frontmatter's
   - `title`: up to 60 characters.
   - `description`: one sentence in the present tense.
   - `tags`.
-  - `agents_md`: `always` if AGENTS.md must state the rule; `when-touching` if it matters only when editing the governed files; `reference` otherwise.
+  - `agents_md`: `always` if AGENTS.md must state the rule; `when-touching` if it matters only when editing the governed files; `reference` for a concept with no `governs`.
   - `governs`: path globs from the repo root. Keep them narrow, so that `for` lists only concepts that matter.
   - `sources`: the durable places that show or enforce the concept.
     - A repo file is given as a path relative to the concept file, with `symbol:` set to a literal string the file must contain.
     - A Node.js file is given as a GitHub URL on the default branch.
     - No line numbers and no commit SHAs.
-- **Body sections:**
-  - Decision: `# Decision`, `# Why`, `# Rules for agents`, `# Related`.
+- **Don't restate what the code says.** If the code, its dartdoc, a README, CONTRIBUTING.md or a workflow already says it (lists of fields, codes, files, jobs or steps; what a function does; a value), add a source and point to it instead. A copy drifts; a pointer is checked.
+- **Body sections:** every concept starts with `# Where it lives`:
+  - 1 to 5 bullets, each written as "what — `symbol` in `file`" and footnoted to a source.
+  - The first bullet names what enforces the rule, if anything: "Enforced by: `<test, job, lint or table>`", or "Enforced by: nothing; review only."
+
+  Then, by type:
+  - Decision: `# Decision`, `# Why`, `# Rules for agents`, `# Related`. Add an optional `# Node.js` paragraph when Node does it differently.
   - Divergence: `# Node.js`, `# Dart`, `# Why`, `# Rules for agents`, `# Related`.
-  - Constraint: `# Constraint`, `# Why`, `# Enforced by`, `# Rules for agents`, `# Related`.
+  - Constraint: `# Constraint`, `# Why`, `# Rules for agents`, `# Related`. Add the optional `# Node.js` paragraph here too.
   - Playbook: `# When to use`, `# Steps`, `# Related`.
 - **Rules for agents** start with **Must:**, **Must not:**, **Should:** or **Ask first:**. Make each rule only as strong as its evidence.
 - **Why:** label the reason honestly.
@@ -44,7 +51,7 @@ Copy the shape of an existing concept of the same `type`. Keep the frontmatter's
   - No pull request or issue numbers, commit SHAs, dates, names, release versions used as history, or "now" and "currently". `check` rejects `#123`-style references, "PR 123", pull and issue URLs, and dates.
   - For a value the code holds, such as a version constraint or a threshold, point to where it lives instead of copying it.
 - **Links** between concepts use bundle-relative paths, e.g. `[Title](/firestore/standalone-package.md)`.
-- **Footnotes** attribute a claim to one of the concept's sources: `[^source-id]`, where `source-id` is a `sources` entry's `id`. Define each footnote at the end of the body.
+- **Footnotes** attribute a claim to one of the concept's sources: `[^source-id]`, where `source-id` is a `sources` entry's `id`. Define each footnote at the end of the body. `check` fails on a footnote that names no source, and on a repo source no footnote cites, so every pointer stays tied to a checked file and symbol.
 
 - **Provenance (optional):** when a maintainer has checked a concept against the code, they can add `verified: { by: human:<github-login>, at: <UTC time> }`. A concept nobody has verified stays unverified, and that's allowed. Don't record which tool or model wrote a concept.
 

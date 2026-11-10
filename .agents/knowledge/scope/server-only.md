@@ -29,16 +29,17 @@ sources:
     title: The README's server framing
 ---
 
+# Where it lives
+
+- Enforced by: the `dart:io` imports, for web only: compilation fails there.[^admin-dart-io][^firestore-dart-io] Nothing enforces it for mobile.
+- `firebase_admin_sdk` also needs `dart:ffi`: `native_environment.dart`.[^native-environment]
+- The server framing for users: the admin README.[^admin-readme]
+
 # Decision
 
-The SDK targets trusted server environments only.[^admin-readme] Both packages are native, server-side libraries:
+The SDK targets trusted server environments only. There is no web support, and the SDK must not be used in mobile apps.
 
-- `lib/` in both packages imports `dart:io`.[^admin-dart-io][^firestore-dart-io]
-- `firebase_admin_sdk` also uses `dart:ffi` and `package:ffi`, to call `setenv` or `SetEnvironmentVariableW`.[^native-environment]
-
-There is no web support. The SDK must not be used in mobile apps.
-
-Nothing declares this: neither pubspec has a `platforms:` field, so pub.dev infers the platforms and tags both packages `sdk:flutter`, `platform:android` and `platform:ios`. The imports enforce it for web, where compilation fails. A maintainer has said the mobile tags should be removed with a `platforms:` field.
+**Nothing declares this.** Neither pubspec has a `platforms:` field, so pub.dev infers the platforms and tags both packages `sdk:flutter`, `platform:android` and `platform:ios`. A maintainer has said the mobile tags should be removed with a `platforms:` field.
 
 # Why
 

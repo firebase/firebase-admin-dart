@@ -1,7 +1,7 @@
 ---
 type: Decision
 title: Typed per-service admin exceptions with Node's error codes
-description: Admin errors are typed per service under `FirebaseAdminException`, with Node's `service/kebab-code` codes, Node's server-to-client code tables and `toJson()`.
+description: Admin errors are typed per service under `FirebaseAdminException`, with Node's `service/kebab-code` codes, Node's server-to-client code tables and `toJson()`, but without Node's error extras.
 tags: [errors, node-parity]
 agents_md: always
 governs:
@@ -14,45 +14,52 @@ sources:
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/exception.dart
     symbol: abstract class FirebaseAdminException implements Exception
     title: The base class, with `code`, `message` and `toJson()`
-  - id: auth-exception
-    resource: ../../../packages/firebase_admin_sdk/lib/src/auth/auth_exception.dart
-    symbol: class FirebaseAuthAdminException extends FirebaseAdminException
-    title: A per-service subclass
+  - id: admin-to-json
+    resource: ../../../packages/firebase_admin_sdk/lib/src/app/exception.dart
+    symbol: Map<String, dynamic> toJson()
+    title: "`FirebaseAdminException.toJson()`, with only `code` and `message`"
   - id: auth-code-table
     resource: ../../../packages/firebase_admin_sdk/lib/src/auth/auth_exception.dart
     symbol: const authServerToClientCode
     title: Auth's server-to-client code table, ported from Node
-  - id: app-error-code
-    resource: ../../../packages/firebase_admin_sdk/lib/src/app/app_exception.dart
-    symbol: enum AppErrorCode
-    title: A per-service error-code enum
+  - id: rethrow-leftover
+    resource: ../../../packages/firebase_admin_sdk/lib/src/auth/base_auth.dart
+    symbol: throw error;
+    title: The one `throw error;` left, in an `onError` closure
+  - id: exception-leftover
+    resource: ../../../packages/firebase_admin_sdk/lib/src/utils/jwt.dart
+    symbol: throw Exception('Failed to fetch JWKS');
+    title: The bare `throw Exception(...)` calls left in `jwt.dart`
+  - id: contributing-errors
+    resource: ../../../CONTRIBUTING.md
+    symbol: "### Error Handling"
+    title: CONTRIBUTING's error-handling rules
   - id: node-firebase-error
     resource: https://github.com/firebase/firebase-admin-node/blob/main/src/utils/error.ts
-    symbol: FirebaseError
-    title: Node's `FirebaseError`
+    symbol: hasCode
+    title: Node's `FirebaseError`, with `httpResponse`, `cause` and `hasCode()`
 ---
+
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The base class and its `toJson()`: `FirebaseAdminException` in `app/exception.dart`. Each service's subclass, its error-code enum, and whether it exposes `errorCode` or only `code`: its `*_exception.dart`.[^admin-exception][^admin-to-json]
+- The server-to-client code tables, copied from Node: for example `authServerToClientCode` in `auth_exception.dart`.[^auth-code-table]
+- The written rules (typed exceptions, Node behaviour where applicable): CONTRIBUTING's `### Error Handling`.[^contributing-errors]
 
 # Decision
 
-Admin errors are typed per service. `FirebaseAdminException` is an `abstract class … implements Exception`.[^admin-exception] Each service subclasses it and takes a per-service error-code enum, such as `FirebaseAuthAdminException(AuthClientErrorCode)` and `FirebaseAppException(AppErrorCode)`.[^auth-exception][^app-error-code] Most expose it as a typed `errorCode` (`FirebaseAuthAdminException`, `FirebaseAppException`, `FirebaseMessagingAdminException`, `FirebaseFunctionsAdminException`, `FirebaseStorageAdminException`); `FirebaseAppCheckException` and `FirebaseSecurityRulesException` expose only the `code` string.
+Admin errors are typed per service under `FirebaseAdminException`, with Node's `service/kebab-code` strings and Node's server-to-client code tables. The standalone Firestore package has its own `FirestoreException`.
 
-The rest matches Node's `FirebaseError` and its per-service subclasses:[^node-firebase-error]
+**Node's error extras are a gap.** Node's `FirebaseError` has `httpResponse`, `cause`, `hasCode(code)` (which accepts the code with or without the service prefix) and a richer `toJSON()`.[^node-firebase-error] `FirebaseAdminException` has none of them, and its `toJson()` returns only `code` and `message`. Nothing records a decision to leave them out.
 
-- `code` has Node's `service/kebab-code` form, such as `auth/invalid-uid`.
-- `message`, and `toJson()` for structured output.
-- Server error codes map to client codes through tables copied from Node, such as `authServerToClientCode`.[^auth-code-table] A platform-code message is the fallback.
-- Invalid arguments throw these exceptions with `invalid-*` codes, as in Node.
-
-The standalone Firestore package has its own `FirestoreException`.
-
-Catch blocks use `rethrow`. One `throw error;` remains, in an `onError` closure in `auth/base_auth.dart`, and `utils/jwt.dart` has a few `throw Exception(...)`.
+**Known leftovers.** One `throw error;` remains, in an `onError` closure in `auth/base_auth.dart`,[^rethrow-leftover] and `utils/jwt.dart` has a few bare `throw Exception(...)`.[^exception-leftover] Don't copy them.
 
 # Why
 
 The maintainers' stated reasons:
 
 - The codes are official errors that the JS implementation has too, so removing them makes no sense.
-- CONTRIBUTING says "Use typed exceptions … with appropriate error codes for user-facing errors" and "Match the behaviour of the Node.js Admin SDK where applicable."
 - Always using `rethrow` keeps the stack trace.
 
 The likely reason (not recorded) for an enum per service and `implements Exception`: Dart convention.
@@ -61,25 +68,29 @@ The reason for the "Admin" suffix (`FirebaseAuthAdminException`) isn't recorded.
 
 Deriving FCM error codes from the HTTP status and pruning "duplicated" codes was rejected.
 
+Why Node's error extras aren't ported isn't recorded.
+
 # Rules for agents
 
 - **Must:** match Node for code strings, messages and when each is thrown, where applicable.
-- **Ask first:** before changing a place where Dart knowingly differs, such as re-initializing an app with a different credential, or the `app/` prefix in the Firestore wrapper.
+- **Ask first:** before changing a place where Dart knowingly differs, such as [re-initializing an app with a different credential](/app/reinit-ignores-credential.md), or [the `app/` prefix in the Firestore wrapper](/firestore/multi-database.md).
 - **Must:** keep Dart's class shape: an enum per service, and `implements Exception`.
 - **Must:** map from the server's error code. Fall back to the HTTP status only when the response carries none, as Node does (see the non-JSON branch in `messaging/fmc_exception.dart`).
 - **Must not:** remove codes that exist in Node.
 - **Must not:** throw a bare `Exception` in new code.
 - **Must not:** write `throw e` where `rethrow` keeps the stack.
+- **Ask first:** before adding `httpResponse`, `cause`, `hasCode` or a richer `toJson()`. If they are added, follow Node's semantics with Dart names: `hasCode`, and `cause` as an `Object?`, possibly with a `StackTrace`.
 
 # Related
 
-- [Node's error extras are not ported](/errors/node-error-extras.md)
 - [FirestoreException is separate and maps HTTP to gRPC codes](/errors/firestore-exception.md)
-- [Firestore misuse throws ArgumentError and StateError](/errors/programmer-errors.md)
 - [Re-initializing an app ignores a different credential](/app/reinit-ignores-credential.md)
+- [One cached Firestore per database, settings fixed](/firestore/multi-database.md)
 
 [^admin-exception]: `FirebaseAdminException`
-[^auth-exception]: `FirebaseAuthAdminException`
-[^app-error-code]: `AppErrorCode`
-[^node-firebase-error]: Node's `FirebaseError`
+[^admin-to-json]: `FirebaseAdminException.toJson()`
 [^auth-code-table]: `authServerToClientCode`
+[^contributing-errors]: CONTRIBUTING's `### Error Handling`
+[^node-firebase-error]: Node's `FirebaseError`
+[^rethrow-leftover]: `throw error;` in `base_auth.dart`
+[^exception-leftover]: `throw Exception` in `jwt.dart`

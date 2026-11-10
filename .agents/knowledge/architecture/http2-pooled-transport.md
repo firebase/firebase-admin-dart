@@ -12,33 +12,25 @@ governs:
 sources:
   - id: admin-transport
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/http2_client.dart
-    symbol: class Http2WithHttp1FallbackClient
-    title: The app client's HTTP/2 transport with an HTTP/1.1 fallback
+    symbol: Credential negotiation can target plain
+    title: The app client's `Http2WithHttp1FallbackClient`, its dartdoc and its `@experimental` comment
   - id: firestore-transport
     resource: ../../../packages/google_cloud_firestore/lib/src/firestore_http_client.dart
-    symbol: class Http2WithHttp1FallbackClient
-    title: Firestore's HTTP/2 transport with an HTTP/1.1 fallback
-  - id: admin-pubspec
-    resource: ../../../packages/firebase_admin_sdk/pubspec.yaml
-    symbol: "http2:"
-    title: The admin package's `http2` constraint
-  - id: firestore-pubspec
-    resource: ../../../packages/google_cloud_firestore/pubspec.yaml
-    symbol: "http2:"
-    title: The Firestore package's `http2` constraint
+    symbol: Credential negotiation can target plain
+    title: Firestore's copy of `Http2WithHttp1FallbackClient`
 ---
+
+# Where it lives
+
+- Enforced by: nothing; review only.
+- Scheme routing (`https` over HTTP/2, anything else over HTTP/1.1), why plain-`http` credential endpoints need HTTP/1.1, and the `@experimental` pin: the dartdoc and file comment of `Http2WithHttp1FallbackClient` in `http2_client.dart`.[^admin-transport]
+- Firestore's copy of the same class, in `firestore_http_client.dart`.[^firestore-transport]
 
 # Decision
 
-By default, HTTPS traffic goes over pooled HTTP/2 connections, through `package:http2`'s `Http2Client`. Both the app's default client (`FirebaseApp.client`) and Firestore's `FirestoreHttpClient` use a wrapper, `Http2WithHttp1FallbackClient`.[^admin-transport][^firestore-transport]
+By default, HTTPS traffic goes over pooled HTTP/2 connections, through `package:http2`'s `Http2Client`. Plain-HTTP endpoints, the emulators among them, stay on HTTP/1.1.
 
-The wrapper routes by URL scheme: `https` goes over HTTP/2, anything else over plain HTTP/1.1. That keeps these endpoints on HTTP/1.1:
-
-- the emulators;
-- Firestore with `Settings.ssl: false`;
-- the GCE metadata server, which Application Default Credentials use on GCE and Cloud Run, and the link-local addresses that WIF/OIDC credentials often point at.
-
-`Http2Client` is `@experimental` upstream. The `http2` constraint in each pubspec bounds that risk, as the transport files say in a comment.[^admin-pubspec][^firestore-pubspec]
+The wrapper is duplicated in both packages, because `google_cloud_firestore` can't import the admin package. A change to one copy needs the same change in the other.
 
 # Why
 
@@ -51,17 +43,16 @@ Alternatives that were tried or rejected:
 
 # Rules for agents
 
-- **Must not:** send plain-`http` URLs through `Http2Client`. It rejects them, which breaks WIF/OIDC and metadata-server credentials.
+- **Must:** change both copies of `Http2WithHttp1FallbackClient` together.
 - **Must not:** return to one connection per request unless the problem it caused is solved: under concurrency it opened one TCP+TLS connection per request, causing connection storms, out-of-memory errors and much slower throughput than Node.
 - **Ask first:** before adding an HTTP/1.1 opt-in or making the pool configurable.
 
 # Related
 
 - [Public authenticated app client and transport options](/app/app-client-and-transport-options.md)
+- [Firestore is a standalone package](/firestore/standalone-package.md)
 - [Firestore runs over REST, not gRPC](/firestore/rest-transport.md)
 - [No realtime listeners](/firestore/no-realtime-listeners.md)
 
 [^admin-transport]: The app client's transport
 [^firestore-transport]: Firestore's transport
-[^admin-pubspec]: Admin `http2` constraint
-[^firestore-pubspec]: Firestore `http2` constraint

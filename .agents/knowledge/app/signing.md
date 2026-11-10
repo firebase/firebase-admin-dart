@@ -13,6 +13,10 @@ sources:
     resource: ../../../packages/firebase_admin_sdk/lib/src/utils/app_extension.dart
     symbol: Future<String> sign(
     title: "`app.sign()`: local key, else IAM through `googleapis_auth`"
+  - id: local-sign
+    resource: ../../../packages/firebase_admin_sdk/lib/src/utils/app_extension.dart
+    symbol: sign locally without
+    title: The comment on signing locally with the private key
   - id: emulator-short-circuit
     resource: ../../../packages/firebase_admin_sdk/lib/src/utils/app_extension.dart
     symbol: if (Environment.isAuthEmulatorEnabled()) return '';
@@ -35,17 +39,18 @@ sources:
     title: Node's App Check token generator, which always signs
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The signer choice (emulator, local key, else IAM `signBlob` through `googleapis_auth`): `sign()` and its comments in `app_extension.dart`.[^app-sign][^local-sign]
+- The emulator short-circuit, which checks only the Auth emulator: the first line of `sign()`.[^emulator-short-circuit]
+- The callers: the Auth and App Check token generators.[^auth-token-generator][^app-check-token-generator]
+
 # Decision
 
-Auth custom tokens and App Check custom tokens are signed through `app.sign()`.[^auth-token-generator][^app-check-token-generator] They are its only callers; the SDK has no signed-URL code.
+Custom tokens are signed with the service-account key when the credential has one, and otherwise through IAM `signBlob` as `credential.serviceAccountId`, so ADC and WIF credentials sign through IAM.
 
-`app.sign()` picks a signer:[^app-sign]
-
-1. When the Auth emulator is enabled, it returns an empty signature, so tokens are unsigned. The check is only `isAuthEmulatorEnabled()`, for App Check tokens too.[^emulator-short-circuit] Node differs for App Check: its App Check token generator always signs through `cryptoSignerFromApp`, and only Auth custom tokens use an unsigned `EmulatedSigner` under the Auth emulator.[^node-app-check]
-2. When the credential has a service-account private key, it signs locally.
-3. Otherwise it calls IAM Credentials `signBlob`, through `googleapis_auth`'s `sign()`, as `credential.serviceAccountId`.
-
-ADC and WIF credentials have no private key, so they sign through IAM.
+**Divergence from Node:** under the Auth emulator, `app.sign()` returns an empty signature for App Check custom tokens too. Node's App Check token generator always signs through `cryptoSignerFromApp`; only Node's Auth custom tokens use an unsigned `EmulatedSigner` under the Auth emulator.[^node-app-check]
 
 # Why
 
@@ -61,7 +66,7 @@ Several signers were tried and replaced:
 # Rules for agents
 
 - **Must not:** require `serviceAccountCredentials` to sign. ADC and WIF sign through IAM.
-- **Must not:** reintroduce `jose`. JWT handling is consolidated on `dart_jsonwebtoken`.
+- **Must not:** reintroduce `jose`. JWT handling is consolidated on `dart_jsonwebtoken`; see [Keep the dependency set small](/dependencies/minimal-dependencies.md).
 - **Should:** sign through `app.sign()`, which uses `googleapis_auth` (the local key, or IAM `signBlob`), rather than a hand-written signer or ASN.1 parser, which the SDK doesn't need.
 - **Must not:** sign Auth custom tokens when the Auth emulator is enabled, as in Node.
 - **Ask first:** before changing whether App Check custom tokens are signed under the Auth emulator. Node signs them; why Dart doesn't isn't recorded.
@@ -76,6 +81,7 @@ Several signers were tried and replaced:
 [^auth-token-generator]: Auth's token generator
 [^app-check-token-generator]: App Check's token generator
 [^app-sign]: `app.sign()`
+[^local-sign]: The local-signing comment
 [^emulator-short-circuit]: Emulator short-circuit
 [^node-app-check]: Node's App Check token generator
 [^node-crypto-signer]: Node's `cryptoSignerFromApp`

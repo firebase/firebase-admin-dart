@@ -22,15 +22,19 @@ sources:
     title: Node rejects re-initialization with a credential or `httpAgent`
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- What re-initialization compares: `AppOptions.==` in `app_options.dart`, which leaves out the credential and `httpClient`.[^app-options-equality]
+- Where the registry uses it: `AppRegistry.initializeApp` in `app_registry.dart`.[^registry-initialize]
+
 # Node.js
 
 If an app with the given name exists and the new `initializeApp` call passes a `credential` or `httpAgent`, Node throws `invalid-app-options`, because the SDK cannot confirm that two `Credential` objects are equal.[^node-deep-equals]
 
 # Dart
 
-`AppOptions.==` compares only `projectId`, `databaseURL`, `storageBucket`, `serviceAccountId`, `additionalScopes` and `databaseAuthVariableOverride`.[^app-options-equality] The registry uses it to decide whether a second `initializeApp` matches the first.[^registry-initialize]
-
-So a second `initializeApp` with a different credential or `httpClient` silently returns the existing app, which keeps the first call's credential and client.
+The registry decides whether a second `initializeApp` matches the first with `AppOptions.==`, which compares neither the credential nor `httpClient`. So a second `initializeApp` with a different credential or `httpClient` silently returns the existing app, which keeps the first call's credential and client.
 
 # Why
 

@@ -26,22 +26,23 @@ sources:
     title: Node's top-level `getDownloadURL(file)`
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The Firebase helpers (`bucket()` with the default bucket, `getDownloadURL`): their dartdoc in `storage.dart`.[^gcs-import][^get-download-url]
+- The `google_cloud_storage` version range: the admin `pubspec.yaml`.[^gcs-dependency]
+
 # Decision
 
-`app.storage()` is a thin `FirebaseService` over Google's `package:google_cloud_storage`.[^gcs-import] The SDK adds only Firebase-specific helpers:
+`app.storage()` is a thin `FirebaseService` over Google's `package:google_cloud_storage`, adding only Firebase-specific helpers. Object operations belong to `google_cloud_storage`. The delegate is created lazily; see [Who closes which HTTP client](/app/http-client-ownership.md).
 
-- `bucket([name])` returns a `gcs.Bucket`, defaulting to `AppOptions.storageBucket`;
-- `getDownloadURL(bucket, objectName)` returns a long-lived download URL.[^get-download-url]
-
-Object operations belong to `google_cloud_storage`, for example `bucket.storage.uploadObject(...)`. The `gcs.Storage` client is created lazily and uses the app's client and credential.
-
-This repo has no GCS client of its own. An in-repo port of Node's `@google-cloud/storage` (with V2/V4 signed URLs and POST policies) was dropped in favour of Google's package. Users who need more than `google_cloud_storage` offers, such as ranged or streamed downloads, use `FirebaseApp.client` with `googleapis`.
+This repo has no GCS client of its own. An in-repo port of Node's `@google-cloud/storage` (with V2/V4 signed URLs and POST policies) was dropped in favour of Google's package. Users who need more, such as ranged or streamed downloads, use `FirebaseApp.client` with `googleapis`.
 
 In Node, `getStorage().bucket()` returns a `@google-cloud/storage` `Bucket`, and `getDownloadURL(file)` is a top-level function that takes a `File`.[^node-get-download-url]
 
 # Why
 
-- The maintainers' stated position: use Google's `google_cloud_storage` instead of their own port. The version range was widened because the wrapper then relied on only three things: a no-argument `Storage` constructor, emulator settings from the environment, and `Storage.bucket(name)`; using more of the API might call for pinning the major version.[^gcs-dependency]
+- The maintainers' stated position: use Google's `google_cloud_storage` instead of their own port. The version range was widened because the wrapper then relied on only three things: a no-argument `Storage` constructor, emulator settings from the environment, and `Storage.bucket(name)`; using more of the API might call for pinning the major version.
 - The wrapper also passes `projectId:` and `client:` to the `Storage` constructor, so it relies on more than those three. Both parameters exist in every published version in the range. Whether to pin the range is undecided; ask a maintainer.
 - The likely reason (not recorded): Google's Dart team owns `google_cloud_storage`, so a second GCS client in this repo would duplicate it.
 - The likely reason `getDownloadURL` takes a bucket and an object name (not recorded): the Dart GCS package has no `File` object.
@@ -50,7 +51,6 @@ In Node, `getStorage().bucket()` returns a `@google-cloud/storage` `Bucket`, and
 
 - **Must:** keep Dart's way. The object API belongs to `google_cloud_storage`, not this repo.
 - **Must not:** vendor or re-port a GCS client.
-- **Must not:** close `app.client` from `Storage.delete()`.
 - **Ask first:** before widening the `google_cloud_storage` range or relying on more of its API.
 
 # Related

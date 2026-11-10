@@ -23,6 +23,10 @@ sources:
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/emulator_client.dart
     symbol: "'Bearer owner'"
     title: The `owner` bearer token on emulator requests
+  - id: storage-protocol-check
+    resource: ../../../packages/firebase_admin_sdk/lib/src/storage/storage.dart
+    symbol: FIREBASE_STORAGE_EMULATOR_HOST should not contain a protocol
+    title: The `Storage` constructor's protocol check and its `FirebaseAppException`
   - id: check-revoked
     resource: ../../../packages/firebase_admin_sdk/lib/src/auth/base_auth.dart
     symbol: if (checkRevoked || isEmulator)
@@ -41,34 +45,29 @@ sources:
     title: Node's Storage emulator wiring
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The variables and their lookups: `environment.dart` in each package.[^admin-env][^firestore-env]
+- The `owner` bearer token on Auth, Firestore and Cloud Tasks emulator requests: `emulator_client.dart`.[^bearer-owner]
+- Revocation always checked under the emulator, as in Node: `checkRevoked || isEmulator` in `base_auth.dart`.[^check-revoked][^node-check-revoked]
+- The Storage host's protocol check: the `Storage` constructor in `storage.dart`.[^storage-protocol-check]
+
 # Decision
 
-Emulators are found only through the standard Admin SDK environment variables:[^admin-env][^firestore-env]
+Emulators are found only through the standard Admin SDK environment variables, the same ones Node reads.[^node-auth-env] There is no `useEmulator(host, port)` API. App Check has no emulator.
 
-- `FIREBASE_AUTH_EMULATOR_HOST`
-- `FIRESTORE_EMULATOR_HOST`
-- `FIREBASE_STORAGE_EMULATOR_HOST`
-- `CLOUD_TASKS_EMULATOR_HOST`
+When the variables are read differs, in both SDKs: `AuthHttpClient` and `FunctionsHttpClient` pick the emulator client once per instance, `Storage` decides in its constructor, and `verifyIdToken` checks for the Auth emulator on each call. Auth and Functions use a user-supplied `AppOptions.httpClient` as is, even under their emulators; see [Who closes which HTTP client](/app/http-client-ownership.md).
 
-There is no `useEmulator(host, port)` API. Auth, Firestore and Cloud Tasks emulator requests carry `Authorization: Bearer owner`,[^bearer-owner] except that Auth and Functions use `AppOptions.httpClient` as is when it is set. Storage emulator requests go through `google_cloud_storage`'s own unauthenticated client, and `getDownloadURL` uses `app.client`. App Check has no emulator.
+**The Storage protocol error differs from Node's.** Both SDKs reject a host that contains `http://` or `https://`, with the same pattern and message.[^node-storage] Dart throws a `FirebaseAppException` with `app/failed-precondition`, whenever `FIREBASE_STORAGE_EMULATOR_HOST` is set. Node throws a `FirebaseStorageError` with `storage/invalid-emulator-host`, only when `STORAGE_EMULATOR_HOST` is unset.
 
-This matches Node in which variables are read. When they are read varies, in both SDKs: `AuthHttpClient` and `FunctionsHttpClient` pick the emulator client once per instance, `Storage` decides in its constructor, and `verifyIdToken` checks for the Auth emulator on each call. In the emulator, `verifyIdToken` always checks revocation (`checkRevoked || isEmulator`), as in Node.[^check-revoked][^node-check-revoked][^node-auth-env]
+**Trap:** `getDownloadURL` uses `app.client` under the Storage emulator too, so it sends real credentials to the emulator.
 
-Both SDKs reject a `FIREBASE_STORAGE_EMULATOR_HOST` that contains `http://` or `https://`, with the same pattern and message. The error differs:[^node-storage]
-
-- Dart: the `Storage` constructor throws a `FirebaseAppException` with `app/failed-precondition`. It runs the check whenever `FIREBASE_STORAGE_EMULATOR_HOST` is set.
-- Node: it throws a `FirebaseStorageError` with `storage/invalid-emulator-host`. It runs the check only when `STORAGE_EMULATOR_HOST` is unset.
-
-Dart adds two mechanisms:
-
-1. Every lookup first consults a zone-injected environment (`Zone.current[envSymbol]`). Firestore also accepts `Settings.environmentOverride`, which its dartdoc describes as being for testing.
-2. Storage writes `STORAGE_EMULATOR_HOST` into the native process environment through FFI (`setenv` and `unsetenv`, or `SetEnvironmentVariableW` on Windows), and unsets it when not emulating.
-
-Storage differs from Node there. Node sets `STORAGE_EMULATOR_HOST` to `http://` plus the host only when `STORAGE_EMULATOR_HOST` is unset, and never clears it.[^node-storage] Dart writes the bare host, always overwrites the variable, and unsets a user-supplied value whenever `FIREBASE_STORAGE_EMULATOR_HOST` is absent.
+How the Storage emulator host reaches `google_cloud_storage`, and how that differs from Node, is in [Storage emulator host set in the native process environment](/environment/storage-emulator-native-env.md). How tests override the variables is in [Environment reads go through a zone override first](/environment/zone-injected-environment.md).
 
 # Why
 
-The maintainers' stated reason: follow standard practice and the same process as the other Admin SDKs, which read the emulator host from an environment variable instead of setting host and port like the client SDKs do. Auto-detection from `FIREBASE_*_EMULATOR_HOST` replaced a manual `app.useEmulator()` call. Storage uses environment variables to match the JavaScript approach, and so that `Storage` instances created in other isolates use the emulator too.
+The maintainers' stated reason: follow standard practice and the same process as the other Admin SDKs, which read the emulator host from an environment variable instead of setting host and port like the client SDKs do. Auto-detection from `FIREBASE_*_EMULATOR_HOST` replaced a manual `app.useEmulator()` call.
 
 Rejected alternatives: host and port parameters, reading `firebase.json`, and hard-coded ports.
 
@@ -79,19 +78,21 @@ Rejected alternatives: host and port parameters, reading `firebase.json`, and ha
 - **Must:** keep the zone and FFI mechanisms, and the `owner` bearer token.
 - **Must not:** replace them with `Platform.environment`-only reads or a `useEmulator` API.
 - **Must not:** add a host/port emulator API or read `firebase.json`.
-- **Must not:** send real credentials to an emulator. `getDownloadURL` does, since it uses `app.client` under the Storage emulator too; don't copy it.
+- **Must not:** send real credentials to an emulator. Don't copy `getDownloadURL`.
 - **Ask first:** before changing the Storage protocol error's type or code, for example to a `FirebaseStorageAdminException` with Node's `invalid-emulator-host`. Callers may catch the type that's thrown, and the Storage unit tests expect `FirebaseAppException`.
 
 # Related
 
 - [Environment reads go through a zone override first](/environment/zone-injected-environment.md)
 - [Storage emulator host set in the native process environment](/environment/storage-emulator-native-env.md)
-- [What emulator tests need](/tests/emulator-requirements.md)
+- [Who closes which HTTP client, and lazy client creation](/app/http-client-ownership.md)
+- [Inject test doubles and use the guarded emulator helpers](/tests/helpers-and-injection.md)
 
 [^admin-env]: The admin package's `Environment`
 [^firestore-env]: Firestore's `Environment`
 [^bearer-owner]: `EmulatorClient`
 [^check-revoked]: Revocation check under the emulator
-[^node-auth-env]: Node's Auth emulator host
 [^node-check-revoked]: Node's revocation check under the emulator
+[^storage-protocol-check]: The `Storage` constructor's protocol check
+[^node-auth-env]: Node's Auth emulator host
 [^node-storage]: Node's `STORAGE_EMULATOR_HOST`

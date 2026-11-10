@@ -35,26 +35,21 @@ sources:
     title: Node's Machine Learning, deprecated upstream
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- Which products are supported (🟢) and which aren't (🔴): the `## Supported Services` table in the admin README.[^readme-supported-services]
+- The services the SDK implements: `FirebaseServiceType` in `firebase_service.dart`.[^service-type]
+
 # Node.js
 
 Node's Admin SDK ships Realtime Database,[^node-database] Remote Config,[^node-remote-config] Project Management, Installations, Machine Learning (deprecated upstream, with a shutdown announced),[^node-machine-learning] Eventarc, Extensions, Data Connect and Phone Number Verification.[^node-phone-number-verification]
 
 # Dart
 
-Dart ships none of them. The README's "Supported Services" table marks eight products 🔴, which its legend defines as "Not supported":[^readme-supported-services]
+Dart ships none of them, and the README marks them "Not supported".
 
-- Data Connect
-- Realtime Database
-- Event Arc
-- Extensions
-- Installations
-- Machine Learning
-- Project Management
-- Remote Config
-
-App, App Check, Authentication, Firestore, Functions, Messaging, Security Rules and Storage are 🟢; `FirebaseServiceType` lists the services the SDK implements.[^service-type]
-
-Phone Number Verification has no row in the README at all, though Node ships it, so that gap is undocumented.
+**Trap:** Phone Number Verification is the exception: it has no row in the README at all, so that gap is undocumented.
 
 These are gaps. The README only says "Not supported", and nothing records a decision that any of these products is out of scope for good. The likely exceptions (not recorded) are Machine Learning, given Node's deprecation, and Extensions: Node's Extensions `Runtime` works only inside an extension (it requires `EXT_INSTANCE_ID`), and a maintainer has said Firebase Extensions don't use the Dart runtime.
 
@@ -63,12 +58,12 @@ These are gaps. The README only says "Not supported", and nothing records a deci
 Mostly unknown. The likely reason (not recorded): the supported set follows the module-by-module plan the SDK was built against.
 
 - **Realtime Database:** no reason is recorded. RTDB doesn't go through Firestore's transport, so the reason Firestore has no realtime listeners doesn't explain it.
-- **Remote Config:** no decision on the approach is recorded. The admin services go through the generated `googleapis` package, which has no Remote Config client; one proposal uses direct REST calls with server-side template evaluation.
+- **Remote Config:** no decision on the approach is recorded. The admin services go through the generated `googleapis` package, which has no Remote Config client. One proposal ports it over direct REST calls, with server-side template evaluation, because the generated clients can't read `ETag` or send `If-Match`.
 
 # Rules for agents
 
 - **Ask first:** before starting any of these products. The plan for each is undecided.
-- **Must:** when implementing one, follow Node's shape through the existing idioms: `app.x()`, an `@internal` factory, sealed classes for unions and a typed `FirebaseAdminException` subclass (ask a maintainer whether its name takes the "Admin" suffix). The checklist is in [product libraries and barrels](/conventions/product-libraries-and-barrels.md).
+- **Must:** when implementing one, follow Node's shape through the existing idioms and the new-product checklist in [product libraries and barrels](/conventions/product-libraries-and-barrels.md). Ask a maintainer whether its exception's name takes the "Admin" suffix.
 - **Must not:** merge a new product module without a maintainer decision on its transport (see [generated REST clients](/architecture/generated-rest-clients.md)).
 - **Must not:** describe these products as out of scope for good.
 

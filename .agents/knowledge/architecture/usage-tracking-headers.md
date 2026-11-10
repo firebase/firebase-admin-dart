@@ -12,15 +12,11 @@ sources:
   - id: firebase-client-tag
     resource: ../../../packages/firebase_admin_sdk/lib/src/utils/utils.dart
     symbol: "'fire-admin-dart/$packageVersion'"
-    title: The `X-Firebase-Client` value
-  - id: api-client-tag
-    resource: ../../../packages/firebase_admin_sdk/lib/src/utils/utils.dart
-    symbol: "'fire-admin/$packageVersion'"
-    title: The `fire-admin` tag inside `X-Goog-Api-Client`
+    title: The header names and tag values
   - id: user-agent-client
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/firebase_user_agent_client.dart
-    symbol: class FirebaseUserAgentClient
-    title: The client wrapper that adds the headers
+    symbol: tokens.contains(fireAdminApiClientTag)
+    title: "`FirebaseUserAgentClient.send`: append, never duplicate, overwrite `X-Firebase-Client`"
   - id: default-client
     resource: ../../../packages/firebase_admin_sdk/lib/src/app/firebase_app.dart
     symbol: Future<googleapis_auth.AuthClient> _createDefaultClient()
@@ -35,29 +31,22 @@ sources:
     title: "`app.firestore()` passes the headers through `Settings.headers`"
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The header names and values: `utils.dart`.[^firebase-client-tag]
+- How an existing `X-Goog-Api-Client` value is appended to without duplicating the tag: `FirebaseUserAgentClient.send` in `firebase_user_agent_client.dart`.[^user-agent-client]
+- The two paths that add them: `FirebaseApp._createDefaultClient` for the client the SDK builds, and `Settings.headers`, filled in by `app.firestore()`, for Firestore, emulator included.[^default-client][^firestore-headers]
+
 # Decision
 
-Two usage-tracking headers identify the SDK:
-
-- `X-Firebase-Client: fire-admin-dart/<version>`;[^firebase-client-tag]
-- an `X-Goog-Api-Client` value that contains `fire-admin/<version>`.[^api-client-tag]
-
-`FirebaseUserAgentClient` adds them. If a request already has an `X-Goog-Api-Client` value, it appends the `fire-admin/<version>` tag, unless one of the value's whitespace-separated tokens already equals it, so the tag is never duplicated. An existing `X-Firebase-Client` value is overwritten.[^user-agent-client]
-
-Two paths add the headers:
-
-- `FirebaseApp._createDefaultClient()` wraps the client the SDK builds in `FirebaseUserAgentClient`. Requests through `app.client` carry the headers when the user supplied no client.[^default-client]
-- Firestore gets them through `Settings.headers`, which `app.firestore()` fills in. They are added on the Firestore emulator path too.[^firestore-headers]
-
-Clients outside those paths don't add them:
+Two usage-tracking headers identify the SDK on the default client and on Firestore. Their `<version>` comes from the generated `version.g.dart`. Clients outside those two paths don't add them:
 
 - a user-supplied `AppOptions.httpClient`, which `app.client` returns unwrapped;[^default-client]
-- the Auth emulator client, `EmulatorClient(http.Client())` in `auth_http_client.dart`;[^auth-emulator-client]
+- the Auth emulator client;[^auth-emulator-client]
 - Functions' `CloudTasksEmulatorClient`;
 - in Storage-emulator mode, the client `google_cloud_storage` builds for itself, because the delegate gets no `client`;
 - the public-key fetches in `utils/jwt.dart`, which use `http.get` or an injected `http.Client`.
-
-`<version>` comes from `version.g.dart`, which is generated from the pubspec.
 
 # Why
 
@@ -69,17 +58,15 @@ Why a user-supplied client and the Auth, Functions and Storage emulator clients 
 
 - **Must not:** change the tag strings.
 - **Must not:** overwrite the `x-goog-api-client` value that `google_cloud_rpc` sets.
-- **Must not:** hand-edit `version.g.dart`.
 - **Should:** send a new service's production requests through `app.client`, so they carry the headers whenever the SDK built the client.
 - **Ask first:** before wrapping a user-supplied `AppOptions.httpClient` or an emulator client in `FirebaseUserAgentClient`.
 
 # Related
 
 - [version.g.dart is generated from the pubspec](/generated/version-g-dart.md)
-- [Firestore is a separate standalone package](/firestore/standalone-package.md)
+- [Firestore is a standalone package](/firestore/standalone-package.md)
 
-[^firebase-client-tag]: The `X-Firebase-Client` value
-[^api-client-tag]: The `fire-admin` tag
+[^firebase-client-tag]: The header values in `utils.dart`
 [^user-agent-client]: `FirebaseUserAgentClient`
 [^default-client]: `FirebaseApp._createDefaultClient()` and `app.client`
 [^auth-emulator-client]: The Auth emulator client

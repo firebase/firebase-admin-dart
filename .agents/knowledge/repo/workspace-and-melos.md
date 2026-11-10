@@ -1,12 +1,13 @@
 ---
 type: Constraint
-title: One pub workspace, with melos on top
-description: The repo is a single pub workspace of four members, and CI runs `melos bootstrap`, whose post hook regenerates `version.g.dart`.
-tags: [repo, workspace, melos]
-agents_md: when-touching
+title: The pub workspace, melos and local setup
+description: A root `dart pub get` resolves the whole pub workspace and melos runs from the root dev dependency without a global install; local resolution hides a too-low lower bound on `google_cloud_firestore`, and tools and credentials are set up only when the user asks.
+tags: [repo, workspace, melos, setup]
+agents_md: always
 governs:
   - pubspec.yaml
   - packages/*/pubspec.yaml
+  - CONTRIBUTING.md
 sources:
   - id: workspace-members
     resource: ../../../pubspec.yaml
@@ -15,50 +16,69 @@ sources:
   - id: melos-config
     resource: ../../../pubspec.yaml
     symbol: "melos:"
-    title: Melos as a root dev dependency, its `docs` script and its bootstrap and version hooks
-  - id: gen-version
-    resource: ../../../scripts/gen-version.sh
-    title: The post hook that writes `version.g.dart`
+    title: Melos as a root dev dependency, with its scripts and hooks
   - id: process-coverage
     resource: ../../../scripts/process_coverage.dart
     symbol: coverage.lcov
     title: Fails if a `packages/*` directory has no `coverage.lcov`
+  - id: admin-firestore-range
+    resource: ../../../packages/firebase_admin_sdk/pubspec.yaml
+    symbol: "google_cloud_firestore: '>="
+    title: The admin package's range on `google_cloud_firestore`
+  - id: prerequisites
+    resource: ../../../CONTRIBUTING.md
+    symbol: "### Prerequisites"
+    title: CONTRIBUTING's prerequisites and setup
+  - id: contributing-melos
+    resource: ../../../CONTRIBUTING.md
+    symbol: dart pub global activate melos
+    title: CONTRIBUTING's global melos install
+  - id: golden-node-engine
+    resource: ../../../packages/google_cloud_firestore/tool/pipeline_golden/package.json
+    symbol: '"engines"'
+    title: The Node.js version the Pipeline tools require
 ---
+
+# Where it lives
+
+- Enforced by: `scripts/process_coverage.dart`, which fails when a `packages/*` directory has no `coverage.lcov`.[^process-coverage] The rest is review only.
+- The members, and melos's scripts and hooks: `workspace:` and `melos:` in the root `pubspec.yaml`.[^workspace-members][^melos-config]
+- The admin package's range on Firestore: `google_cloud_firestore: '>=` in `packages/firebase_admin_sdk/pubspec.yaml`.[^admin-firestore-range]
+- The tools a checkout needs: `### Prerequisites` in `CONTRIBUTING.md`,[^prerequisites] and, for the Pipeline tools, `"engines"` in `tool/pipeline_golden/package.json` and `tool/pipeline_api_parity/package.json`.[^golden-node-engine]
+- CONTRIBUTING.md's out-of-date global melos install: `dart pub global activate melos`, in Prerequisites and Setup.[^contributing-melos]
 
 # Constraint
 
-The repo is one pub workspace. The root pubspec's `workspace:` lists its four members: `firebase_admin_sdk`, its `example` and `example_server_app`, and `google_cloud_firestore`. Each member has `resolution: workspace`.[^workspace-members]
-
-- `firebase_admin_sdk` depends on `google_cloud_firestore` by version range. Inside the workspace, that range resolves to the local package.
-- A plain `dart pub get` from the root resolves the whole workspace, and is enough to develop.
-- Melos is a root dev dependency, so `dart run melos …` works without a global install.[^melos-config]
-- `melos bootstrap` and `melos version` run `scripts/gen-version.sh` as a post hook, which rewrites `version.g.dart`.[^gen-version]
-- `melos run docs` runs the docs script.
+- A plain `dart pub get` at the repo root resolves the whole workspace, and is enough to develop.
+- Melos is a root dev dependency, so `dart run melos …` works without a global install. CONTRIBUTING.md's `dart pub global activate melos` step is out of date. `melos bootstrap` also regenerates `version.g.dart` (see [version.g.dart](/generated/version-g-dart.md)).
+- `firebase_admin_sdk` depends on `google_cloud_firestore` by version range. Inside the workspace, that range resolves to the local package, so a lower bound that is too low doesn't show up locally.
+- The Pipeline tools need the Node.js version in their `engines` field, which CONTRIBUTING.md's prerequisites don't list.
 
 # Why
 
 - Melos and the root-pubspec layout: the maintainers' stated reason is that this is the standard on most Invertase repositories and has served them well at scale.
-- Coverage: `scripts/coverage.sh` states that it uses `test_with_coverage` because "dart test --coverage doesn't work with resolution: workspace".
-
-# Enforced by
-
-- CI runs `dart pub global activate melos` and `melos bootstrap` in every job of `build.yml` except `check-license-header`. `e2e_pipeline.yml` uses a plain `dart pub get`.
-- `scripts/process_coverage.dart` fails if any `packages/*` directory lacks a `coverage.lcov`.[^process-coverage]
+- The Node.js version: the maintainers' stated reason is that the `@google-cloud/firestore` release the Pipeline tools pin needs a newer Node.js.
 
 # Rules for agents
 
-- **Must:** to add a package, list it in `workspace:` in the root pubspec, give it `resolution: workspace`, and make sure `scripts/process_coverage.dart` will find a `coverage.lcov` in it.
-- **Must:** when `firebase_admin_sdk` starts using a new `google_cloud_firestore` API, raise its lower bound on `google_cloud_firestore`. The workspace resolves the local package, which hides the problem locally.
+- **Must:** to add a package, list it in `workspace:` in the root pubspec, give it `resolution: workspace`, and make sure a coverage script writes a `coverage.lcov` in it.
+- **Must:** when `firebase_admin_sdk` starts using a new `google_cloud_firestore` API, raise its lower bound on `google_cloud_firestore`. Firestore then has to be released first (see [the release process](/release/release-process.md)).
 - **Must not:** add path dependencies or `pubspec_overrides.yaml` to link packages.
+- **Should:** install a missing tool only when the user asks, following CONTRIBUTING.md's setup sections.
+- **Must not:** set up or create credentials (see [Prod and WIF test runs](/tests/prod-and-wif.md)).
 
 # Related
 
 - [version.g.dart is generated from the pubspec](/generated/version-g-dart.md)
 - [Releases are manual and done by Google maintainers](/release/release-process.md)
-- [API docs are pub.dev dartdoc](/generated/api-docs.md)
-- [Coverage threshold in CI](/tests/coverage-threshold.md)
+- [Other generated, compiled or mirrored files, and API docs](/generated/other-generated-files.md)
+- [What CI runs, the coverage gate, and what gates merging](/ci/trigger-matrix.md)
+- [Minimum Dart SDK](/dependencies/min-dart-sdk.md)
 
 [^workspace-members]: `workspace:` in the root pubspec
 [^melos-config]: Melos in the root pubspec
-[^gen-version]: `scripts/gen-version.sh`
 [^process-coverage]: `scripts/process_coverage.dart`
+[^admin-firestore-range]: `firebase_admin_sdk`'s pubspec
+[^prerequisites]: CONTRIBUTING's prerequisites
+[^contributing-melos]: CONTRIBUTING's global melos install
+[^golden-node-engine]: The Pipeline tools' `engines` field

@@ -23,14 +23,20 @@ sources:
     title: "`app.sign()`, built on `googleapis_auth`'s `sign()`"
 ---
 
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The upstream packages: `googleapis_auth` and `google_cloud` in the admin `pubspec.yaml`.[^googleapis-auth-dependency][^google-cloud-dependency]
+- Signing on top of `googleapis_auth`'s `sign()`: `app.sign()` in `app_extension.dart`.[^app-sign]
+
 # Decision
 
-Generic Google-auth features belong in Google's `googleapis_auth` and `google_cloud` packages, not in a package in this repo.[^googleapis-auth-dependency][^google-cloud-dependency] They include:
+Generic Google-auth features belong in Google's `googleapis_auth` and `google_cloud` packages, not in a package in this repo. They include:
 
 - access to the credential behind an `AuthClient`;
-- local or IAM signing (`app.sign()` calls `googleapis_auth`'s `sign()`);[^app-sign]
+- local or IAM signing;
 - impersonation;
-- project-ID discovery (async discovery goes through `google_cloud`).
+- project-ID discovery.
 
 A local `googleapis_auth_utils` package held these features and was deleted. The APIs it added were filed and landed upstream instead.
 
@@ -52,7 +58,7 @@ The likely reason (not recorded): Google maintains those packages, so the featur
 - [Sign locally with the key, else through IAM signBlob](/app/signing.md)
 - [How ID tokens, session cookies and App Check tokens are verified](/auth/jwt-verification.md)
 - [Keep the dependency set small](/dependencies/minimal-dependencies.md)
-- [No public Credential.getAccessToken()](/app/credential-access-token.md)
+- [Credential is a sealed class with factories](/app/credential-sealed-hierarchy.md)
 
 [^googleapis-auth-dependency]: The `googleapis_auth` dependency
 [^google-cloud-dependency]: The `google_cloud` dependency

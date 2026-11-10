@@ -1,7 +1,7 @@
 ---
 type: Constraint
 title: Minimum Dart SDK
-description: Every pubspec declares the same minimum Dart SDK (`sdk:`), and code must analyze on that floor and run on the stable and beta SDKs.
+description: The `environment.sdk` constraint is the SDK floor; code must analyze on it, although no tests run on it, and the floor is repeated as text in three places that must be kept in sync.
 tags: [dependencies, dart-sdk, ci]
 agents_md: when-touching
 governs:
@@ -19,33 +19,38 @@ sources:
   - id: firestore-pubspec
     resource: ../../../packages/google_cloud_firestore/pubspec.yaml
     symbol: Spans the releases that run on the minimum
-    title: "`google_cloud_firestore`'s SDK constraint and the `analyzer` range chosen around it"
+    title: "`google_cloud_firestore`'s `analyzer` range, chosen around the floor"
   - id: lint-job
     resource: ../../../.github/workflows/build.yml
     symbol: "name: Lint (Dart"
     title: The `lint` job, which analyzes on the SDK floor, stable and dev
+  - id: contributing-floor
+    resource: ../../../CONTRIBUTING.md
+    symbol: "**Dart SDK**"
+    title: CONTRIBUTING's prerequisites, which state the floor as text
+  - id: readme-floor
+    resource: ../../../packages/firebase_admin_sdk/README.md
+    symbol: "**Dart SDK"
+    title: The admin README, which states the floor as text
 ---
+
+# Where it lives
+
+- Enforced by: the `lint` job, `name: Lint (Dart` in `.github/workflows/build.yml`, whose matrix analyzes `firebase_admin_sdk` on the floor.[^lint-job] Nothing runs the tests on it.
+- The floor: `environment:` `sdk:` in every pubspec, such as the root `pubspec.yaml` and `packages/firebase_admin_sdk/pubspec.yaml`.[^root-pubspec][^admin-pubspec]
+- A dev-dependency range chosen around the floor: the `analyzer` comment, `Spans the releases that run on the minimum`, in `packages/google_cloud_firestore/pubspec.yaml`.[^firestore-pubspec]
+- The floor as text: `**Dart SDK**` in `CONTRIBUTING.md`[^contributing-floor] and `**Dart SDK` in `packages/firebase_admin_sdk/README.md`,[^readme-floor] besides the lint matrix's first entry.
 
 # Constraint
 
-Every package, both admin examples and the workspace root declare the same minimum Dart SDK in `environment.sdk`.[^root-pubspec][^admin-pubspec][^firestore-pubspec] That constraint is the SDK floor.
-
-- Code must analyze on the floor, and run on the stable and beta SDKs.
+- Code must analyze on the floor, and run on the stable and beta SDKs. Tests run only on stable and beta.
 - Library code uses null-aware elements (`'tenant_id': ?tenantId`), which need Dart 3.8, so the floor can't drop below 3.8 without code changes.
-
-`CONTRIBUTING.md`'s prerequisites and the admin README also state the floor.
+- CONTRIBUTING.md, the admin README and the `lint` matrix repeat the floor as text, not reading it from the pubspecs. A change to the floor updates all of them.
 
 # Why
 
 - The reason for the specific floor isn't recorded. Ask a maintainer before changing it.
 - The likely reason it can't be much lower (not recorded): pub workspaces need Dart 3.6, and null-aware elements need 3.8.
-- The `analyzer` dev-dependency range in `google_cloud_firestore` is chosen around the floor. Its comment states that it spans the releases that run on the minimum SDK and the newer ones.[^firestore-pubspec]
-
-# Enforced by
-
-- The pubspecs' `environment.sdk` constraints.
-- The CI `lint` job runs `dart analyze` on the floor, stable and dev, in `packages/firebase_admin_sdk` only.[^lint-job]
-- Tests run only on stable and beta, so nothing runs the tests on the floor.
 
 # Rules for agents
 
@@ -60,5 +65,7 @@ Every package, both admin examples and the workspace root declare the same minim
 
 [^root-pubspec]: The workspace root's pubspec
 [^admin-pubspec]: `firebase_admin_sdk`'s pubspec
-[^firestore-pubspec]: `google_cloud_firestore`'s pubspec and its `analyzer` comment
+[^firestore-pubspec]: The `analyzer` comment in `google_cloud_firestore`'s pubspec
 [^lint-job]: The `lint` job in `build.yml`
+[^contributing-floor]: CONTRIBUTING's prerequisites
+[^readme-floor]: The admin README's requirements

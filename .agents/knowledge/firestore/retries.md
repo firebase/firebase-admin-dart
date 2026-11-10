@@ -1,20 +1,41 @@
 ---
 type: Decision
 title: Firestore retries transient errors like Node
-description: A standalone `WriteBatch.commit()` retries ABORTED, UNAVAILABLE and RESOURCE_EXHAUSTED as Node does, and queries, aggregations and pipelines retry `http.ClientException`s, such as connection-closed errors, only before any partial result and outside a transaction.
+description: A standalone `WriteBatch.commit()` retries Node's commit codes, transactions retry as a whole, and reads retry a dropped connection only before any partial result and outside a transaction, all with `package:retry`.
 tags: [firestore, retries, node-parity]
 agents_md: when-touching
 governs:
   - packages/google_cloud_firestore/lib/src/write_batch.dart
   - packages/google_cloud_firestore/lib/src/transaction.dart
   - packages/google_cloud_firestore/lib/src/firestore_http_client.dart
+  - packages/google_cloud_firestore/lib/src/firestore_exception.dart
   - packages/google_cloud_firestore/lib/src/document_reader.dart
   - packages/google_cloud_firestore/lib/src/reference/**
 sources:
+  - id: write-batch-tests
+    resource: ../../../packages/google_cloud_firestore/test/write_batch_test.dart
+    symbol: group('WriteBatch retry'
+    title: The commit retry tests
+  - id: transaction-read-test
+    resource: ../../../packages/google_cloud_firestore/test/transaction_aggregation_test.dart
+    symbol: does not retry a read within an active transaction
+    title: The test that a read inside a transaction isn't retried
   - id: write-batch-retry
     resource: ../../../packages/google_cloud_firestore/lib/src/write_batch.dart
     symbol: StatusCode.resourceExhaustedAbortedUnavailable
-    title: "`WriteBatch.commit()` retry codes and `RetryOptions`"
+    title: "`WriteBatch.commit()` retry codes, and the transaction branch that skips them"
+  - id: resource-exhausted-backoff
+    resource: ../../../packages/google_cloud_firestore/lib/src/firestore_exception.dart
+    symbol: Future<void> backOffHardOnResourceExhausted(
+    title: The extra wait on RESOURCE_EXHAUSTED
+  - id: read-retry
+    resource: ../../../packages/google_cloud_firestore/lib/src/firestore_exception.dart
+    symbol: Future<T> retryOnConnectionError<T>(
+    title: "`retryOnConnectionError` and the conditions in its dartdoc"
+  - id: document-reader
+    resource: ../../../packages/google_cloud_firestore/lib/src/document_reader.dart
+    symbol: StatusCode.batchGetRetryCodes
+    title: "`getAll()` retries only after progress, like Node's `document-reader.ts`"
   - id: transaction-runner
     resource: ../../../packages/google_cloud_firestore/lib/src/transaction.dart
     symbol: _runTransaction
@@ -27,19 +48,23 @@ sources:
     resource: https://github.com/googleapis/google-cloud-node/blob/main/handwritten/firestore/dev/src/write-batch.ts
     symbol: retryCodes
     title: Node's commit retry codes
-  - id: document-reader
-    resource: ../../../packages/google_cloud_firestore/lib/src/document_reader.dart
-    symbol: StatusCode.batchGetRetryCodes
-    title: "`getAll()` retries only after progress, like Node's `document-reader.ts`"
 ---
+
+# Where it lives
+
+- Enforced by: the `WriteBatch retry` group in `write_batch_test.dart`[^write-batch-tests] and `does not retry a read within an active transaction` in `transaction_aggregation_test.dart`.[^transaction-read-test]
+- Commit retry codes, and the transaction branch that skips them: `StatusCode.resourceExhaustedAbortedUnavailable` in `WriteBatch._commit`, `write_batch.dart`.[^write-batch-retry] The extra wait on RESOURCE_EXHAUSTED: `backOffHardOnResourceExhausted` in `firestore_exception.dart`.[^resource-exhausted-backoff]
+- When a read may retry: the dartdoc of `retryOnConnectionError` in `firestore_exception.dart`.[^read-retry]
+- `getAll()`'s codes and attempts: `StatusCode.batchGetRetryCodes` in `document_reader.dart`.[^document-reader]
+- Retries inside a transaction: `_runTransaction` in `transaction.dart`.[^transaction-runner]
 
 # Decision
 
-- **Writes.** A standalone `WriteBatch.commit()` retries Node's commit codes, ABORTED, UNAVAILABLE and RESOURCE_EXHAUSTED, with `package:retry`.[^write-batch-retry][^node-retry-codes][^retry-dependency] On RESOURCE_EXHAUSTED it also waits the maximum backoff delay before the next attempt.
+- **Writes.** A standalone `WriteBatch.commit()` retries Node's commit codes.[^write-batch-retry][^node-retry-codes]
 - **Transactions.** A commit inside a transaction isn't retried by the batch. The transaction runner retries the whole transaction.[^transaction-runner]
-- **Reads.** Queries, aggregations and pipelines retry any `http.ClientException`, the type of the connection-closed error, with `package:retry`, but only before any partial result has arrived and only outside a transaction. `getAll()` follows Node instead: outside a transaction it retries DEADLINE_EXCEEDED, RESOURCE_EXHAUSTED, INTERNAL and UNAVAILABLE only after the failed attempt returned at least one document, re-requesting only the documents still missing, up to the `maxAttempts` set in `document_reader.dart`.[^document-reader]
+- **Reads.** Queries, aggregations and pipelines retry a dropped connection, but only before any partial result has arrived and only outside a transaction.[^read-retry] `getAll()` follows Node's `document-reader.ts` instead, retrying only after progress.[^document-reader]
 
-`package:retry` replaced a hand-rolled retry loop.
+`package:retry` replaced a hand-rolled retry loop.[^retry-dependency]
 
 # Why
 
@@ -55,11 +80,15 @@ sources:
 
 # Related
 
-- [No general retry layer for admin REST calls](/architecture/admin-http-retries.md)
+- [Admin services use generated REST clients](/architecture/generated-rest-clients.md), which records that the admin services have no retry layer
 - [Pooled HTTP/2 by default](/architecture/http2-pooled-transport.md)
 
-[^write-batch-retry]: `WriteBatch.commit()` retry
-[^node-retry-codes]: Node's commit retry codes
-[^retry-dependency]: The `package:retry` dependency
-[^transaction-runner]: The transaction runner
+[^write-batch-tests]: The `WriteBatch retry` tests
+[^transaction-read-test]: The transaction read test
+[^write-batch-retry]: `WriteBatch.commit()` retry codes
+[^resource-exhausted-backoff]: `backOffHardOnResourceExhausted`
+[^read-retry]: `retryOnConnectionError`
 [^document-reader]: `getAll()` retries in `document_reader.dart`
+[^transaction-runner]: The transaction runner
+[^retry-dependency]: The `package:retry` dependency
+[^node-retry-codes]: Node's commit retry codes

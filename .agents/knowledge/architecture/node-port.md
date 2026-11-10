@@ -17,34 +17,35 @@ sources:
   - id: auth-layout
     resource: ../../../packages/firebase_admin_sdk/lib/src/auth/
     title: The Auth module, laid out file by file like Node's
-  - id: explicit-project-id-marker
-    resource: ../../../packages/firebase_admin_sdk/lib/src/app/firebase_app.dart
-    symbol: getExplicitProjectId
-    title: A "matches Node" marker on project-ID resolution
   - id: implicit-order-by-marker
     resource: ../../../packages/google_cloud_firestore/lib/src/reference/query.dart
     symbol: Mirrors the Node SDK's `createImplicitOrderBy`
     title: A "mirrors Node" marker in Firestore queries
+  - id: pipeline-parity
+    resource: ../../../packages/google_cloud_firestore/test/pipeline_api_parity_test.dart
+    symbol: const _renames
+    title: The Pipeline API parity test, the one machine check of Node parity
   - id: node-auth
     resource: https://github.com/firebase/firebase-admin-node/blob/main/src/auth/
     title: Node's `src/auth/`, the layout the Dart Auth module follows
 ---
 
+# Where it lives
+
+- Enforced by: `pipeline_api_parity_test.dart` and the other Pipeline parity tests, for Firestore Pipelines only.[^pipeline-parity] Everything else: nothing; review only.
+- The file layout mirrors Node module by module: compare `lib/src/auth/` with Node's `src/auth/`.[^auth-layout][^node-auth]
+- Ported logic is marked in dartdoc and comments as "Mirrors (or Matches) the Node SDK's X", for example on `createImplicitOrderBy` in `query.dart`. Grep for the marker.[^implicit-order-by-marker]
+- CONTRIBUTING's only Node rule: under `### Error Handling`.[^contributing-node-rule]
+
 # Decision
 
 The SDK is a close port of the Node.js Admin SDK (`firebase-admin-node`) and of Node Firestore (`@google-cloud/firestore`). Node's source is the reference for API names, file layout, validation rules and error codes. A contribution that redesigned a feature instead of porting it was sent back: port first, and record any deliberate redesign.
 
-Parity is kept by convention:
+CONTRIBUTING's "Match the behaviour of the Node.js Admin SDK where applicable" sits under "Error Handling", so it is an error-behaviour rule rather than a general port policy. The port policy is this concept.
 
-- The file layout mirrors Node module by module. `auth/` has `action_code_settings_builder`, `auth_config`, `base_auth`, `token_generator`, `token_verifier`, `user_import_builder` and the rest, like Node's `src/auth/`.[^auth-layout][^node-auth]
-- Dartdoc and comments mark ported logic with "Mirrors/Matches the Node SDK's X". Most are in `google_cloud_firestore`'s `pipeline.dart`; others sit on the implicit order-by in queries and on project-ID resolution.[^implicit-order-by-marker][^explicit-project-id-marker]
-- `google_cloud_firestore`'s CHANGELOG entries justify fixes by matching the Node Admin SDK.
-- CONTRIBUTING says "Match the behaviour of the Node.js Admin SDK where applicable." That line sits under "Error Handling", so it is an error-behaviour rule rather than a general port policy.[^contributing-node-rule]
-- Behaviours matched by hand include project-ID precedence, the Firestore credential restriction, revocation checks in `verifyIdToken` under the emulator, FCM v1 topic management with deprecated legacy IID methods, `listDocuments` following `nextPageToken`, and the JSON keys of `UserRecord.toJson` and `Timestamp.toJson`.
+Firestore Pipelines are the only product with parity checks enforced in CI. Auth, App Check, Messaging, Functions, Security Rules, Storage, the app core and non-Pipeline Firestore have no parity check: parity there depends on review.
 
-Firestore Pipelines are the only product with parity checks enforced in CI. Auth, App Check, Messaging, Functions, Security Rules, Storage, the app core and non-Pipeline Firestore have no parity check: parity there depends on review and on the conventions above.
-
-One Node TypeScript source remains in the Dart `lib/`: `utils/validator.ts`, and it ships in the published package.[^validator-ts] Whether it is kept on purpose isn't recorded; ask a maintainer.
+**Trap:** one Node TypeScript source remains in the Dart `lib/`, `utils/validator.ts`, and it ships in the published package.[^validator-ts] Whether it is kept on purpose isn't recorded; ask a maintainer.
 
 # Why
 
@@ -65,10 +66,11 @@ Writing features from scratch was rejected in favour of a port. Matching Flutter
 - [Dart idioms win where Node's shape does not fit](/architecture/dart-idioms-over-node-shapes.md)
 - [Pipelines parity with Node is checked by machine](/firestore/pipelines/node-parity.md)
 - [Firestore follows Node, not FlutterFire](/firestore/node-not-flutterfire.md)
+- [Compare with Node before changing a Dart API or behaviour](/playbooks/compare-with-node.md)
 
+[^pipeline-parity]: The Pipeline API parity test
 [^auth-layout]: The Auth module's file layout
 [^node-auth]: Node's `src/auth/`
 [^implicit-order-by-marker]: "Mirrors the Node SDK" marker in `query.dart`
-[^explicit-project-id-marker]: `getExplicitProjectId` marker in `firebase_app.dart`
 [^contributing-node-rule]: CONTRIBUTING's error-handling rule
 [^validator-ts]: Leftover `validator.ts`

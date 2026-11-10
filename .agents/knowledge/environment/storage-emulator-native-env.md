@@ -20,13 +20,25 @@ sources:
     resource: ../../../packages/firebase_admin_sdk/lib/src/storage/storage.dart
     symbol: unsetNativeEnvironmentVariable('STORAGE_EMULATOR_HOST')
     title: "`Storage` sets the variable when emulating and unsets it otherwise"
+  - id: node-storage
+    resource: https://github.com/firebase/firebase-admin-node/blob/main/src/storage/storage.ts
+    symbol: STORAGE_EMULATOR_HOST
+    title: Node's Storage emulator wiring
 ---
+
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The FFI calls: `setenv` and `unsetenv`, with `SetEnvironmentVariableW` on Windows, in `native_environment.dart`.[^setenv][^unsetenv]
+- When they run: the `Storage` constructor in `storage.dart`.[^storage-unset]
 
 # Decision
 
 The Storage emulator host reaches `google_cloud_storage` through the process environment variable `STORAGE_EMULATOR_HOST`. It is not passed as an argument.
 
-When `FIREBASE_STORAGE_EMULATOR_HOST` is set, `Storage` writes its value into `STORAGE_EMULATOR_HOST` with FFI `setenv` (`SetEnvironmentVariableW` on Windows).[^setenv] In production mode, it removes the variable with `unsetenv`.[^unsetenv][^storage-unset]
+When `FIREBASE_STORAGE_EMULATOR_HOST` is set, `Storage` writes its value into `STORAGE_EMULATOR_HOST` through FFI. In production mode, it removes the variable.
+
+This differs from Node, which sets `STORAGE_EMULATOR_HOST` to `http://` plus the host only when it is unset, and never clears it.[^node-storage] Dart writes the bare host, always overwrites the variable, and unsets a user-supplied value whenever `FIREBASE_STORAGE_EMULATOR_HOST` is absent.
 
 # Why
 
@@ -50,3 +62,4 @@ Whether changing the whole process environment through FFI is acceptable long te
 [^setenv]: FFI `setenv`
 [^unsetenv]: FFI `unsetenv`
 [^storage-unset]: The `Storage` constructor
+[^node-storage]: Node's `STORAGE_EMULATOR_HOST`

@@ -1,7 +1,7 @@
 ---
 type: Constraint
 title: No committed lockfiles or dependency overrides
-description: "`pubspec.lock` and `pubspec_overrides.yaml` are git-ignored and merged PRs carry no `dependency_overrides`, so CI always resolves the newest allowed versions; committed Node lockfiles are the exception."
+description: "No `pubspec.lock`, `pubspec_overrides.yaml` or merged `dependency_overrides`, so CI always resolves the newest allowed versions; the committed Node lockfiles are the exception, installed with `npm ci` in the tools and `npm install` in the test fixture."
 tags: [dependencies, ci, lockfiles]
 agents_md: when-touching
 governs:
@@ -28,26 +28,31 @@ sources:
     resource: ../../../scripts/coverage.sh
     symbol: cd test/fixtures/task_queue_functions
     title: "`scripts/coverage.sh` runs `npm install` in the fixture"
+  - id: build-schedule
+    resource: ../../../.github/workflows/build.yml
+    symbol: "schedule:"
+    title: The Build workflow's daily scheduled run
 ---
+
+# Where it lives
+
+- Enforced by: `.gitignore`, for `pubspec.lock` and `pubspec_overrides.yaml`.[^gitignore-lock][^gitignore-overrides] Nothing enforces the no-`dependency_overrides` rule; review only.
+- The committed Node lockfiles: `package-lock.json` in each `tool/pipeline_*` directory of `google_cloud_firestore`, such as `tool/pipeline_golden/`,[^golden-lockfile] and in `test/fixtures/task_queue_functions/`.[^fixture-lockfile]
+- The fixture's `npm install`: `cd test/fixtures/task_queue_functions` in `scripts/coverage.sh`.[^fixture-npm-install]
+- The early warning for upstream breakage: `schedule:` in `.github/workflows/build.yml`.[^build-schedule]
 
 # Constraint
 
-- `pubspec.lock` and `**/pubspec_overrides.yaml` are git-ignored.[^gitignore-lock][^gitignore-overrides]
 - The root `pubspec.yaml` must not carry `dependency_overrides` when a PR is merged.
 - So CI always resolves the newest allowed versions, and the daily scheduled run of the Build workflow catches upstream breakage.
-- Node lockfiles (`package-lock.json`) are the exception. They are committed for the two `google_cloud_firestore` tools, `tool/pipeline_golden/` and `tool/pipeline_api_parity/`, and for the admin test fixture `test/fixtures/task_queue_functions/`.[^golden-lockfile][^fixture-lockfile]
-- The tools' READMEs and workflows install with `npm ci`. The fixture is installed with `npm install`, by CONTRIBUTING's emulator setup and by `scripts/coverage.sh`, which CI's `test` job runs.[^fixture-npm-install]
+- The publish dry run doesn't fail on an override; it only prints a hint. Nothing else catches one.
+- The tool lockfiles are installed with `npm ci`, by the tools' READMEs and workflows. The fixture is installed with `npm install`, by CONTRIBUTING's emulator setup and by `scripts/coverage.sh`, which CI's `test` job runs.
 
 # Why
 
 - The maintainers state the rule itself: lock files aren't checked in, which is also why Dependabot doesn't check Dart dependencies.
-- On overrides, the maintainers' stated reason: the package cannot be published with an override in place, so a PR that needs one stays a draft until the dependency is released. The publish dry run doesn't fail on an override; it only prints a hint (see below), so this rests on review.
+- On overrides, the maintainers' stated reason: the package cannot be published with an override in place, so a PR that needs one stays a draft until the dependency is released.
 - The likely reason for the daily run (not recorded): it is the early warning for new upstream releases.
-
-# Enforced by
-
-- `.gitignore`, for the lock and override files.
-- Overrides: not enforced. The `publish` job's dry run passes with `dependency_overrides` in place and only prints a hint; reviewers must catch them.
 
 # Rules for agents
 
@@ -57,11 +62,13 @@ sources:
 
 # Related
 
-- [dart pub publish --dry-run must pass for both packages](/release/publish-dry-run.md)
-- [Dependabot updates GitHub Actions only](/dependencies/dependabot.md)
+- [The publish dry run must pass for both packages](/release/publish-dry-run.md)
+- [Other generated, compiled or mirrored files](/generated/other-generated-files.md)
+- [Workflow security rules and Dependabot](/ci/workflow-hardening.md)
 
 [^gitignore-lock]: `.gitignore`: `pubspec.lock`
 [^gitignore-overrides]: `.gitignore`: `pubspec_overrides.yaml`
 [^golden-lockfile]: `tool/pipeline_golden/package-lock.json`
 [^fixture-lockfile]: `test/fixtures/task_queue_functions/package-lock.json`
 [^fixture-npm-install]: `scripts/coverage.sh`
+[^build-schedule]: The `schedule:` trigger in `build.yml`
