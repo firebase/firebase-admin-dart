@@ -166,8 +166,8 @@ check() {
           if (t !~ /^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/) continue
           # Code names only: camelCase, PascalCase, ALL_CAPS, _private, a.b or f().
           if (!paren && t !~ /^_/ && t !~ /\./ && t !~ /[A-Z]/) continue
-          n = split(t, parts, "."); seg = parts[n]
-          print seg "\t" ids
+          n = split(t, parts, ".")
+          for (i = 1; i <= n; i++) print parts[i] "\t" ids
         }
       }
       /^# Where it lives$/ { inside = 1; next }

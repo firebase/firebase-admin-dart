@@ -29,7 +29,7 @@ sources:
 # Where it lives
 
 - Enforced by: nothing; review only.
-- The Firebase helpers: `bucket()`, which falls back to `AppOptions.storageBucket` (in its body), and `getDownloadURL` (its dartdoc), in `storage.dart`.[^bucket][^get-download-url]
+- The Firebase helpers: `bucket()`, which falls back to `app.options.storageBucket` (in its body), and `getDownloadURL` (its dartdoc), in `storage.dart`.[^bucket][^get-download-url]
 - The `google_cloud_storage` version range: the admin `pubspec.yaml`.[^gcs-dependency]
 
 # Decision
