@@ -257,6 +257,7 @@ class FirestoreHttpClient {
     return _clientFuture ??= _createClient();
   }
 
+
   // googleapis_auth never closes a caller-supplied baseClient.
   Http2WithHttp1FallbackClient? _transport;
 
@@ -304,7 +305,7 @@ class FirestoreHttpClient {
     return firestoreGuard(() async {
       final result = await fn(client, projectId);
       // Streaming RPCs (batchGetDocuments, runQuery, ...) report server
-      // errors as stream events, which the guard above never sees.
+      // errors as stream events, which firestoreGuard does not intercept.
       if (result is Stream) {
         return result.handleError(handleFirestoreException) as R;
       }
