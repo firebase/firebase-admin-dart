@@ -483,6 +483,9 @@ class Transaction {
             );
           }
         });
+        // A failed first read is reported through the returned future;
+        // _rollback() awaits this one later, after the error has completed it.
+        _transactionIdFuture!.ignore();
 
         return resultFuture.then((r) {
           return r.result;

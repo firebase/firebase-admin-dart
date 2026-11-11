@@ -257,7 +257,6 @@ class FirestoreHttpClient {
     return _clientFuture ??= _createClient();
   }
 
-
   // googleapis_auth never closes a caller-supplied baseClient.
   Http2WithHttp1FallbackClient? _transport;
 
@@ -302,7 +301,15 @@ class FirestoreHttpClient {
 
     _cachedProjectId = projectId;
 
-    return firestoreGuard(() => fn(client, projectId));
+    return firestoreGuard(() async {
+      final result = await fn(client, projectId);
+      // Streaming RPCs (batchGetDocuments, runQuery, ...) report server
+      // errors as stream events, which the guard above never sees.
+      if (result is Stream) {
+        return result.handleError(handleFirestoreException) as R;
+      }
+      return result;
+    });
   }
 
   /// Executes a Firestore v1 API operation with automatic projectId injection.
