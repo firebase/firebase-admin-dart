@@ -79,6 +79,6 @@ Each rule links to the concept that explains it.
 
 `.agents/knowledge/` is an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format) bundle. It holds only what the code and docs don't say: why a decision was made, how Dart diverges from the Node.js SDK, and repository constraints. Each concept starts with "Where it lives", pointing at the code that holds the facts. `index.md` lists every concept.
 
-- **Before you edit or add a file**, run `./scripts/knowledge.sh for <path>...`. It lists the concepts that govern those paths and the code each one points to. A path can be a file that doesn't exist yet, or a directory.
+- **Before you edit or add a file**, run `./scripts/knowledge.sh for <path>...`. It lists the concepts that govern those paths; read "Rules for agents" in each. With `--sources`, it also lists the code each one points to. A path can be a file that doesn't exist yet, or a directory.
 - **Keep it true.** If your change makes a concept wrong, update it in the same PR. The `update-knowledge-base` skill in `.agents/skills/` says how.
 - CI runs `./scripts/knowledge.sh check`. It fails when a concept points at a file or symbol that no longer exists, so a change that breaks a concept shows up as a failing check.

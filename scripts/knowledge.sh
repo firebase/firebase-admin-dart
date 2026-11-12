@@ -6,6 +6,7 @@
 #
 # Usage (from anywhere):
 #   ./scripts/knowledge.sh for <path>...   # the concepts to read before editing these paths
+#   ./scripts/knowledge.sh for --sources <path>...   # also where each one lives in the code
 #   ./scripts/knowledge.sh index           # rewrite index.md from the concepts' frontmatter
 #   ./scripts/knowledge.sh check           # what CI runs: fails when the bundle no longer
 #                                          # matches the repository
@@ -277,7 +278,7 @@ relative() {
 # for <path>...: the concepts whose `governs` globs match any of the paths. A
 # path can be a file that doesn't exist yet, or a directory (every file in it).
 for_paths() {
-  local arg path file glob kind value pairs paths resolved=0
+  local arg path file glob kind value pairs paths resolved=0 with_sources=0
   pairs=$(mktemp)
   paths=$(mktemp)
   # Expanded now: `pairs` and `paths` are local and gone by the time EXIT fires.
@@ -290,6 +291,10 @@ for_paths() {
   done < <(concepts) >"$pairs"
 
   for arg in "$@"; do
+    if [ "$arg" = --sources ]; then
+      with_sources=1
+      continue
+    fi
     if ! path=$(relative "$arg"); then
       echo "✗ $arg is outside the repository." >&2
       continue
@@ -339,7 +344,7 @@ for_paths() {
       if [ "$kind" = concept ]; then
         echo "$value  ($(field "$value" agents_md)): $(field "$value" description)"
         # Where the knowledge lives in the code: the concept's repo sources.
-        while IFS=$'\t' read -r _ res sym; do
+        ((with_sources)) && while IFS=$'\t' read -r _ res sym; do
           case "$res" in http://* | https://* | /*) continue ;; esac
           echo "    $(relative "$ROOT/$(dirname "$value")/$res")${sym:+  ($sym)}"
         done < <(sources "$value")
@@ -350,7 +355,7 @@ for_paths() {
 
   rm -f "$pairs" "$paths"
   echo
-  echo "Read the concepts listed before editing. If your change makes one wrong, update it in the same PR."
+  echo "Before editing, read \"Rules for agents\" in each (\"Steps\" in a playbook). --sources lists where each lives in the code. If your change makes a concept wrong, update it in the same PR."
 }
 
 case "${1:-}" in
@@ -359,13 +364,17 @@ case "${1:-}" in
   for)
     shift
     if (($# == 0)); then
-      echo "Usage: $0 for <path>..." >&2
+      echo "Usage: $0 for [--sources] <path>..." >&2
+      exit 2
+    fi
+    if [ "$*" = --sources ]; then
+      echo "Usage: $0 for [--sources] <path>..." >&2
       exit 2
     fi
     for_paths "$@"
     ;;
   *)
-    echo "Usage: $0 check | index | for <path>..." >&2
+    echo "Usage: $0 check | index | for [--sources] <path>..." >&2
     exit 2
     ;;
 esac
