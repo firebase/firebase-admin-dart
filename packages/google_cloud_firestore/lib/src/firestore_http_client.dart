@@ -302,7 +302,15 @@ class FirestoreHttpClient {
 
     _cachedProjectId = projectId;
 
-    return firestoreGuard(() => fn(client, projectId));
+    return firestoreGuard(() async {
+      final result = await fn(client, projectId);
+      // Streaming RPCs (batchGetDocuments, runQuery, ...) report server
+      // errors as stream events, which firestoreGuard does not intercept.
+      if (result is Stream) {
+        return result.handleError(handleFirestoreException) as R;
+      }
+      return result;
+    });
   }
 
   /// Executes a Firestore v1 API operation with automatic projectId injection.
