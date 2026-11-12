@@ -4,7 +4,7 @@ Notes for AI coding agents working on the Dart Firebase Admin SDK. This file rou
 
 ## Setup
 
-- Prerequisites: CONTRIBUTING.md › Prerequisites.
+- Prerequisites: CONTRIBUTING.md › Prerequisites. `./scripts/doctor.sh` checks them and changes nothing.
 - A root `dart pub get` resolves the whole pub workspace. melos is a root dev dependency: `dart run melos bootstrap` works without a global install, and also regenerates `version.g.dart`.
 - Install tools only when the user asks. Never set up, create or print credentials. [More](.agents/knowledge/repo/workspace-and-melos.md)
 
@@ -56,6 +56,19 @@ Each rule links to the concept that explains it.
 - **Commits and PRs.** [More](.agents/knowledge/contributing/pull-requests.md)
   - PR titles, and the commit of a single-commit PR, are Conventional Commits (`type(scope): summary`).
   - Fill in the PR template, but never tick the CLA box for the user.
+
+## Skills
+
+`.agents/skills/` holds the procedures for the common tasks. Each one applies the rules above in order; read it before starting the task.
+
+| Task | Skill |
+| --- | --- |
+| Set up or repair a machine | [`setup-environment`](.agents/skills/setup-environment/SKILL.md) |
+| Add or port a public API | [`implement-sdk-feature`](.agents/skills/implement-sdk-feature/SKILL.md) |
+| Write tests, or port them from Node | [`write-and-sync-tests`](.agents/skills/write-and-sync-tests/SKILL.md) |
+| Audit a product against Node | [`check-node-parity`](.agents/skills/check-node-parity/SKILL.md) |
+| Prepare or publish a release, only when asked | [`run-release`](.agents/skills/run-release/SKILL.md) |
+| Update the knowledge base | [`update-knowledge-base`](.agents/skills/update-knowledge-base/SKILL.md) |
 
 ## Generated files: don't edit by hand
 
