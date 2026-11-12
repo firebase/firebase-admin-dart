@@ -11,7 +11,7 @@ Read steps 1 to 3 and 7 of the [compare-with-Node playbook](../../knowledge/play
 
 ## 1. Scope
 
-Agree the scope: a product, an API, or a range of Node releases. Record the Node version (`gh release view --repo firebase/firebase-admin-node --json tagName`) and the Dart commit. Read Node at that tag:
+Agree the scope: a product, an API, or a range of Node releases. Record the Node version and the Dart commit. The latest Node versions: `npm view firebase-admin version` (tag `v<version>`) and `npm view @google-cloud/firestore version` (tag `firestore-v<version>`). Read Node at that tag:
 
 ```bash
 gh api -H 'Accept: application/vnd.github.raw' 'repos/<owner>/<repo>/contents/<path>?ref=<tag>'

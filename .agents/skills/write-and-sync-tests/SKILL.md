@@ -18,7 +18,7 @@ AGENTS.md › Tests has the rules. Read a concept only where a step below names 
 ## 2. Sync from Node
 
 1. **Find what Dart does on purpose.** Run `./scripts/knowledge.sh for <the lib files under test>`. The "Rules for agents" of the concepts it lists say where Dart differs from Node on purpose. Passing only the test path doesn't list them.
-2. **Find the Node tests,** at the latest release tag (`gh release view --repo firebase/firebase-admin-node --json tagName`), or the pinned version for Pipelines:
+2. **Find the Node tests,** at the latest release tag, or the pinned version for Pipelines. The latest Node versions: `npm view firebase-admin version` (tag `v<version>`) and `npm view @google-cloud/firestore version` (tag `firestore-v<version>`).
    - admin: `firebase/firebase-admin-node`, `test/unit/<product>/*.spec.ts`;
    - Firestore: `googleapis/google-cloud-node`, `handwritten/firestore/dev/test/`.
 

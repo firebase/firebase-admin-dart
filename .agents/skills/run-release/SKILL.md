@@ -12,7 +12,7 @@ Read [Releases, versioning, CHANGELOG and version.g.dart](../../knowledge/releas
 ## 1. Readiness (read-only)
 
 1. `git fetch origin`. Check CI on `main`, every workflow: `gh run list --branch main --limit 10`.
-2. Find each package's last release: the top numbered heading of its CHANGELOG, and pub.dev (`curl -s https://pub.dev/api/packages/<package> | jq -r .latest.version`). Its commit: `git log -1 --format=%h -S'## <version>' -- packages/<package>/CHANGELOG.md`. Don't rely on tags; some releases have none.
+2. Find each package's last release: the top numbered heading of its CHANGELOG, and pub.dev (`curl -s https://pub.dev/api/packages/<package> | jq -r .latest.version`). Its commit: `git log -1 --format=%h -G'^## <version>$' -- packages/<package>/CHANGELOG.md`. Don't rely on tags; some releases have none.
 3. List what merged since: `git log --oneline <that commit>..origin/main -- packages/<package>`. For each change users can see, check it has an entry under the package's top CHANGELOG heading.
 4. Report which packages have unreleased changes, the missing entries, and the versions you propose: the next patch, or the next minor if an entry starts with `**Breaking:**`. Never 1.0. For a breaking release, ask the user whether `firebase_functions`, which depends on these packages, is affected.
 
@@ -22,7 +22,7 @@ If the user asked only about readiness, stop here.
 
 Get the user's agreement on the packages and versions first. A package with no user-visible change is left out.
 
-1. `git switch -c release/<versions> origin/main`. Stop if the tree isn't clean.
+1. `git switch --no-track -c release/<versions> origin/main`. Stop if the tree isn't clean.
 2. Add the missing CHANGELOG entries, in the style of the entries around them.
 3. Make the edits the release concept lists, for the packages being released. Also:
    - The admin package's range on `google_cloud_firestore`: local resolution hides a lower bound that is too low, so search the admin `lib/` for the APIs the new Firestore entries add. The upper bound must admit the new Firestore version.
@@ -31,7 +31,7 @@ Get the user's agreement on the packages and versions first. A package with no u
 4. Ask before including any other change.
 5. Commit as `chore(release): prepare firestore v<A> and admin v<B>`, or naming the one package. The dry run warns about uncommitted files, so commit before validating.
 6. Validate:
-   - from the root, `./scripts/gen-version.sh && git diff --exit-code` must print nothing;
+   - from the root, run `./scripts/gen-version.sh`; `git diff --exit-code` must then exit 0;
    - in each released package, `dart analyze --fatal-infos`, `dart test` and `dart pub publish --dry-run`;
    - both emulator suites, the license check and the knowledge-base check, as in AGENTS.md.
 

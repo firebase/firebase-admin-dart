@@ -216,7 +216,7 @@ check() {
 
   echo
   if ((problems > 0)); then
-    echo "$problems problem(s) in $KB. Update the concepts to match the code (see $KB/index.md)."
+    echo "$problems problem(s). Update the concept, skill or AGENTS.md named on each line to match the code (see $KB/index.md)."
     return 1
   fi
   echo "✓ $KB: $(concepts | wc -l | tr -d ' ') concepts match the repository."
@@ -367,7 +367,11 @@ case "${1:-}" in
       echo "Usage: $0 for [--sources] <path>..." >&2
       exit 2
     fi
-    if [ "$*" = --sources ]; then
+    paths=0
+    for arg in "$@"; do
+      [ "$arg" = --sources ] || paths=$((paths + 1))
+    done
+    if ((paths == 0)); then
       echo "Usage: $0 for [--sources] <path>..." >&2
       exit 2
     fi

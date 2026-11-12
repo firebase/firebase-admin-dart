@@ -12,7 +12,7 @@ For a bug fix rather than a new API, start with the `write-and-sync-tests` skill
 ## 1. Scope
 
 1. Run `./scripts/knowledge.sh for <the files you expect to edit>`. For a new file, pass its directory. Read the "Rules for agents" section of each concept listed; open the rest of a concept only when a rule needs it.
-2. Follow steps 1 to 3 of the [compare-with-Node playbook](../../knowledge/playbooks/compare-with-node.md) to find the Node reference. The latest Node release: `gh release view --repo firebase/firebase-admin-node --json tagName`. Read Node's implementation, typings and unit tests for the feature.
+2. Follow steps 1 to 3 of the [compare-with-Node playbook](../../knowledge/playbooks/compare-with-node.md) to find the Node reference. The latest Node versions: `npm view firebase-admin version` (tag `v<version>`) and `npm view @google-cloud/firestore version` (tag `firestore-v<version>`). Read Node's implementation, typings and unit tests for the feature.
 3. Stop and ask the user if the feature:
    - is a product the README marks "Not supported";
    - is deprecated in Node;

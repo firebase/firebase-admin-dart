@@ -61,13 +61,20 @@ at_least() {
 }
 
 # Dart: the minimum is `environment.sdk` in the root pubspec.yaml.
-dart_min=$(sed -nE 's/^[[:space:]]*sdk:[[:space:]]*\^?([0-9.]+).*/\1/p' "$PROJECT_ROOT/pubspec.yaml" | head -n 1)
-dart_min=${dart_min:-3.9.0}
+# Read from a caret (^3.9.0) or range ('>=3.9.0 <4.0.0') constraint.
+dart_min=$(sed -nE "s/^[[:space:]]*sdk:[[:space:]]*[\"']?(\^|>=)?[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+).*/\2/p" "$PROJECT_ROOT/pubspec.yaml" | head -n 1)
 if command -v dart >/dev/null; then
   version=$(dart --version 2>&1 | sed -nE 's/^Dart SDK version: ([^ ]+).*/\1/p')
   if [ -z "$version" ]; then
     fail "Dart: $(command -v dart) doesn't report a version" \
       "run dart --version to see why; if a version manager (FVM, asdf) provides it, fix it there"
+  elif [ -z "$dart_min" ]; then
+    fail "Dart $version: can't read the minimum version from pubspec.yaml" \
+      "check environment.sdk in the root pubspec.yaml, then update this script"
+  elif [ "${version%%-*}" = "$dart_min" ] && [ "$version" != "$dart_min" ]; then
+    # Pub sorts a pre-release below its release, so ^3.9.0 excludes 3.9.0-1.0.dev.
+    fail "Dart $version: a pre-release of $dart_min, which the packages exclude" \
+      "$(how 'brew upgrade dart-lang/dart/dart' 'install a newer SDK: https://dart.dev/get-dart' 'install a newer SDK: https://dart.dev/get-dart')"
   elif at_least "$version" "$dart_min"; then
     ok "Dart $version"
   else
@@ -81,10 +88,17 @@ fi
 
 # The root pubspec.yaml is a pub workspace: one `dart pub get` covers every
 # package.
-if [ -f "$PROJECT_ROOT/.dart_tool/package_config.json" ]; then
-  ok "Workspace dependencies"
-else
+if [ ! -f "$PROJECT_ROOT/.dart_tool/package_config.json" ]; then
   fail "Workspace: dependencies not fetched" "dart pub get, from the repo root"
+elif ! command -v dart >/dev/null; then
+  note "Workspace: can't check the dependencies without Dart"
+else
+  # A dry run writes nothing; --offline keeps it to the local cache.
+  resolution=$(cd "$PROJECT_ROOT" && dart pub get --dry-run --offline 2>&1)
+  case $resolution in
+    *'No dependencies would change'*) ok "Workspace dependencies" ;;
+    *) fail "Workspace: dependencies out of date" "dart pub get, from the repo root" ;;
+  esac
 fi
 
 # Java: the Firestore emulator needs 21+. macOS has a /usr/bin/java stub that
