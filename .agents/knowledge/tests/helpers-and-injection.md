@@ -67,7 +67,7 @@ The guards' reasons are in the helpers' comments.
 
 - **Must:** unit-test new service methods by injecting a request handler or HTTP client double through the `@internal` factory. For Storage, inject it through `AppOptions.httpClient` (`createApp(client: …)`), and run the test in a zone with an empty environment, as the Storage unit tests do, so emulator mode doesn't drop the double.
 - **Must not:** test Firestore requests through a mock `AppOptions.httpClient`; it never reaches `google_cloud_firestore`. Test Firestore requests in `google_cloud_firestore`'s own tests or against the emulator. Admin Firestore unit tests can still cover the wrapper itself: settings and credential mapping, caching per database, headers and lifecycle.
-- **Must:** build emulator tests on `createApp`, `createAuthForTest` or `createFirestore`, or copy their guard into a new helper.
+- **Must:** build emulator tests on `createAuthForTest` or `createFirestore`, or copy their guard into a new helper. `createApp` has no emulator guard.
 - **Must:** when an admin unit test needs Firestore without an emulator in the process environment, configure it through `Settings.environmentOverride` (`mockFirestoreSettings`).
 - **Should:** give each test app a `name:` that no other app alive at the same time uses. Apps that share a name collide when their lifetimes overlap.
 - **Must not:** remove or loosen the emulator guards beyond their explicit opt-outs, such as `requireEmulator: false`, or let a helper fall back to real credentials.

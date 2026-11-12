@@ -55,7 +55,7 @@ sources:
 
 # Where it lives
 
-- Enforced by: nothing; review only. No `switch` in `lib/` covers the subtypes, and the `app.firestore()` mapping is an `if` chain that throws for other subtypes, so the compiler flags neither.[^firestore-mapping]
+- Enforced by: nothing; review only. No `switch` in `lib/` covers the subtypes, and the `app.firestore()` mapping is an `if` chain that throws for other subtypes when `Settings.credential` is null, so the compiler flags neither.[^firestore-mapping]
 - The factories and subtypes: `sealed class Credential` in `credential.dart`.[^sealed-credential]
 - The subtypes are kept out of the public API by the `hide` list in `firebase_admin_sdk.dart`.[^barrel-hide]
 - `serviceAccountId` for Workload Identity Federation: `Credential.fromApplicationDefaultCredentials` in `credential.dart`.[^adc-factory]
@@ -92,7 +92,7 @@ Discovery: the maintainers' stated reason is that discovery that runs only when 
 # Rules for agents
 
 - **Must:** keep Dart's way. A new credential source is a new factory and a new sealed subtype, and every `switch` over `Credential` must stay exhaustive.
-- **Must:** when you add a subtype, also update the Firestore credential mapping in `app.firestore()`, which the compiler doesn't check. As in Node, Firestore accepts only service-account and ADC credentials.[^node-firestore-options]
+- **Must:** when you add a subtype, also update the Firestore credential mapping in `app.firestore()`, which the compiler doesn't check. The mapping runs only when `Settings.credential` is null; an explicit Firestore credential skips it entirely. As in Node, Firestore accepts only service-account and ADC credentials.[^node-firestore-options]
 - **Must not:** assume `serviceAccountCredentials` is non-null. It is null for ADC, WIF and refresh-token credentials.
 - **Must not:** make `credential` required.
 - **Must not:** skip discovery when other options are set.

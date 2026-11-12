@@ -82,7 +82,7 @@ The reason isn't recorded. Ask a maintainer before changing it. Whether FID-base
 
 The likely reason (not recorded in this repository): parity with Node. The Dart change matches Node's FCM v1 topic-management change point for point, but doesn't cite it.
 
-Node's maintainers stated, for Node: concurrency is capped at 100 to avoid HTTP/2 stream exhaustion; `ALREADY_EXISTS` counts as success and `NOT_FOUND` maps to `registration-token-not-registered` to keep requests idempotent; and the `*Legacy` methods stay as deprecated escape hatches. Why Node left the IID endpoints isn't recorded.
+The likely reasons for Node's design (not recorded in the Node files cited here): concurrency is capped at 100 to avoid HTTP/2 stream exhaustion; `ALREADY_EXISTS` counts as success and `NOT_FOUND` maps to `registration-token-not-registered` to keep requests idempotent; and the `*Legacy` methods stay as deprecated escape hatches. Why Node left the IID endpoints isn't recorded.
 
 When the `*Legacy` methods can be removed isn't recorded. Ask a maintainer.
 

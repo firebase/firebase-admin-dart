@@ -7,6 +7,8 @@ agents_md: when-touching
 governs:
   - packages/firebase_admin_sdk/lib/src/app/**
   - packages/firebase_admin_sdk/lib/src/*/*_http_client.dart
+  - packages/firebase_admin_sdk/lib/src/auth/auth.dart
+  - packages/firebase_admin_sdk/lib/src/functions/functions.dart
   - packages/firebase_admin_sdk/lib/src/storage/storage.dart
   - packages/firebase_admin_sdk/lib/src/firestore/firestore.dart
   - packages/google_cloud_firestore/lib/src/firestore_http_client.dart
@@ -81,7 +83,7 @@ The default transport is pooled HTTP/2; see [Pooled HTTP/2 by default](/architec
 
 ## Ownership and lazy creation
 
-`FirebaseApp` owns the default client it creates. A service's `delete()` is meant to close only clients that service built (emulator clients), and to be idempotent; Auth and Functions break the first half (see the trap below). Authenticated clients are created on first use, never in constructors.
+`FirebaseApp` owns the default client it creates. A service's `delete()` is meant to close only clients that service built (emulator clients); Auth and Functions break that (see the trap below). Only `Storage.delete()` and `FirestoreHttpClient.close()` guard a double close: `Auth.delete()` and `Functions.delete()` have no guard, and close the client again on every call under their emulators. Authenticated clients are created on first use, never in constructors.
 
 **Trap: Auth and Functions close a user-supplied client under their emulators.**
 
@@ -105,7 +107,7 @@ Ownership and lazy creation, the maintainers' stated reasons:
 - `FirebaseApp` promises in its dartdoc that a user-provided `options.httpClient` is not closed automatically. A change that made `Storage.delete()` close `app.client` was blocked for that reason.
 - Building a client eagerly starts a credential lookup; the Storage delegate's dartdoc gives the example.
 - Closing an unused Firestore must not resolve credentials: without credentials, closing the app failed.
-- A double close is a bug; the idempotency guards prevent it.
+- A double close is a bug; the guards in `Storage.delete()` and `FirestoreHttpClient.close()` prevent it.
 
 Eager construction is the rejected alternative: when ADC was missing, it raised unhandled async errors with no user frames in the stack.
 
@@ -113,7 +115,7 @@ Eager construction is the rejected alternative: when ADC was missing, it raised 
 
 - **Must:** keep Dart's way: a public authenticated client and these transport options.
 - **Must not:** make `client` internal again.
-- **Must:** keep each service's `delete()` and `FirestoreHttpClient.close()` idempotent. `FirebaseApp.close()` deliberately throws `app/app-deleted` on a second call, as Node does.
+- **Must:** keep `Storage.delete()` and `FirestoreHttpClient.close()` idempotent, and guard a double close in a new or changed `delete()`. `Auth.delete()` and `Functions.delete()` have no such guard. `FirebaseApp.close()` deliberately throws `app/app-deleted` on a second call, as Node does.
 - **Must not:** close `app.client` or a user-supplied `AppOptions.httpClient` from a service.
 - **Must:** in a new or changed `delete()`, close a client only when the service built it, not on the emulator variable alone. `Auth.delete()` and `Functions.delete()` decide from the variable, which is how they reach a user-supplied client.
 - **Must not:** start credential lookups in constructors or in `close()`.

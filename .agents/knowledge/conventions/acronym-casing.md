@@ -7,6 +7,9 @@ agents_md: when-touching
 governs:
   - packages/firebase_admin_sdk/lib/src/auth/user.dart
   - packages/firebase_admin_sdk/lib/src/auth/auth_config.dart
+  - packages/firebase_admin_sdk/lib/src/auth/auth_config_tenant.dart
+  - packages/firebase_admin_sdk/lib/src/auth/project_config.dart
+  - packages/firebase_admin_sdk/lib/src/auth/tenant.dart
   - packages/firebase_admin_sdk/lib/src/app/app_options.dart
 sources:
   - id: user-photo-url

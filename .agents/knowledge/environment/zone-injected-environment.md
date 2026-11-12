@@ -53,7 +53,7 @@ Rejected alternative: shell scripts that set variables around `dart test`. Zones
 
 # Rules for agents
 
-- **Must not:** read `Platform.environment` directly in new code.
+- **Must not:** read `Platform.environment` directly in new library code. The test fixtures are the exception: they copy `Platform.environment` to build the zone's override map, and the Firestore fixtures read it for their emulator guard.
 
 # Related
 

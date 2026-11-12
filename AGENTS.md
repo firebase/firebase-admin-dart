@@ -44,7 +44,7 @@ Each rule links to the concept that explains it.
 - **Tests.** Follow CONTRIBUTING.md › Testing Requirements, but gate tests with `dart_test.yaml` tags, not environment variables; its `RUN_PROD_TESTS` line is out of date. [Tiers](.agents/knowledge/tests/tiers-and-tags.md), [helpers](.agents/knowledge/tests/helpers-and-injection.md)
   - Tag tests that need an emulator or credentials, so they stay out of the default run.
   - Unit-test services by injecting doubles through their `@internal` factories. A mock `AppOptions.httpClient` never reaches Firestore, and Storage needs extra care; see the helpers concept.
-  - Build emulator tests on the guarded helpers in `test/fixtures/`.
+  - Build emulator tests on the guarded helpers in `test/fixtures/`, `createAuthForTest` and `createFirestore`. `createApp` has no emulator guard.
 - **Credentials.** Never run `-P prod` or `-P wif` unless the user asks and supplies credentials. Never write credentials into the repo, logs or fixtures. [More](.agents/knowledge/tests/tiers-and-tags.md)
 - **CHANGELOG.** [More](.agents/knowledge/release/releases-and-versioning.md)
   - Add an entry for every user-visible change, under the package's top heading: `## X.Y.Z-wip` for `firebase_admin_sdk`, `## Unreleased` for `google_cloud_firestore`. The PR template's example heading is wrong.

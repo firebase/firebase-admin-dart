@@ -52,7 +52,7 @@ sources:
 
 # Decision
 
-The app API keeps Node's semantics and error codes, with a Dart surface of static members on `FirebaseApp` and `app.close()` in place of Node's top-level functions and internal `delete()`.[^node-lifecycle]
+The app API keeps Node's semantics and error codes, with a Dart surface of static members on `FirebaseApp` and `app.close()` in place of Node's top-level functions and internal `delete()`.[^node-lifecycle] The static `FirebaseApp.deleteApp(app)` exists alongside `app.close()`.
 
 One code differs: a `FIREBASE_CONFIG` that can't be read or parsed throws `app/invalid-argument` in Dart, where Node throws `app/invalid-app-options`. Re-initializing with a different credential also differs; see below.
 

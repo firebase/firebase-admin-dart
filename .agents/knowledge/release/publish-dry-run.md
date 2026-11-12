@@ -44,7 +44,7 @@ sources:
 - a modified checked-in file, such as a stale `version.g.dart`;
 - other pub validator warnings.
 
-Not caught by the dry run: a description outside 50–180 characters (pub.dev's scoring asks for that length) and dependency overrides (only a hint).
+Not caught by the dry run: a description outside 60–180 characters (pub.dev's scoring asks for that length) and dependency overrides (only a hint).
 
 **Traps:**
 
@@ -54,14 +54,14 @@ Not caught by the dry run: a description outside 50–180 characters (pub.dev's 
 
 # Why
 
-The maintainers' stated reasons: `false_secrets` lists the fixtures so the publish check doesn't flag the mock RSA test key, and pub.dev asks for a description between 50 and 180 characters.
+The maintainers' stated reasons: `false_secrets` lists the fixtures so the publish check doesn't flag the mock RSA test key, and pub.dev asks for a description between 60 and 180 characters.
 
 The likely reason the listed failures block CI (not recorded): the dry run exits non-zero on warnings.
 
 # Rules for agents
 
 - **Must:** when you add a test fixture with a key or token that looks real, add its path to that package's `false_secrets`.
-- **Must:** keep each pubspec `description` within 50–180 characters.
+- **Must:** keep each pubspec `description` within 60–180 characters.
 - **Must:** run `dart pub publish --dry-run` in both packages after a pubspec or file-layout change.
 - **Must not:** drop `--dry-run`.
 
