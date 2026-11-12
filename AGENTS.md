@@ -48,7 +48,7 @@ Each rule links to the concept that explains it.
 - **Credentials.** Never run `-P prod` or `-P wif` unless the user asks and supplies credentials. Never write credentials into the repo, logs or fixtures. [More](.agents/knowledge/tests/tiers-and-tags.md)
 - **CHANGELOG.** [More](.agents/knowledge/release/releases-and-versioning.md)
   - Add an entry for every user-visible change, under the package's top heading: `## X.Y.Z-wip` for `firebase_admin_sdk`, `## Unreleased` for `google_cloud_firestore`. The PR template's example heading is wrong.
-  - Never add a numbered release heading.
+  - Never add a numbered release heading outside a release PR.
   - If the admin package has no `-wip` heading, bump to the next patch `-wip` and regenerate `version.g.dart` (below).
 - **Releases.** Never publish, tag, or prepare a release unless the user asks. [More](.agents/knowledge/release/releases-and-versioning.md)
 - **License header.** Every new `.dart` file, Dockerfile and `.mjs` file starts with the text in `scripts/header_template.txt`, except `*.g.dart` files. [More](.agents/knowledge/conventions/license-headers.md)
@@ -59,16 +59,7 @@ Each rule links to the concept that explains it.
 
 ## Skills
 
-`.agents/skills/` holds the procedures for the common tasks. Each one applies the rules above in order; read it before starting the task.
-
-| Task | Skill |
-| --- | --- |
-| Set up or repair a machine | [`setup-environment`](.agents/skills/setup-environment/SKILL.md) |
-| Add or port a public API | [`implement-sdk-feature`](.agents/skills/implement-sdk-feature/SKILL.md) |
-| Write tests, or port them from Node | [`write-and-sync-tests`](.agents/skills/write-and-sync-tests/SKILL.md) |
-| Audit a product against Node | [`check-node-parity`](.agents/skills/check-node-parity/SKILL.md) |
-| Prepare or publish a release, only when asked | [`run-release`](.agents/skills/run-release/SKILL.md) |
-| Update the knowledge base | [`update-knowledge-base`](.agents/skills/update-knowledge-base/SKILL.md) |
+`.agents/skills/` holds a procedure for each common task. Read the matching one before starting: `setup-environment`, `implement-sdk-feature` (also bug fixes), `write-and-sync-tests`, `check-node-parity`, `run-release` (only when asked) and `update-knowledge-base`.
 
 ## Generated files: don't edit by hand
 

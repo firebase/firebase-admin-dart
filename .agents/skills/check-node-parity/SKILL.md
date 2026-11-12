@@ -1,21 +1,17 @@
 ---
 name: check-node-parity
-description: Reports feature gaps, API drift and wire-format incompatibilities between a Dart product or API and the Node.js SDKs, each classified as deliberate or not. Changes no code. Use when asked to audit parity with Node, list what Dart is missing, or review what a Node release changed.
+description: Read-only report of feature gaps, API drift and wire-format differences between a Dart product or API and the Node.js SDKs, each classified as deliberate or not. Use when asked to audit parity with Node, list what Dart is missing, or review what a Node release changed.
 ---
 
 # Check parity with Node
 
-The output is a report in the conversation. Don't change SDK code, write the report into the repo, or open issues.
+The output is a report in the conversation. Create no files, change no code and open no issues.
 
-Read steps 1 to 3 and 7 of the [compare-with-Node playbook](../../knowledge/playbooks/compare-with-node.md): the Node reference for each Dart path, the version, and the classes of difference.
+Read steps 1 to 3 and 7 of the [compare-with-Node playbook](../../knowledge/playbooks/compare-with-node.md) first.
 
 ## 1. Scope
 
-Agree the scope: a product, an API, or a range of Node releases. Record the Node version and the Dart commit. The latest Node versions: `npm view firebase-admin version` (tag `v<version>`) and `npm view @google-cloud/firestore version` (tag `firestore-v<version>`). Read Node at that tag:
-
-```bash
-gh api -H 'Accept: application/vnd.github.raw' 'repos/<owner>/<repo>/contents/<path>?ref=<tag>'
-```
+Agree the scope: a product, an API, or a range of Node releases. Record the Node version and the Dart commit.
 
 For a range of releases, start from the release notes (`gh release view <tag> --repo <owner>/<repo>`) and check each listed change.
 
@@ -32,9 +28,9 @@ dart test test/pipeline_api_parity_test.dart test/pipeline_golden_test.dart
 
 ## 3. Everything else
 
-Compare by layer. For a whole product, do layers 1, 2 and 5, report, and ask before going deeper. For a single API, do all six.
+Compare by layer. For a single API, do all six. For a whole product, do layers 1, 2 and 5 and the cross-compatibility items under "Classify", report, and ask before going deeper.
 
-1. **Surface:** Node's exported classes, members, option fields and enum values against the Dart barrel's exports. For admin products, Node's surface is in `etc/firebase-admin.<product>.api.md`. On the Dart side, include public classes in part files that the barrel doesn't `hide`.
+1. **Surface:** Node's exported classes, members, option fields and enum values against the Dart barrel's exports. On the Dart side, include public classes in part files that the barrel doesn't `hide`.
 2. **Signatures:** parameters, optionality, defaults and return types, after applying the Dart idioms.
 3. **Validation:** the checks made before the request, and the error code each throws.
 4. **Wire format:** endpoint, HTTP method, field names, field masks, headers, response decoding.
@@ -53,6 +49,6 @@ Give each difference a class from step 7 of the playbook, or **drift**: both sid
 ## 5. Report
 
 1. Scope, Node version and Dart commit.
-2. Gaps, drift and cross-compatibility issues, most severe first: the Node member and file, the Dart member and file or "missing", what differs, verified or suspected, and whether a fix would be breaking.
+2. Gaps, drift and cross-compatibility issues, most severe first: the Node member and file, the Dart member and file or "missing", what differs, and whether a fix would be breaking.
 3. The deliberate differences you found, each with its concept.
 4. The layers and modules you didn't check.

@@ -126,7 +126,7 @@ The likely mechanism (not recorded): CI's `melos bootstrap` rewrites the file, a
 - **Must:** add a CHANGELOG entry for every user-visible change in the affected package, under the existing top heading: `## X.Y.Z-wip` for `firebase_admin_sdk`, `## Unreleased` for `google_cloud_firestore`.
 - **Must:** if `firebase_admin_sdk` has no `-wip` heading, bump to the next patch `-wip` and regenerate `version.g.dart`.
 - **Must not:** add entries to a released CHANGELOG section.
-- **Must not:** create a new numbered release heading, or remove `-wip`.
+- **Must not:** create a new numbered release heading, or remove `-wip`, outside a release PR.
 - **Must not:** bump to 1.0 without a GA decision.
 - **Must:** every time `firebase_admin_sdk`'s `version:` changes, run `./scripts/gen-version.sh` (or `melos bootstrap`) and commit the result in the same PR.
 - **Must not:** hand-edit `version.g.dart`.
