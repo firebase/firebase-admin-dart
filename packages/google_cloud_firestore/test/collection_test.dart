@@ -383,45 +383,5 @@ void main() {
       expect(snapshot.docs.length, greaterThanOrEqualTo(2));
       expect(snapshot.docs.first.data()['value'], isA<int>());
     });
-
-    test('withConverter() with only fromFirestore null uses default', () async {
-      final collection = firestore.collection('partialNullTest');
-
-      final typedCollection = collection.withConverter<int>(
-        fromFirestore: (snapshot) => snapshot.data()['value']! as int,
-        toFirestore: (value) => {'value': value},
-      );
-
-      // Passing null for just one parameter should reset to default
-      final resetCollection = typedCollection.withConverter<DocumentData>(
-        toFirestore: (value) => value,
-      );
-
-      expect(resetCollection, isA<CollectionReference<DocumentData>>());
-
-      final docRef = await resetCollection.add({'test': 'data'});
-      final snapshot = await docRef.get();
-      expect(snapshot.data(), {'test': 'data'});
-    });
-
-    test('withConverter() with only toFirestore null uses default', () async {
-      final collection = firestore.collection('partialNullTest2');
-
-      final typedCollection = collection.withConverter<int>(
-        fromFirestore: (snapshot) => snapshot.data()['value']! as int,
-        toFirestore: (value) => {'value': value},
-      );
-
-      // Passing null for just one parameter should reset to default
-      final resetCollection = typedCollection.withConverter<DocumentData>(
-        fromFirestore: (snapshot) => snapshot.data(),
-      );
-
-      expect(resetCollection, isA<CollectionReference<DocumentData>>());
-
-      final docRef = await resetCollection.add({'test': 'data'});
-      final snapshot = await docRef.get();
-      expect(snapshot.data(), {'test': 'data'});
-    });
   });
 }

@@ -101,23 +101,37 @@ interface class DocumentReference<T> implements _Serializable {
 
   /// Changes the de/serializing mechanism for this [DocumentReference].
   ///
-  /// Passing `null` for both parameters removes the current converter and
-  /// returns an untyped `DocumentReference<DocumentData>`.
+  /// Calling `withConverter<DocumentData>()` with neither parameter removes
+  /// the current converter and returns an untyped
+  /// `DocumentReference<DocumentData>`.
+  ///
+  /// Throws an [ArgumentError] when exactly one of [fromFirestore] and
+  /// [toFirestore] is passed, since the two functions must always be provided
+  /// together, and when neither is passed with a type argument that cannot
+  /// hold [DocumentData].
   ///
   /// This changes the return value of [DocumentSnapshot.data].
   DocumentReference<R> withConverter<R>({
     FromFirestore<R>? fromFirestore,
     ToFirestore<R>? toFirestore,
   }) {
-    // If null, use the default JSON converter
-    final converter = (fromFirestore == null || toFirestore == null)
-        ? _jsonConverter as _FirestoreDataConverter<R>
-        : (fromFirestore: fromFirestore, toFirestore: toFirestore);
+    if (fromFirestore == null && toFirestore == null) {
+      final reset = DocumentReference<DocumentData>._(
+        firestore: firestore,
+        path: _path,
+        converter: _jsonConverter,
+      );
+      if (reset is! DocumentReference<R>) throw _withConverterResetError<R>();
+      return reset as DocumentReference<R>;
+    }
+    if (fromFirestore == null || toFirestore == null) {
+      throw _withConverterPairError();
+    }
 
     return DocumentReference<R>._(
       firestore: firestore,
       path: _path,
-      converter: converter,
+      converter: (fromFirestore: fromFirestore, toFirestore: toFirestore),
     );
   }
 
