@@ -1,0 +1,28 @@
+name: Knowledge base
+
+# Fails when a concept in .agents/knowledge names a file, symbol or glob that no
+# longer exists, so code changes that rename or remove them update the concepts
+# too. Runs on every pull request: Build skips Markdown-only changes.
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check the knowledge base
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check that the concepts match the code
+        run: ./scripts/knowledge.sh check
