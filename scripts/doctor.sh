@@ -60,16 +60,18 @@ at_least() {
   return 0
 }
 
-# Dart: the workspace's pubspec.yaml requires ^3.9.0.
+# Dart: the minimum is `environment.sdk` in the root pubspec.yaml.
+dart_min=$(sed -nE 's/^[[:space:]]*sdk:[[:space:]]*\^?([0-9.]+).*/\1/p' "$PROJECT_ROOT/pubspec.yaml" | head -n 1)
+dart_min=${dart_min:-3.9.0}
 if command -v dart >/dev/null; then
   version=$(dart --version 2>&1 | sed -nE 's/^Dart SDK version: ([^ ]+).*/\1/p')
   if [ -z "$version" ]; then
     fail "Dart: $(command -v dart) doesn't report a version" \
       "run dart --version to see why; if a version manager (FVM, asdf) provides it, fix it there"
-  elif at_least "$version" 3.9.0; then
+  elif at_least "$version" "$dart_min"; then
     ok "Dart $version"
   else
-    fail "Dart $version: the packages need 3.9.0 or later" \
+    fail "Dart $version: the packages need $dart_min or later" \
       "$(how 'brew upgrade dart-lang/dart/dart' 'install a newer SDK: https://dart.dev/get-dart' 'install a newer SDK: https://dart.dev/get-dart')"
   fi
 else
