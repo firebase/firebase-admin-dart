@@ -224,6 +224,49 @@ void main() {
       expect(request.message?.condition, isNull);
     });
 
+    test('sends a FidMessage in the HTTP v1 request body', () async {
+      final client = MockAuthClient();
+      late String body;
+      when(() => client.send(any())).thenAnswer((invocation) async {
+        final request = invocation.positionalArguments.single as BaseRequest;
+        body = await request.finalize().bytesToString();
+        return StreamedResponse(
+          Stream.value(utf8.encode('{"name":"messages/test"}')),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+      final app = createApp(client: client);
+      final handler = Messaging.internal(app);
+
+      final result = await handler.send(
+        FidMessage(
+          fid: 'installation-id',
+          data: {'key': 'value'},
+          notification: Notification(title: 'Hello'),
+        ),
+        dryRun: true,
+      );
+
+      expect(result, 'messages/test');
+      final request =
+          verify(() => client.send(captureAny())).captured.single
+              as BaseRequest;
+      expect(request.method, 'POST');
+      expect(
+        request.url.toString(),
+        'https://fcm.googleapis.com/v1/projects/$projectId/messages:send?alt=json',
+      );
+      expect(jsonDecode(body), {
+        'message': {
+          'fid': 'installation-id',
+          'data': {'key': 'value'},
+          'notification': {'title': 'Hello'},
+        },
+        'validateOnly': true,
+      });
+    });
+
     test(
       'sends a ConditionMessage with condition set on the request',
       () async {
@@ -401,6 +444,24 @@ void main() {
 
   group('sendEach', () {
     setUp(() => mockV1<BatchResponse>());
+
+    test('sends FidMessage targets', () async {
+      when(
+        () => messages.send(any(), any()),
+      ).thenAnswer((_) async => fmc1.Message(name: 'test'));
+
+      final response = await messaging.sendEach([
+        FidMessage(fid: 'installation-id'),
+      ]);
+
+      expect(response.successCount, 1);
+      final request =
+          verify(() => messages.send(captureAny(), any())).captured.single
+              as fmc1.SendMessageRequest;
+      expect(jsonDecode(jsonEncode(request)), {
+        'message': {'fid': 'installation-id'},
+      });
+    });
 
     test('asserts list length >=1 <500', () {
       expect(
