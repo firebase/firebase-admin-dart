@@ -52,10 +52,11 @@ Copy the shape of an existing concept of the same `type`. Keep the frontmatter's
   - For a value the code holds, such as a version constraint or a threshold, point to where it lives instead of copying it.
 - **Links** between concepts use bundle-relative paths, e.g. `[Title](/firestore/standalone-package.md)`.
 - **Footnotes** attribute a claim to one of the concept's sources: `[^source-id]`, where `source-id` is a `sources` entry's `id`. Define each footnote at the end of the body. `check` fails on a footnote that names no source, and on a repo source no footnote cites, so every pointer stays tied to a checked file and symbol.
+- **Where it lives:** every code name in a bullet must appear in a file that bullet footnotes. `check` fails otherwise, and it is the check authors hit first.
 
 - **Provenance (optional):** when a maintainer has checked a concept against the code, they can add `verified: { by: human:<github-login>, at: <UTC time> }`. A concept nobody has verified stays unverified, and that's allowed. Don't record which tool or model wrote a concept.
 
-A reversed decision isn't deleted. Set `status: deprecated`, say what replaced it, and link the new concept, so agents don't re-propose the old way. Remove its `governs` globs, so `for` stops listing it, and keep only the `sources` that still exist, or drop `sources` entirely.
+A reversed decision isn't deleted. Set `status: deprecated`, say what replaced it, and link the new concept, so agents don't re-propose the old way. Remove its `governs:` key along with its globs (an empty `governs:` fails `check`), so `for` stops listing it, and keep only the `sources` that still exist, or drop `sources` entirely.
 
 ## 3. Regenerate and check
 

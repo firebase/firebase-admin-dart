@@ -7,7 +7,6 @@ agents_md: always
 governs:
   - packages/*/test/**
   - packages/*/dart_test.yaml
-  - packages/*/test/**/*_prod_test.dart
   - .github/workflows/build.yml
   - scripts/*coverage.sh
 sources:
@@ -88,7 +87,7 @@ sources:
 Tests are split into tiers by `dart_test` tags, never by environment variables.
 
 - **Trap:** an untagged test that needs an emulator lands in the default run, and fails for everyone without emulators.
-- CONTRIBUTING.md's Testing Requirements are out of date in two lines: there are no `*_integration_test.dart` files, since integration tests live in `test/integration/` and are tagged; and prod tests are gated by the `prod` tag, not `RUN_PROD_TESTS`.
+- CONTRIBUTING.md's Testing Requirements are out of date in three places: there are no `*_integration_test.dart` files, since integration tests live in `test/integration/` and are tagged; prod tests are gated by the `prod` tag, not `RUN_PROD_TESTS`; and prod tests aren't all named `*_prod_test.dart`, since most prod-tagged files have other names.
 - CONTRIBUTING.md's Repo Organization tree is out of date: admin tests live under `test/unit/<product>/` (plus `test/unit/utils_test.dart`) and `test/integration/<product>/`, and the shared helpers in `test/fixtures/`. Firestore's tests are flat `test/*.dart` files, with the live Pipeline suite in `test/e2e/`.
 
 ## Prod and WIF runs
@@ -111,7 +110,7 @@ The maintainers' stated reasons: reviewers ask for tests before merging, and CON
 
 ## Prod and WIF runs
 
-The maintainers' stated reasons: CI authenticates with Workload Identity Federation instead of a stored service-account key, and prod tests are quota-heavy and meant to run only locally.
+The maintainers' stated reasons: the `test-wif` job authenticates with Workload Identity Federation instead of a stored service-account key, and prod tests are quota-heavy and meant to run only locally.
 
 # Rules for agents
 

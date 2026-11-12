@@ -133,7 +133,9 @@ check() {
 
     # Footnotes point at sources, and every repo source is cited by one, so a pointer
     # in the text never comes loose from a checked file and symbol.
-    cited=$(grep -oE '\[\^[A-Za-z0-9_.-]+\]' "$file" | sed -E 's/^\[\^//; s/\]$//' | sort -u)
+    # Definition lines ("[^id]: ...") don't count: a footnote must be referenced in the body.
+    cited=$(grep -vE '^\[\^[A-Za-z0-9_.-]+\]:' "$file" | grep -oE '\[\^[A-Za-z0-9_.-]+\]' |
+      sed -E 's/^\[\^//; s/\]$//' | sort -u)
     while IFS= read -r id; do
       [ -z "$id" ] || sources "$file" | cut -f1 | grep -qxF -- "$id" ||
         fail "$file" "footnote [^$id] names no source"

@@ -54,7 +54,7 @@ Sharing value types such as `Timestamp` and `GeoPoint` with FlutterFire through 
 A few parts look like FlutterFire instead. Only the Pipeline aliases are called "FlutterFire-style" in the code;[^flutterfire-aliases] no source says the others were modelled on it:
 
 - **Aggregates.** `aggregate()` takes up to three positional fields and names the results itself, and Dart adds `sum()` and `average()`.[^query-aggregate]
-- **Converters.** References have one type parameter, and `withConverter` takes a pair of functions. Passing both as null resets the reference to `DocumentData`. With a non-`DocumentData` type and only one function, the default-converter cast throws.[^query-with-converter]
+- **Converters.** References have one type parameter, and `withConverter` takes a pair of functions. Passing both as null resets the reference to `DocumentData`. Passing only one function isn't supported.[^query-with-converter]
 
 Whether FlutterFire is a reference at all is an open question for the maintainers.
 

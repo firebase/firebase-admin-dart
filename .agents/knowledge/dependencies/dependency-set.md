@@ -107,10 +107,10 @@ A dependency bump that users need ships with a CHANGELOG entry in each package i
 
 - **Must not:** add a runtime dependency to either package's `lib/` without the user's explicit agreement. Prefer a small in-repo helper.
 - **Must not:** add a dependency for something a few lines can do.
-- **Must not:** re-add `equatable`, `googleapis_beta`, `freezed` or `jose`, or use `json_serializable` for library types.
+- **Must not:** re-add `equatable` or `googleapis_beta`.
 - **Must not:** add a dependency that is unmaintained, or that pins Flutter-pinned packages high.
 - **Must not:** read the `build_runner` dev dependency as a sign that code generation is in use.
-- **Ask first:** before adding any code generator.
+- **Ask first:** before adding any code generator, `freezed` and `json_serializable` included, and before re-adding `jose`, since why it was dropped isn't recorded.
 - **Must:** use `npm ci`, not `npm install`, in `tool/*`, so their committed lockfiles stay as they are. The exception is bumping the pinned Node SDK, which the tool READMEs do with `npm install`, committing the updated lockfile. This rule doesn't cover `test/fixtures/task_queue_functions`, which CONTRIBUTING and `scripts/coverage.sh` install with `npm install`.
 - **Must not:** commit `pubspec.lock` or `pubspec_overrides.yaml`.
 - **Must not:** leave `dependency_overrides` in a PR meant to merge. If one is needed temporarily, keep the PR as a draft.

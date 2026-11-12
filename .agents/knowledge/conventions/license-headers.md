@@ -31,7 +31,7 @@ sources:
 
 Every source file starts with the Apache-2.0 header in `scripts/header_template.txt`.
 
-- `.js` and `.ts` tool files carry the header by convention, although CI skips them. `.mjs` files are checked like `.dart` files.
+- `.js` tool files carry the header by convention, although CI skips them. `.mjs` files are checked like `.dart` files.
 - **Trap:** CONTRIBUTING's addlicense commands pass `-f header_template.txt`, run from the repo root, where no such file exists.[^contributing-stale-command] Use the job's `scripts/header_template.txt`.
 
 # Why
