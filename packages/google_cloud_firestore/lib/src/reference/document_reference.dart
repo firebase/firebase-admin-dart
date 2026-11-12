@@ -101,10 +101,14 @@ interface class DocumentReference<T> implements _Serializable {
 
   /// Changes the de/serializing mechanism for this [DocumentReference].
   ///
-  /// Passing `null` for both parameters removes the current converter and
-  /// returns an untyped `DocumentReference<DocumentData>`. Passing exactly one
-  /// of [fromFirestore] and [toFirestore] throws an [ArgumentError]: the two
-  /// functions must always be provided together.
+  /// Calling `withConverter<DocumentData>()` with neither parameter removes
+  /// the current converter and returns an untyped
+  /// `DocumentReference<DocumentData>`.
+  ///
+  /// Throws an [ArgumentError] when exactly one of [fromFirestore] and
+  /// [toFirestore] is passed, since the two functions must always be provided
+  /// together, and when neither is passed with a type argument that cannot
+  /// hold [DocumentData].
   ///
   /// This changes the return value of [DocumentSnapshot.data].
   DocumentReference<R> withConverter<R>({

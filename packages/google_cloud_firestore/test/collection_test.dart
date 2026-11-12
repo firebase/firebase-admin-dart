@@ -383,39 +383,5 @@ void main() {
       expect(snapshot.docs.length, greaterThanOrEqualTo(2));
       expect(snapshot.docs.first.data()['value'], isA<int>());
     });
-
-    test('withConverter() with only toFirestore throws ArgumentError', () {
-      final collection = firestore.collection('partialNullTest');
-
-      final typedCollection = collection.withConverter<int>(
-        fromFirestore: (snapshot) => snapshot.data()['value']! as int,
-        toFirestore: (value) => {'value': value},
-      );
-
-      // Passing only one of the two functions is a misuse, not a reset.
-      expect(
-        () => typedCollection.withConverter<DocumentData>(
-          toFirestore: (value) => value,
-        ),
-        throwsArgumentError(),
-      );
-    });
-
-    test('withConverter() with only fromFirestore throws ArgumentError', () {
-      final collection = firestore.collection('partialNullTest2');
-
-      final typedCollection = collection.withConverter<int>(
-        fromFirestore: (snapshot) => snapshot.data()['value']! as int,
-        toFirestore: (value) => {'value': value},
-      );
-
-      // Passing only one of the two functions is a misuse, not a reset.
-      expect(
-        () => typedCollection.withConverter<DocumentData>(
-          fromFirestore: (snapshot) => snapshot.data(),
-        ),
-        throwsArgumentError(),
-      );
-    });
   });
 }

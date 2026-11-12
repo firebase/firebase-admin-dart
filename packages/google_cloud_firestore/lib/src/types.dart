@@ -51,9 +51,9 @@ ArgumentError _withConverterPairError() {
 /// but `U` cannot hold the [DocumentData] the reset reference produces.
 ArgumentError _withConverterResetError<U>() {
   return ArgumentError(
-    'withConverter<$U>() without "fromFirestore" and "toFirestore" resets to '
-    'DocumentData, so the type argument must be DocumentData or a supertype '
-    'of it.',
+    'A converter for $U needs both "fromFirestore" and "toFirestore". '
+    'To remove the current converter, call withConverter<DocumentData>() '
+    'with neither.',
   );
 }
 

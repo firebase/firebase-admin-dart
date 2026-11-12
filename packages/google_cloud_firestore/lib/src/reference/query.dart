@@ -53,10 +53,13 @@ interface class Query<T> {
   /// Using the converter allows you to specify generic type arguments when
   /// storing and retrieving objects from Firestore.
   ///
-  /// Passing `null` for both parameters removes the current converter and
-  /// returns an untyped `Query<DocumentData>`. Passing exactly one of
-  /// [fromFirestore] and [toFirestore] throws an [ArgumentError]: the two
-  /// functions must always be provided together.
+  /// Calling `withConverter<DocumentData>()` with neither parameter removes
+  /// the current converter and returns an untyped `Query<DocumentData>`.
+  ///
+  /// Throws an [ArgumentError] when exactly one of [fromFirestore] and
+  /// [toFirestore] is passed, since the two functions must always be provided
+  /// together, and when neither is passed with a type argument that cannot
+  /// hold [DocumentData].
   @mustBeOverridden
   Query<U> withConverter<U>({
     FromFirestore<U>? fromFirestore,

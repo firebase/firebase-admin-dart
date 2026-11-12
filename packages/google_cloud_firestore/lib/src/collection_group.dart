@@ -177,7 +177,7 @@ interface class CollectionGroup<T> extends Query<T> {
       throw _withConverterPairError();
     }
 
-    return CollectionGroup._(
+    return CollectionGroup<U>._(
       _queryOptions.collectionId,
       firestore: firestore,
       converter: (fromFirestore: fromFirestore, toFirestore: toFirestore),

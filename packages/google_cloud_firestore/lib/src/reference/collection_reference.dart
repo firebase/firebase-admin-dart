@@ -203,12 +203,10 @@ interface class CollectionReference<T> extends Query<T> {
     FromFirestore<U>? fromFirestore,
     ToFirestore<U>? toFirestore,
   }) {
-    final path = _queryOptions.parentPath._append(id);
-
     if (fromFirestore == null && toFirestore == null) {
       final reset = CollectionReference<DocumentData>._(
         firestore: firestore,
-        path: path,
+        path: _resourcePath,
         converter: _jsonConverter,
       );
       if (reset is! CollectionReference<U>) throw _withConverterResetError<U>();
@@ -220,7 +218,7 @@ interface class CollectionReference<T> extends Query<T> {
 
     return CollectionReference<U>._(
       firestore: firestore,
-      path: path,
+      path: _resourcePath,
       converter: (fromFirestore: fromFirestore, toFirestore: toFirestore),
     );
   }

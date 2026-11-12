@@ -38,6 +38,11 @@ const _pairMessage =
     '"fromFirestore" and "toFirestore" must be provided together. '
     'Pass both to apply a converter, or neither to reset to DocumentData.';
 
+const _resetMessage =
+    'A converter for int needs both "fromFirestore" and "toFirestore". '
+    'To remove the current converter, call withConverter<DocumentData>() '
+    'with neither.';
+
 void main() {
   group('withConverter', () {
     late Firestore firestore;
@@ -91,13 +96,16 @@ void main() {
         );
       });
 
-      test('only one function with DocumentData throws ArgumentError', () {
+      test('only fromFirestore with DocumentData throws ArgumentError', () {
         expect(
           () => typed.withConverter<DocumentData>(
             fromFirestore: (snapshot) => snapshot.data(),
           ),
           throwsArgumentError(message: _pairMessage),
         );
+      });
+
+      test('only toFirestore with DocumentData throws ArgumentError', () {
         expect(
           () =>
               typed.withConverter<DocumentData>(toFirestore: (value) => value),
@@ -110,13 +118,7 @@ void main() {
         () {
           expect(
             () => typed.withConverter<int>(),
-            throwsA(
-              isA<ArgumentError>().having(
-                (e) => e.message,
-                'message',
-                contains('withConverter<int>()'),
-              ),
-            ),
+            throwsArgumentError(message: _resetMessage),
           );
         },
       );
@@ -135,6 +137,11 @@ void main() {
             );
       });
 
+      test('both functions apply the converter', () {
+        expect(typed, isA<DocumentReference<int>>());
+        expect(typed.path, 'items/one');
+      });
+
       test('both null resets to DocumentData', () {
         final reset = typed.withConverter<DocumentData>();
 
@@ -144,21 +151,35 @@ void main() {
 
       test('no type argument and no functions resets to DocumentData', () {
         // ignore: inference_failure_on_function_invocation
-        expect(typed.withConverter(), isA<DocumentReference<DocumentData>>());
+        final reset = typed.withConverter();
+
+        expect(reset, isA<DocumentReference<DocumentData>>());
       });
 
-      test('only one function with a custom type throws ArgumentError', () {
+      test('only fromFirestore with a custom type throws ArgumentError', () {
         expect(
           () => typed.withConverter<int>(fromFirestore: _fromFirestore),
           throwsArgumentError(message: _pairMessage),
         );
+      });
+
+      test('only toFirestore with a custom type throws ArgumentError', () {
         expect(
           () => typed.withConverter<int>(toFirestore: _toFirestore),
           throwsArgumentError(message: _pairMessage),
         );
       });
 
-      test('only one function with DocumentData throws ArgumentError', () {
+      test('only fromFirestore with DocumentData throws ArgumentError', () {
+        expect(
+          () => typed.withConverter<DocumentData>(
+            fromFirestore: (snapshot) => snapshot.data(),
+          ),
+          throwsArgumentError(message: _pairMessage),
+        );
+      });
+
+      test('only toFirestore with DocumentData throws ArgumentError', () {
         expect(
           () =>
               typed.withConverter<DocumentData>(toFirestore: (value) => value),
@@ -169,7 +190,10 @@ void main() {
       test(
         'both null with a type that cannot hold DocumentData throws ArgumentError',
         () {
-          expect(() => typed.withConverter<int>(), throwsArgumentError());
+          expect(
+            () => typed.withConverter<int>(),
+            throwsArgumentError(message: _resetMessage),
+          );
         },
       );
     });
@@ -187,6 +211,10 @@ void main() {
             );
       });
 
+      test('both functions apply the converter', () {
+        expect(typed, isA<Query<int>>());
+      });
+
       test('both null resets to DocumentData', () {
         final reset = typed.withConverter<DocumentData>();
 
@@ -196,21 +224,26 @@ void main() {
 
       test('no type argument and no functions resets to DocumentData', () {
         // ignore: inference_failure_on_function_invocation
-        expect(typed.withConverter(), isA<Query<DocumentData>>());
+        final reset = typed.withConverter();
+
+        expect(reset, isA<Query<DocumentData>>());
       });
 
-      test('only one function with a custom type throws ArgumentError', () {
+      test('only fromFirestore with a custom type throws ArgumentError', () {
         expect(
           () => typed.withConverter<int>(fromFirestore: _fromFirestore),
           throwsArgumentError(message: _pairMessage),
         );
+      });
+
+      test('only toFirestore with a custom type throws ArgumentError', () {
         expect(
           () => typed.withConverter<int>(toFirestore: _toFirestore),
           throwsArgumentError(message: _pairMessage),
         );
       });
 
-      test('only one function with DocumentData throws ArgumentError', () {
+      test('only fromFirestore with DocumentData throws ArgumentError', () {
         expect(
           () => typed.withConverter<DocumentData>(
             fromFirestore: (snapshot) => snapshot.data(),
@@ -219,10 +252,21 @@ void main() {
         );
       });
 
+      test('only toFirestore with DocumentData throws ArgumentError', () {
+        expect(
+          () =>
+              typed.withConverter<DocumentData>(toFirestore: (value) => value),
+          throwsArgumentError(message: _pairMessage),
+        );
+      });
+
       test(
         'both null with a type that cannot hold DocumentData throws ArgumentError',
         () {
-          expect(() => typed.withConverter<int>(), throwsArgumentError());
+          expect(
+            () => typed.withConverter<int>(),
+            throwsArgumentError(message: _resetMessage),
+          );
         },
       );
     });
@@ -239,30 +283,47 @@ void main() {
             );
       });
 
+      test('both functions apply the converter', () {
+        expect(typed, isA<CollectionGroup<int>>());
+      });
+
       test('both null resets to DocumentData', () {
-        expect(
-          typed.withConverter<DocumentData>(),
-          isA<CollectionGroup<DocumentData>>(),
-        );
+        final reset = typed.withConverter<DocumentData>();
+
+        expect(reset, isA<CollectionGroup<DocumentData>>());
       });
 
       test('no type argument and no functions resets to DocumentData', () {
         // ignore: inference_failure_on_function_invocation
-        expect(typed.withConverter(), isA<CollectionGroup<DocumentData>>());
+        final reset = typed.withConverter();
+
+        expect(reset, isA<CollectionGroup<DocumentData>>());
       });
 
-      test('only one function with a custom type throws ArgumentError', () {
+      test('only fromFirestore with a custom type throws ArgumentError', () {
         expect(
           () => typed.withConverter<int>(fromFirestore: _fromFirestore),
           throwsArgumentError(message: _pairMessage),
         );
+      });
+
+      test('only toFirestore with a custom type throws ArgumentError', () {
         expect(
           () => typed.withConverter<int>(toFirestore: _toFirestore),
           throwsArgumentError(message: _pairMessage),
         );
       });
 
-      test('only one function with DocumentData throws ArgumentError', () {
+      test('only fromFirestore with DocumentData throws ArgumentError', () {
+        expect(
+          () => typed.withConverter<DocumentData>(
+            fromFirestore: (snapshot) => snapshot.data(),
+          ),
+          throwsArgumentError(message: _pairMessage),
+        );
+      });
+
+      test('only toFirestore with DocumentData throws ArgumentError', () {
         expect(
           () =>
               typed.withConverter<DocumentData>(toFirestore: (value) => value),
@@ -273,7 +334,10 @@ void main() {
       test(
         'both null with a type that cannot hold DocumentData throws ArgumentError',
         () {
-          expect(() => typed.withConverter<int>(), throwsArgumentError());
+          expect(
+            () => typed.withConverter<int>(),
+            throwsArgumentError(message: _resetMessage),
+          );
         },
       );
     });
