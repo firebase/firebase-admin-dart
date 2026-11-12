@@ -15,6 +15,8 @@
 #   - names a source file or symbol that no longer exists, or a `governs` glob
 #     that matches no file;
 #   - links to a concept that doesn't exist;
+# It also fails when AGENTS.md or a skill in .agents/skills links to a file that
+# doesn't exist.
 #   - cites a pull request or issue number (concepts state the decision, not its history).
 
 set -uo pipefail
@@ -198,6 +200,14 @@ check() {
   while IFS= read -r link; do
     [ -e "${link%%#*}" ] || fail AGENTS.md "links to $link, which doesn't exist"
   done < <(grep -oE '\]\([^)[:space:]]+\)' AGENTS.md | sed -E 's/^\]\(//; s/\)$//' | grep -vE '^(https?:|#)')
+
+  # Skills link into the bundle too, relative to their own directory.
+  while IFS= read -r file; do
+    dir=$(dirname "$file")
+    while IFS= read -r link; do
+      [ -e "$dir/${link%%#*}" ] || fail "$file" "links to $link, which doesn't exist"
+    done < <(grep -oE '\]\([^)[:space:]]+\)' "$file" | sed -E 's/^\]\(//; s/\)$//' | grep -vE '^(https?:|#|/)')
+  done < <(find .agents/skills -name SKILL.md | sort)
 
   if ! index | cmp -s - "$KB/index.md"; then
     fail "$KB/index.md" "out of date: run ./scripts/knowledge.sh index"
