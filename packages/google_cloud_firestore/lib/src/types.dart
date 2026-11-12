@@ -38,6 +38,25 @@ const _FirestoreDataConverter<DocumentData> _jsonConverter = (
   toFirestore: _jsonToFirestore,
 );
 
+/// The error thrown by `withConverter` when exactly one of its two functions
+/// is provided.
+ArgumentError _withConverterPairError() {
+  return ArgumentError(
+    '"fromFirestore" and "toFirestore" must be provided together. '
+    'Pass both to apply a converter, or neither to reset to DocumentData.',
+  );
+}
+
+/// The error thrown by `withConverter<U>()` when neither function is provided
+/// but `U` cannot hold the [DocumentData] the reset reference produces.
+ArgumentError _withConverterResetError<U>() {
+  return ArgumentError(
+    'withConverter<$U>() without "fromFirestore" and "toFirestore" resets to '
+    'DocumentData, so the type argument must be DocumentData or a supertype '
+    'of it.',
+  );
+}
+
 /// A converter for transforming data between Firestore and application types.
 typedef _FirestoreDataConverter<T> = ({
   FromFirestore<T> fromFirestore,

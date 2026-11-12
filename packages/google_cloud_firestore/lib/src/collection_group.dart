@@ -164,15 +164,23 @@ interface class CollectionGroup<T> extends Query<T> {
     FromFirestore<U>? fromFirestore,
     ToFirestore<U>? toFirestore,
   }) {
-    // If null, use the default JSON converter
-    final converter = (fromFirestore == null || toFirestore == null)
-        ? _jsonConverter as _FirestoreDataConverter<U>
-        : (fromFirestore: fromFirestore, toFirestore: toFirestore);
+    if (fromFirestore == null && toFirestore == null) {
+      final reset = CollectionGroup<DocumentData>._(
+        _queryOptions.collectionId,
+        firestore: firestore,
+        converter: _jsonConverter,
+      );
+      if (reset is! CollectionGroup<U>) throw _withConverterResetError<U>();
+      return reset as CollectionGroup<U>;
+    }
+    if (fromFirestore == null || toFirestore == null) {
+      throw _withConverterPairError();
+    }
 
     return CollectionGroup._(
       _queryOptions.collectionId,
       firestore: firestore,
-      converter: converter,
+      converter: (fromFirestore: fromFirestore, toFirestore: toFirestore),
     );
   }
 

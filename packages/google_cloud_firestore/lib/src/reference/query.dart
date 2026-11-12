@@ -54,20 +54,32 @@ interface class Query<T> {
   /// storing and retrieving objects from Firestore.
   ///
   /// Passing `null` for both parameters removes the current converter and
-  /// returns an untyped `Query<DocumentData>`.
+  /// returns an untyped `Query<DocumentData>`. Passing exactly one of
+  /// [fromFirestore] and [toFirestore] throws an [ArgumentError]: the two
+  /// functions must always be provided together.
   @mustBeOverridden
   Query<U> withConverter<U>({
     FromFirestore<U>? fromFirestore,
     ToFirestore<U>? toFirestore,
   }) {
-    // If null, use the default JSON converter
-    final converter = (fromFirestore == null || toFirestore == null)
-        ? _jsonConverter as _FirestoreDataConverter<U>
-        : (fromFirestore: fromFirestore, toFirestore: toFirestore);
+    if (fromFirestore == null && toFirestore == null) {
+      final reset = Query<DocumentData>._(
+        firestore: firestore,
+        queryOptions: _queryOptions.withConverter(_jsonConverter),
+      );
+      if (reset is! Query<U>) throw _withConverterResetError<U>();
+      return reset as Query<U>;
+    }
+    if (fromFirestore == null || toFirestore == null) {
+      throw _withConverterPairError();
+    }
 
     return Query<U>._(
       firestore: firestore,
-      queryOptions: _queryOptions.withConverter(converter),
+      queryOptions: _queryOptions.withConverter((
+        fromFirestore: fromFirestore,
+        toFirestore: toFirestore,
+      )),
     );
   }
 

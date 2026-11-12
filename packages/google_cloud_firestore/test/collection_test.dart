@@ -384,7 +384,7 @@ void main() {
       expect(snapshot.docs.first.data()['value'], isA<int>());
     });
 
-    test('withConverter() with only fromFirestore null uses default', () async {
+    test('withConverter() with only toFirestore throws ArgumentError', () {
       final collection = firestore.collection('partialNullTest');
 
       final typedCollection = collection.withConverter<int>(
@@ -392,19 +392,16 @@ void main() {
         toFirestore: (value) => {'value': value},
       );
 
-      // Passing null for just one parameter should reset to default
-      final resetCollection = typedCollection.withConverter<DocumentData>(
-        toFirestore: (value) => value,
+      // Passing only one of the two functions is a misuse, not a reset.
+      expect(
+        () => typedCollection.withConverter<DocumentData>(
+          toFirestore: (value) => value,
+        ),
+        throwsArgumentError(),
       );
-
-      expect(resetCollection, isA<CollectionReference<DocumentData>>());
-
-      final docRef = await resetCollection.add({'test': 'data'});
-      final snapshot = await docRef.get();
-      expect(snapshot.data(), {'test': 'data'});
     });
 
-    test('withConverter() with only toFirestore null uses default', () async {
+    test('withConverter() with only fromFirestore throws ArgumentError', () {
       final collection = firestore.collection('partialNullTest2');
 
       final typedCollection = collection.withConverter<int>(
@@ -412,16 +409,13 @@ void main() {
         toFirestore: (value) => {'value': value},
       );
 
-      // Passing null for just one parameter should reset to default
-      final resetCollection = typedCollection.withConverter<DocumentData>(
-        fromFirestore: (snapshot) => snapshot.data(),
+      // Passing only one of the two functions is a misuse, not a reset.
+      expect(
+        () => typedCollection.withConverter<DocumentData>(
+          fromFirestore: (snapshot) => snapshot.data(),
+        ),
+        throwsArgumentError(),
       );
-
-      expect(resetCollection, isA<CollectionReference<DocumentData>>());
-
-      final docRef = await resetCollection.add({'test': 'data'});
-      final snapshot = await docRef.get();
-      expect(snapshot.data(), {'test': 'data'});
     });
   });
 }
