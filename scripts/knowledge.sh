@@ -208,6 +208,10 @@ check() {
     while IFS= read -r link; do
       [ -e "$dir/${link%%#*}" ] || fail "$file" "links to $link, which doesn't exist"
     done < <(grep -oE '\]\([^)[:space:]]+\)' "$file" | sed -E 's/^\]\(//; s/\)$//' | grep -vE '^(https?:|#|/)')
+    # A skill can be copied out of the repo, so it also names concepts from the repo root.
+    while IFS= read -r link; do
+      [ -e "$link" ] || fail "$file" "names $link, which doesn't exist"
+    done < <(grep -oE '\.agents/knowledge/[A-Za-z0-9_/.-]+\.md' "$file" | sort -u)
   done < <(find .agents/skills -name SKILL.md | sort)
 
   if ! index | cmp -s - "$KB/index.md"; then
@@ -251,7 +255,14 @@ relative() {
   local dir
   case "$path" in
     /*) ;;
-    *) path="$CALLER_DIR/$path" ;;
+    *)
+      # A path from the repo root, given from a subdirectory, means the root.
+      if [ ! -e "$CALLER_DIR/${path%%/*}" ] && [ -e "$ROOT/${path%%/*}" ]; then
+        path="$ROOT/$path"
+      else
+        path="$CALLER_DIR/$path"
+      fi
+      ;;
   esac
   # Resolve symlinks in the part that exists, e.g. /tmp → /private/tmp on macOS.
   dir=$path

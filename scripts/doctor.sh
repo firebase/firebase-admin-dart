@@ -24,6 +24,17 @@ esac
 
 problems=0
 
+# Recipes that need no package manager, for the hints below.
+arch=$(uname -m)
+case $arch in x86_64) dart_arch=x64 ;; aarch64 | arm64) dart_arch=arm64 ;; *) dart_arch= ;; esac
+dart_zip="https://dart.dev/get-dart"
+if [ "$platform" != macos ] && [ "$platform" != other ] && [ -n "$dart_arch" ]; then
+  dart_zip="with unzip installed: curl -fsSLo /tmp/dart.zip https://storage.googleapis.com/dart-archive/channels/stable/release/latest/sdk/dartsdk-linux-$dart_arch-release.zip && mkdir -p ~/.local/share && unzip -qo /tmp/dart.zip -d ~/.local/share; then put ~/.local/share/dart-sdk/bin on PATH"
+fi
+java_apt='apt-get update && apt-get install -y --no-install-recommends openjdk-21-jdk-headless (Debian 13+, Ubuntu 22.04+); older releases: https://adoptium.net/installation/linux/'
+addlicense_os=$(uname -s | sed 's/Darwin/macOS/')
+addlicense_arch=${arch/aarch64/arm64}
+
 ok() { echo "✓ $1"; }
 note() { echo "- $1"; }
 fail() {
@@ -74,16 +85,16 @@ if command -v dart >/dev/null; then
   elif [ "${version%%-*}" = "$dart_min" ] && [ "$version" != "$dart_min" ]; then
     # Pub sorts a pre-release below its release, so ^3.9.0 excludes 3.9.0-1.0.dev.
     fail "Dart $version: a pre-release of $dart_min, which the packages exclude" \
-      "$(how 'brew upgrade dart-lang/dart/dart' 'install a newer SDK: https://dart.dev/get-dart' 'install a newer SDK: https://dart.dev/get-dart')"
+      "$(how 'brew upgrade dart-lang/dart/dart' "$dart_zip" "$dart_zip")"
   elif at_least "$version" "$dart_min"; then
     ok "Dart $version"
   else
     fail "Dart $version: the packages need $dart_min or later" \
-      "$(how 'brew upgrade dart-lang/dart/dart' 'install a newer SDK: https://dart.dev/get-dart' 'install a newer SDK: https://dart.dev/get-dart')"
+      "$(how 'brew upgrade dart-lang/dart/dart' "$dart_zip" "$dart_zip")"
   fi
 else
   fail "Dart: not found" \
-    "$(how 'brew install dart-lang/dart/dart' 'https://dart.dev/get-dart (apt, or the SDK zip)' 'https://dart.dev/get-dart')"
+    "$(how 'brew install dart-lang/dart/dart' "$dart_zip" "$dart_zip")"
 fi
 
 # The root pubspec.yaml is a pub workspace: one `dart pub get` covers every
@@ -109,11 +120,11 @@ if command -v java >/dev/null && java -version >/dev/null 2>&1; then
     ok "Java $version"
   else
     fail "Java $version: the Firestore emulator needs 21 or later" \
-      "$(how 'brew install --cask temurin@21' 'apt-get install openjdk-21-jdk-headless (Debian 13+, Ubuntu 22.04+); older releases: https://adoptium.net/installation/linux/' 'https://adoptium.net/temurin/releases/?version=21')"
+      "$(how 'brew install --cask temurin@21' "$java_apt" 'https://adoptium.net/temurin/releases/?version=21')"
   fi
 else
   fail "Java: not found (the Firestore emulator needs 21+)" \
-    "$(how 'brew install --cask temurin@21' 'apt-get install openjdk-21-jdk-headless (Debian 13+, Ubuntu 22.04+); older releases: https://adoptium.net/installation/linux/' 'https://adoptium.net/temurin/releases/?version=21')"
+    "$(how 'brew install --cask temurin@21' "$java_apt" 'https://adoptium.net/temurin/releases/?version=21')"
 fi
 
 # Node.js: the Firebase CLI needs 20+; regenerating the Pipeline golden
@@ -148,7 +159,7 @@ if command -v addlicense >/dev/null; then
   ok "addlicense"
 else
   fail "addlicense: not found (adds and checks license headers)" \
-    "go install github.com/google/addlicense@v1.2.0, or a v1.2.0 binary from https://github.com/google/addlicense/releases/tag/v1.2.0"
+    "mkdir -p ~/.local/bin && curl -fsSL https://github.com/google/addlicense/releases/download/v1.2.0/addlicense_v1.2.0_${addlicense_os}_${addlicense_arch}.tar.gz | tar xz -C ~/.local/bin addlicense, then put ~/.local/bin on PATH"
 fi
 
 if command -v melos >/dev/null; then
@@ -161,6 +172,10 @@ if command -v gcloud >/dev/null; then
   ok "gcloud"
 else
   note "gcloud: not found. Only the -P wif tests need it: https://cloud.google.com/sdk/docs/install"
+fi
+
+if [ "$platform" = macos ] && ((problems > 0)) && ! command -v brew >/dev/null; then
+  note "Homebrew: not found, and the hints above use it. Installing it needs your password: https://brew.sh"
 fi
 
 echo

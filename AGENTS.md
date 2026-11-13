@@ -59,7 +59,7 @@ Each rule links to the concept that explains it.
 
 ## Skills
 
-`.agents/skills/` holds a procedure for each common task. Read the matching one before starting: `setup-environment`, `implement-sdk-feature` (also bug fixes), `write-and-sync-tests`, `check-node-parity`, `run-release` (only when asked) and `update-knowledge-base`.
+`.agents/skills/` holds a procedure for each common task. Read the matching one before starting: `setup-environment`, `implement-sdk-feature` (also bug fixes), `write-and-sync-tests`, `check-node-parity`, `run-release` (only when asked) and `update-knowledge-base`. Paths in a skill are from the repo root. Where a skill says to ask and nobody can answer, take the option that changes least, say what you assumed in your report, and go on.
 
 ## Generated files: don't edit by hand
 
@@ -68,7 +68,7 @@ Each rule links to the concept that explains it.
 
 ## Knowledge base
 
-`.agents/knowledge/` is an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format) bundle. It holds only what the code and docs don't say: why a decision was made, how Dart diverges from the Node.js SDK, and repository constraints. Each concept starts with "Where it lives", pointing at the code that holds the facts. `index.md` lists every concept.
+`.agents/knowledge/` is an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format) bundle. It holds only what the code and docs don't say: why a decision was made, how Dart diverges from the Node.js SDK, and repository constraints. Each concept starts with "Where it lives", pointing at the code that holds the facts. `index.md` lists every concept. A link inside a concept that starts with `/` is relative to `.agents/knowledge/`.
 
 - **Before you edit or add a file**, run `./scripts/knowledge.sh for <path>...`. It lists the concepts that govern those paths; read "Rules for agents" in each. With `--sources`, it also lists the code each one points to. A path can be a file that doesn't exist yet, or a directory.
 - **Keep it true.** If your change makes a concept wrong, update it in the same PR. The `update-knowledge-base` skill in `.agents/skills/` says how.
