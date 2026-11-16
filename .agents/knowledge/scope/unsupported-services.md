@@ -57,7 +57,7 @@ These are gaps. The README only says "Not supported", and nothing records a deci
 
 Mostly unknown. The likely reason (not recorded): the supported set follows the module-by-module plan the SDK was built against.
 
-- **Realtime Database:** no reason is recorded. RTDB doesn't go through Firestore's transport, so the reason Firestore has no realtime listeners doesn't explain it.
+- **Realtime Database:** no reason is recorded. RTDB doesn't go through Firestore's transport, so Firestore's `Listen` transport doesn't provide it.
 - **Remote Config:** no decision on the approach is recorded. The admin services go through the generated `googleapis` package, which has no Remote Config client. One proposal ports it over direct REST calls, with server-side template evaluation, because the generated clients can't read `ETag` or send `If-Match`.
 
 # Rules for agents
@@ -69,7 +69,7 @@ Mostly unknown. The likely reason (not recorded): the supported set follows the 
 
 # Related
 
-- [Firestore runs over REST: buffered streams, no listeners](/firestore/rest-transport.md)
+- [Firestore runs over REST, with gRPC only for Listen](/firestore/rest-transport.md)
 - [Admin services use generated REST clients](/architecture/generated-rest-clients.md)
 - [Messaging: no FID targets, topic management on FCM v1](/messaging/node-differences.md)
 - [Product libraries, parts and barrel exports](/conventions/product-libraries-and-barrels.md)

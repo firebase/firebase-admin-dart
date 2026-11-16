@@ -745,7 +745,6 @@ interface class Query<T> {
         : firestore_v1.Cursor(values: cursor.values);
   }
 
-  // TODO onSnapshot
   // TODO stream
 
   /// {@macro collection_reference.where}
