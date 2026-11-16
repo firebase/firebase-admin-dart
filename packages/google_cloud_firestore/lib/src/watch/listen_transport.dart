@@ -35,9 +35,9 @@ const emulatorAccessToken = 'owner';
 /// One bidirectional `google.firestore.v1.Firestore/Listen` call.
 ///
 /// Responses are passed through as the server sends them. In particular, a
-/// target the caller may not read arrives as a `TargetChange` of type
-/// `REMOVE` with a `cause`, on a stream that stays open: interpreting that is
-/// up to the caller.
+/// target the caller may not read arrives as a [firestore_v1.TargetChange]
+/// of type `REMOVE` with a `cause`, on a stream that stays open: interpreting
+/// that is up to the caller.
 @internal
 abstract interface class ListenStream {
   /// The responses of this call, in order.
@@ -172,8 +172,8 @@ Map<String, String> listenMetadata({
 /// exact status code.
 ///
 /// Like [FirestoreException.fromServerError] for REST errors, an unrecognised
-/// code yields `unknown` with the raw status (details and trailers included)
-/// appended to the message.
+/// code yields [FirestoreClientErrorCode.unknown] with the raw status
+/// (details and trailers included) appended to the message.
 @internal
 FirestoreException firestoreExceptionFromGrpcError(GrpcError error) {
   final errorCode = FirestoreClientErrorCode.fromStatusCode(error.code);
@@ -231,9 +231,9 @@ Object? _nullValuesByName(Object? json) => switch (json) {
 /// Converts a protobuf response into its `google_cloud_firestore_v1` form via
 /// its proto3 JSON representation.
 ///
-/// The `details` of a `TargetChange.cause` are dropped: rendering an `Any` as
-/// JSON needs its type generated and registered, which Firestore's error
-/// detail types are not. Watch only reads the cause's code and message.
+/// The `details` of a [pb.TargetChange.cause] are dropped: rendering an
+/// `Any` as JSON needs its type generated and registered, which Firestore's
+/// error detail types are not. Watch only reads the cause's code and message.
 @internal
 firestore_v1.ListenResponse listenResponseFromProto(
   pb.ListenResponse response,
