@@ -19,12 +19,13 @@ const _watchTargetId = 0x1;
 
 /// How long a watch stream may go without a response before it is reset.
 ///
-/// Under normal load the backend sends a `TargetChange` roughly every 30
-/// seconds, so a stream that is silent for this long is considered stalled.
+/// Under normal load the backend sends a [firestore_v1.TargetChange] roughly
+/// every 30 seconds, so a stream that is silent for this long is considered
+/// stalled.
 @internal
 const watchIdleTimeout = Duration(seconds: 120);
 
-/// Creates a timer that runs `callback` once after `duration`.
+/// Creates a timer that runs [callback] once after [duration].
 @internal
 typedef WatchTimerFactory =
     Timer Function(Duration duration, void Function() callback);
@@ -56,8 +57,8 @@ final class WatchSnapshot<T> {
   /// The number of documents in the result set.
   int get size => docs.length;
 
-  /// The snapshot of the document [ref] refers to: its entry in [docs], or a
-  /// missing document read at [readTime].
+  /// Returns the snapshot of the document [ref] refers to: its entry in
+  /// [docs], or a missing document read at [readTime].
   DocumentSnapshot<T> documentFor(DocumentReference<T> ref) {
     for (final doc in docs) {
       if (doc.ref._path == ref._path) return doc;
