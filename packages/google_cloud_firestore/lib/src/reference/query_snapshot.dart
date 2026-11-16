@@ -41,7 +41,7 @@ class QuerySnapshot<T> {
   /// The changes of a snapshot from [Query.snapshots], when it is one.
   final List<DocumentChange<T>>? _changes;
 
-  /// Returns a list of the documents changes since the last snapshot.
+  /// The changes to the documents since the previous snapshot.
   ///
   /// If this is the first snapshot, all documents will be in the list as added
   /// changes. A snapshot obtained with [Query.get] is always a first

@@ -894,10 +894,10 @@ class Firestore {
 
   /// Terminates the Firestore client and closes all open connections.
   ///
-  /// Every active `snapshots()` subscription is stopped: its stream closes
-  /// with a done event and no error, after its stream to the backend is
-  /// closed. Listening to a `snapshots()` stream afterwards delivers a
-  /// [StateError] and closes.
+  /// Every active [DocumentReference.snapshots] or [Query.snapshots]
+  /// subscription is stopped: its stream closes with a done event and no
+  /// error, after its stream to the backend is closed. Listening to such a
+  /// stream afterwards delivers a [StateError] and closes.
   ///
   /// Every listener, the listen transport and the HTTP client are closed even
   /// if closing one of them fails; the first such error is then rethrown.
