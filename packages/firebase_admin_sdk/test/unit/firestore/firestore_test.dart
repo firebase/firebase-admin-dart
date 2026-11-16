@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_admin_sdk/firebase_admin_sdk.dart';
@@ -26,6 +27,8 @@ import '../../fixtures/helpers.dart';
 import '../../fixtures/mock_service_account.dart';
 
 class MockAuthClient extends Mock implements auth.AuthClient {}
+
+class MockFirestore extends Mock implements gfs.Firestore {}
 
 void main() {
   group('Firestore Wrapper', () {
@@ -360,6 +363,80 @@ void main() {
           ),
         );
       });
+
+      test('terminates and forgets every database when one fails', () async {
+        final failing = MockFirestore();
+        final other = MockFirestore();
+        when(
+          failing.terminate,
+        ).thenAnswer((_) => Future.error(StateError('terminate failed')));
+        final otherTerminated = Completer<void>();
+        when(other.terminate).thenAnswer((_) => otherTerminated.future);
+        firestoreService
+          ..addDatabaseForTesting(
+            'failing',
+            failing,
+            settings: const gfs.Settings(projectId: 'test-project'),
+          )
+          ..addDatabaseForTesting('other', other);
+        expect(firestoreService.getSettingsForDatabase('failing'), isNotNull);
+
+        var settled = false;
+        final deletion = firestoreService.delete().whenComplete(
+          () => settled = true,
+        );
+        // Pump the event queue: delete() must still be waiting on the
+        // pending terminate even though the other one has already failed.
+        await pumpEventQueue();
+        expect(settled, isFalse);
+
+        otherTerminated.complete();
+        await expectLater(
+          deletion,
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              'terminate failed',
+            ),
+          ),
+        );
+
+        verify(failing.terminate).called(1);
+        verify(other.terminate).called(1);
+        expect(firestoreService.getSettingsForDatabase('failing'), isNull);
+        expect(firestoreService.getDatabase('failing'), isNot(same(failing)));
+        expect(firestoreService.getDatabase('other'), isNot(same(other)));
+      });
+
+      test(
+        'terminates and forgets every database when one throws synchronously',
+        () async {
+          final failing = MockFirestore();
+          final other = MockFirestore();
+          when(failing.terminate).thenThrow(StateError('terminate failed'));
+          when(other.terminate).thenAnswer((_) async {});
+          firestoreService
+            ..addDatabaseForTesting('failing', failing)
+            ..addDatabaseForTesting('other', other);
+
+          await expectLater(
+            firestoreService.delete(),
+            throwsA(
+              isA<StateError>().having(
+                (e) => e.message,
+                'message',
+                'terminate failed',
+              ),
+            ),
+          );
+
+          verify(failing.terminate).called(1);
+          verify(other.terminate).called(1);
+          expect(firestoreService.getDatabase('failing'), isNot(same(failing)));
+          expect(firestoreService.getDatabase('other'), isNot(same(other)));
+        },
+      );
 
       test('should create new instance after delete if requested', () async {
         final db1 = firestoreService.getDatabase('recreate-test');

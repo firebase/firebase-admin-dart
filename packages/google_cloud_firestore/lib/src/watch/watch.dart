@@ -272,7 +272,7 @@ final class Watch<T> {
       opened.send(request);
     } catch (error, stackTrace) {
       // Not yet [_currentStream], so [_closeStream] would not close it.
-      if (opened != null) unawaited(opened.close());
+      if (opened != null) _closeQuietly(opened);
       _closeStream(error, stackTrace);
       return;
     }
@@ -323,9 +323,16 @@ final class Watch<T> {
     final subscription = _currentSubscription;
     _currentStream = null;
     _currentSubscription = null;
-    unawaited(subscription?.cancel());
-    if (stream != null) unawaited(stream.close());
+    subscription?.cancel().ignore();
+    if (stream != null) _closeQuietly(stream);
   }
+
+  /// Closes [stream] without waiting, dropping any error closing it.
+  ///
+  /// The stream is already abandoned, so a failure to close it says nothing
+  /// the consumer needs: it must neither reach the consumer nor surface as
+  /// an uncaught error.
+  static void _closeQuietly(ListenStream stream) => stream.close().ignore();
 
   /// Closes the current stream and opens a new one.
   void _resetStream() {
@@ -364,7 +371,9 @@ final class Watch<T> {
       _controller.addError(error, stackTrace);
       unawaited(_controller.close());
     }
-    unawaited(_shutdown());
+    // The error, if any, has been delivered; a failure to close the stream
+    // must not follow it or surface as an uncaught error.
+    _shutdown().ignore();
   }
 
   /// Stops the watch: no further snapshots, errors or reconnects.
@@ -706,4 +715,115 @@ Comparator<QueryDocumentSnapshot<T>> _queryComparator<T>(Query<T> query) {
     }
     return 0;
   };
+}
+
+/// Builds the stream that `snapshots()` returns.
+///
+/// Each listen starts a [_SnapshotListener] with a [Watch] of its own, made
+/// by [createWatch], and maps its snapshots with [convert].
+Stream<S> _snapshotStream<T, S>(
+  Firestore firestore,
+  Watch<T> Function(ListenTransport transport) createWatch,
+  S Function(WatchSnapshot<T> snapshot) convert,
+) {
+  return Stream<S>.multi(
+    (controller) => unawaited(
+      _SnapshotListener<T, S>(
+        firestore,
+        controller,
+        createWatch,
+        convert,
+      )._start(),
+    ),
+  );
+}
+
+/// One subscription to a `snapshots()` stream.
+///
+/// Registers with [Firestore] while active, so that [Firestore.terminate]
+/// can stop it, and resolves the project ID before the [Watch] opens.
+final class _SnapshotListener<T, S> {
+  _SnapshotListener(
+    this._firestore,
+    this._controller,
+    this._createWatch,
+    this._convert,
+  ) {
+    // Pausing is not forwarded to the watch: it keeps reading the backend
+    // either way, so its snapshots would only be buffered there instead of
+    // in [_controller].
+    _controller.onCancel = _cancel;
+  }
+
+  final Firestore _firestore;
+  final MultiStreamController<S> _controller;
+  final Watch<T> Function(ListenTransport transport) _createWatch;
+  final S Function(WatchSnapshot<T> snapshot) _convert;
+
+  StreamSubscription<WatchSnapshot<T>>? _subscription;
+
+  /// Whether the consumer cancelled or the listener was stopped.
+  var _ended = false;
+
+  Future<void> _start() async {
+    if (_firestore._terminated) {
+      _ended = true;
+      _controller.addError(
+        StateError('Firestore has been terminated.'),
+        StackTrace.current,
+      );
+      unawaited(_controller.close());
+      return;
+    }
+    _firestore._snapshotListeners.add(this);
+
+    try {
+      await _firestore._resolveProjectId();
+      if (_ended) return;
+      final transport = _firestore._sharedListenTransport;
+      _subscription = _createWatch(transport).snapshots.listen(
+        (snapshot) => _controller.add(_convert(snapshot)),
+        onError: _controller.addError,
+        onDone: () {
+          _end();
+          unawaited(_controller.close());
+        },
+      );
+    } catch (error, stackTrace) {
+      // Stopped by [Firestore.terminate] while resolving: [_controller] is
+      // already closed.
+      if (_ended) return;
+      _end();
+      _controller.addError(error, stackTrace);
+      unawaited(_controller.close());
+    }
+  }
+
+  /// Marks the listener ended and unregisters it.
+  void _end() {
+    _ended = true;
+    _firestore._snapshotListeners.remove(this);
+  }
+
+  /// The consumer cancelled: stop the watch, which closes its stream.
+  ///
+  /// Also runs once a closed stream delivers done, when the listener has
+  /// already ended and its watch needs no further cancel.
+  Future<void> _cancel() async {
+    if (_ended) return;
+    _end();
+    await _subscription?.cancel();
+  }
+
+  /// Stops the watch and closes the stream without an error.
+  Future<void> _stop() async {
+    if (_ended) return;
+    _end();
+    try {
+      await _subscription?.cancel();
+    } finally {
+      // Not awaited: a paused consumer would only receive done on resume.
+      unawaited(_controller.close());
+    }
+  }
 }

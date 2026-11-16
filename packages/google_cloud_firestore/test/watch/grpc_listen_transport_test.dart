@@ -25,6 +25,8 @@ import 'package:googleapis_auth/auth_io.dart' as googleapis_auth;
 import 'package:grpc/grpc.dart' as grpc;
 import 'package:http/http.dart' as http;
 import 'package:http2/http2.dart' as http2;
+import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart'
+    as protobuf;
 import 'package:test/test.dart';
 
 const _database = 'projects/test-project/databases/(default)';
@@ -122,7 +124,130 @@ Future<ServerSocket> _serveCoalescedResponses(int count) async {
   return socket;
 }
 
+/// A [ListenStream] whose [close] is recorded, and fails when [closeError]
+/// is set.
+final class _ClosingStream implements ListenStream {
+  _ClosingStream([this.closeError]);
+
+  final Error? closeError;
+  bool closed = false;
+
+  @override
+  Stream<firestore_v1.ListenResponse> get responses => const Stream.empty();
+
+  @override
+  void send(firestore_v1.ListenRequest request) {}
+
+  @override
+  Future<void> close() async {
+    await Future<void>.delayed(Duration.zero);
+    closed = true;
+    if (closeError case final error?) throw error;
+  }
+}
+
+/// Makes cancelling every streaming call fail with [error].
+///
+/// The call is cancelled first when [cancelCalls] is set, and is otherwise
+/// left open until [cancelAll].
+class _FailingCancelInterceptor extends grpc.ClientInterceptor {
+  _FailingCancelInterceptor(this.error, {this.cancelCalls = true});
+
+  final Error error;
+  final bool cancelCalls;
+  final _calls = <grpc.ResponseStream<Object?>>[];
+
+  /// Completes when a call is first asked to cancel.
+  final cancelAttempted = Completer<void>();
+
+  @override
+  grpc.ResponseStream<R> interceptStreaming<Q, R>(
+    grpc.ClientMethod<Q, R> method,
+    Stream<Q> requests,
+    grpc.CallOptions options,
+    grpc.ClientStreamingInvoker<Q, R> invoker,
+  ) {
+    final call = invoker(method, requests, options);
+    _calls.add(call);
+    return _FailingCancelResponseStream(call, this);
+  }
+
+  /// Cancels every call, including those left open.
+  Future<void> cancelAll() =>
+      Future.wait([for (final call in _calls) call.cancel()]);
+}
+
+class _FailingCancelResponseStream<R> extends StreamView<R>
+    implements grpc.ResponseStream<R> {
+  _FailingCancelResponseStream(this._inner, this._interceptor) : super(_inner);
+
+  final grpc.ResponseStream<R> _inner;
+  final _FailingCancelInterceptor _interceptor;
+
+  @override
+  grpc.ResponseFuture<R> get single => _inner.single;
+
+  @override
+  Future<Map<String, String>> get headers => _inner.headers;
+
+  @override
+  Future<Map<String, String>> get trailers => _inner.trailers;
+
+  @override
+  Future<void> cancel() async {
+    if (!_interceptor.cancelAttempted.isCompleted) {
+      _interceptor.cancelAttempted.complete();
+    }
+    if (_interceptor.cancelCalls) await _inner.cancel();
+    throw _interceptor.error;
+  }
+}
+
 void main() {
+  group('closeStreamsThenShutdown', () {
+    test('shuts down after a stream fails to close, then rethrows', () async {
+      final failing = _ClosingStream(StateError('close failed'));
+      final other = _ClosingStream();
+      var shutdowns = 0;
+
+      await expectLater(
+        closeStreamsThenShutdown([failing, other], () async => shutdowns++),
+        throwsA(
+          isA<StateError>().having((e) => e.message, 'message', 'close failed'),
+        ),
+      );
+      expect(failing.closed, isTrue);
+      expect(other.closed, isTrue);
+      expect(shutdowns, 1);
+    });
+
+    test('rethrows the first error when the shutdown fails too', () async {
+      await expectLater(
+        closeStreamsThenShutdown([
+          _ClosingStream(StateError('close failed')),
+        ], () async => throw StateError('shutdown failed')),
+        throwsA(
+          isA<StateError>().having((e) => e.message, 'message', 'close failed'),
+        ),
+      );
+    });
+
+    test('rethrows a shutdown failure', () async {
+      await expectLater(
+        closeStreamsThenShutdown([
+          _ClosingStream(),
+        ], () async => throw StateError('shutdown failed')),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'shutdown failed',
+          ),
+        ),
+      );
+    });
+  });
+
   group('channelCredentialsFor', () {
     test('uses TLS for a secure endpoint', () {
       const endpoint = ListenEndpoint(
@@ -469,6 +594,130 @@ void main() {
 
       expect(await done.timeout(const Duration(seconds: 5)), isEmpty);
       expect(transport.open, throwsStateError);
+    });
+
+    group('when cancelling a call fails', () {
+      final cancelFailed = isA<StateError>().having(
+        (e) => e.message,
+        'message',
+        'cancel failed',
+      );
+
+      setUp(() {
+        service.onListen = (call, requests) {
+          // Keeps the call open until the client cancels it.
+          final controller = StreamController<pb.ListenResponse>();
+          requests.listen(
+            null,
+            onError: (Object error) => controller.close(),
+            onDone: controller.close,
+          );
+          return controller.stream;
+        };
+      });
+
+      GrpcListenTransport failingTransport(
+        _FailingCancelInterceptor interceptor, {
+        Future<void> Function()? onClose,
+      }) {
+        final transport = GrpcListenTransport(
+          endpoint: ListenEndpoint(
+            host: InternetAddress.loopbackIPv4.address,
+            port: server.port!,
+            secure: false,
+            isEmulator: true,
+          ),
+          database: _database,
+          onClose: onClose,
+          interceptors: [interceptor],
+        );
+        addTearDown(() async {
+          await interceptor.cancelAll();
+          await transport.close().catchError((Object _) {});
+        });
+        return transport;
+      }
+
+      test('close still shuts the channel down, then rethrows', () async {
+        var onCloseCalls = 0;
+        final transport = failingTransport(
+          _FailingCancelInterceptor(StateError('cancel failed')),
+          onClose: () async => onCloseCalls++,
+        );
+        final stream = transport.open();
+        final done = stream.responses.toList();
+
+        await expectLater(transport.close(), throwsA(cancelFailed));
+
+        // onClose only runs once the channel has shut down.
+        expect(onCloseCalls, 1);
+        expect(await done.timeout(const Duration(seconds: 5)), isEmpty);
+        expect(transport.open, throwsStateError);
+      });
+
+      test('closing a stream still ends it, then rethrows', () async {
+        final interceptor = _FailingCancelInterceptor(
+          StateError('cancel failed'),
+          cancelCalls: false,
+        );
+        final transport = failingTransport(interceptor);
+        final stream = transport.open();
+        final done = stream.responses.toList();
+
+        await expectLater(stream.close(), throwsA(cancelFailed));
+
+        // The call itself is still open, but the stream has ended.
+        expect(await done.timeout(const Duration(seconds: 5)), isEmpty);
+        expect(
+          () => stream.send(firestore_v1.ListenRequest(database: _database)),
+          throwsStateError,
+        );
+      });
+
+      test('an undecodable response is delivered without an uncaught '
+          'error', () async {
+        service.onListen = (call, requests) {
+          final controller = StreamController<pb.ListenResponse>()
+            // A read time with negative nanos cannot be converted.
+            ..add(
+              pb.ListenResponse(
+                targetChange: pb.TargetChange(
+                  readTime: protobuf.Timestamp(nanos: -1),
+                ),
+              ),
+            );
+          requests.listen(
+            null,
+            onError: (Object error) => controller.close(),
+            onDone: controller.close,
+          );
+          return controller.stream;
+        };
+        final interceptor = _FailingCancelInterceptor(
+          StateError('cancel failed'),
+        );
+        final transport = failingTransport(interceptor);
+        final stream = transport.open();
+
+        await expectLater(
+          stream.responses,
+          emitsInOrder([
+            emitsError(
+              isA<FirestoreException>().having(
+                (e) => e.errorCode,
+                'errorCode',
+                FirestoreClientErrorCode.internal,
+              ),
+            ),
+            emitsDone,
+          ]),
+        );
+        // The failed cancel must not surface as an uncaught error.
+        await interceptor.cancelAttempted.future.timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => fail('close() never cancelled the call'),
+        );
+      });
     });
   });
 

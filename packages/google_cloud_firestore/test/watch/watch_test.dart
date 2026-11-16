@@ -37,18 +37,36 @@ const _targetId = 0x1;
 /// the test pushes afterwards, data or an error, still reach any listener
 /// until the call ends with [destroy] or [end].
 final class _FakeListenStream implements ListenStream {
-  _FakeListenStream({this.ignoreCancel = false, this.failSendsWith});
+  _FakeListenStream({
+    this.ignoreCancel = false,
+    this.failSendsWith,
+    this.failCloseWith,
+  });
 
   /// When set, [send] throws this error.
   final Error? failSendsWith;
+
+  /// When set, [close] fails asynchronously with this error.
+  final Error? failCloseWith;
 
   /// Whether [responses] keeps delivering after its subscription is
   /// cancelled, as a non-conforming [ListenStream] might.
   final bool ignoreCancel;
 
-  final _responses = StreamController<firestore_v1.ListenResponse>();
+  late final _responses = StreamController<firestore_v1.ListenResponse>(
+    onCancel: () async {
+      if (failCancelWith case final error?) {
+        await Future<void>.delayed(Duration.zero);
+        throw error;
+      }
+    },
+  );
   final requests = <firestore_v1.ListenRequest>[];
   bool closed = false;
+
+  /// When set, cancelling the subscription to [responses] fails
+  /// asynchronously with this error.
+  Error? failCancelWith;
 
   @override
   Stream<firestore_v1.ListenResponse> get responses => ignoreCancel
@@ -68,6 +86,8 @@ final class _FakeListenStream implements ListenStream {
   @override
   Future<void> close() async {
     closed = true;
+    await Future<void>.delayed(Duration.zero);
+    if (failCloseWith case final error?) throw error;
   }
 
   void write(firestore_v1.ListenResponse response) {
@@ -159,11 +179,15 @@ final class _FakeListenTransport implements ListenTransport {
   /// When set, sending on any stream opened from now on throws this error.
   Error? failSendsWith;
 
+  /// When set, closing any stream opened from now on fails with this error.
+  Error? failClosesWith;
+
   @override
   ListenStream open() {
     final stream = _FakeListenStream(
       ignoreCancel: ignoreCancel,
       failSendsWith: failSendsWith,
+      failCloseWith: failClosesWith,
     );
     streams.add(stream);
     if (failNewStreamsWith case final error?) {
@@ -2088,6 +2112,48 @@ void main() {
         ],
       );
       await events.cancel();
+    });
+
+    test('drops a failure to cancel an abandoned stream', () async {
+      final events = await start();
+      await sendInitialSnapshot(events, [0xab]);
+
+      // The idle timeout abandons the stream, cancelling its responses.
+      final stalled = transport.current
+        ..failCancelWith = StateError('cancel failed');
+      idleTimers.last.fire();
+      expect(stalled.hasListener, isFalse);
+      await transport.awaitOpen();
+      await _settle();
+      expect(events.hasPending, isFalse, reason: 'no error reaches it');
+      await events.cancel();
+    });
+
+    group('a stream that fails to close', () {
+      setUp(() => transport.failClosesWith = StateError('close failed'));
+
+      test('is replaced without an uncaught error', () async {
+        final events = await start();
+        await sendInitialSnapshot(events, [0xab]);
+
+        transport.current.end();
+        await transport.awaitOpen();
+        await _settle();
+        expect(transport.streams.first.closed, isTrue);
+        expect(events.hasPending, isFalse, reason: 'no error reaches it');
+        await expectLater(events.cancel(), throwsStateError);
+      });
+
+      test('does not follow a permanent error', () async {
+        final events = await start();
+        await sendInitialSnapshot(events, [0xab]);
+
+        backend.sendRemoveTarget(StatusCode.permissionDenied.value);
+        expect(await events.error(), isA<FirestoreException>());
+        await _settle();
+        expect(transport.current.closed, isTrue);
+        expect(events.hasPending, isFalse);
+      });
     });
 
     group('Listen stream contract', () {

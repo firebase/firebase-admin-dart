@@ -437,13 +437,14 @@ final class GrpcListenTransport implements ListenTransport {
   ///
   /// The emulator is sent [emulatorAccessToken]. Otherwise each call is
   /// authorised with the metadata from [authMetadata], when given. [onClose] runs
-  /// once the channel is shut down.
+  /// once the channel is shut down. Calls go through [interceptors], if any.
   GrpcListenTransport({
     required ListenEndpoint endpoint,
     required String database,
     AuthMetadataSource? authMetadata,
     Map<String, String>? headers,
     Future<void> Function()? onClose,
+    @visibleForTesting Iterable<ClientInterceptor>? interceptors,
   }) : _channel = ClientChannel(
          endpoint.host,
          port: endpoint.port,
@@ -456,7 +457,7 @@ final class GrpcListenTransport implements ListenTransport {
          accessToken: endpoint.isEmulator ? emulatorAccessToken : null,
          headers: headers,
        ) {
-    _client = pbgrpc.FirestoreClient(_channel);
+    _client = pbgrpc.FirestoreClient(_channel, interceptors: interceptors);
   }
 
   /// Connects to the endpoint [settings] resolve to, authenticating with
@@ -520,13 +521,38 @@ final class GrpcListenTransport implements ListenTransport {
   }
 
   @override
-  Future<void> close() => _closeFuture ??= () async {
-    await Future.wait([
-      for (final stream in [..._streams]) stream.close(),
-    ]);
-    await _channel.shutdown();
-    await _onClose?.call();
-  }();
+  Future<void> close() =>
+      _closeFuture ??= closeStreamsThenShutdown([..._streams], () async {
+        await _channel.shutdown();
+        await _onClose?.call();
+      });
+}
+
+/// Closes every one of [streams], then runs [shutdown] even if closing a
+/// stream failed.
+///
+/// Every stream is closed and [shutdown] always runs; the first error, from
+/// a stream or from [shutdown], is rethrown once they have all finished.
+@internal
+@visibleForTesting
+Future<void> closeStreamsThenShutdown(
+  Iterable<ListenStream> streams,
+  Future<void> Function() shutdown,
+) async {
+  (Object, StackTrace)? firstError;
+  try {
+    await Future.wait([for (final stream in streams) stream.close()]);
+  } catch (error, stackTrace) {
+    firstError = (error, stackTrace);
+  }
+  try {
+    await shutdown();
+  } catch (error, stackTrace) {
+    firstError ??= (error, stackTrace);
+  }
+  if (firstError case (final error, final stackTrace)) {
+    Error.throwWithStackTrace(error, stackTrace);
+  }
 }
 
 final class _GrpcListenStream implements ListenStream {
@@ -576,7 +602,9 @@ final class _GrpcListenStream implements ListenStream {
         ),
         stackTrace,
       );
-      unawaited(close());
+      // The decoding error has been delivered; a failure to cancel the call
+      // must not follow it or surface as an uncaught error.
+      close().ignore();
       return;
     }
     _responses.add(converted);
@@ -615,7 +643,11 @@ final class _GrpcListenStream implements ListenStream {
   Future<void> close() async {
     if (_closing) return;
     _closing = true;
-    if (!_ended) await _call.cancel();
-    _end();
+    try {
+      if (!_ended) await _call.cancel();
+    } finally {
+      // Even if cancelling failed, the call is over for this stream.
+      _end();
+    }
   }
 }

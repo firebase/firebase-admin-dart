@@ -402,6 +402,60 @@ interface class Query<T> {
   /// ```
   Future<QuerySnapshot<T>> get() => _get(transactionId: null);
 
+  /// Listens to the results of this query.
+  ///
+  /// Delivers a [QuerySnapshot] once the backend has sent a consistent view
+  /// of the results, then another each time they change. Each snapshot's
+  /// [QuerySnapshot.docChanges] lists the changes since the previous one,
+  /// and the first lists every document as added.
+  ///
+  /// The returned stream starts nothing until it is listened to. Every
+  /// subscription opens its own stream to the backend and receives its own
+  /// snapshots, starting with the full result set; the stream can be
+  /// listened to more than once. Cancelling a subscription closes its
+  /// stream.
+  ///
+  /// The backend keeps being read while a subscription is paused, and every
+  /// snapshot it produces in the meantime is buffered and delivered on
+  /// resume. A long pause on a query whose results change often therefore
+  /// grows memory without bound: cancel the subscription rather than pausing
+  /// it for long.
+  ///
+  /// Transient errors, such as a dropped connection, are retried with
+  /// backoff and do not reach the stream until retries are exhausted, when
+  /// the last one is delivered. A permanent error, such as missing
+  /// permissions or an invalid query, is delivered as the single error event
+  /// of the subscription, which then closes. A failure to determine the
+  /// project ID is delivered as the only error event as soon as the lookup
+  /// fails, without retry; a subscription started after that tries again.
+  /// [Firestore.terminate] closes every active subscription with a done
+  /// event.
+  ///
+  /// ```dart
+  /// final subscription = firestore
+  ///     .collection('cities')
+  ///     .where('state', WhereFilter.equal, 'CA')
+  ///     .snapshots()
+  ///     .listen((snapshot) {
+  ///       for (final change in snapshot.docChanges) {
+  ///         print('${change.type}: ${change.doc.id}');
+  ///       }
+  ///     });
+  ///
+  /// // Later, stop listening.
+  /// await subscription.cancel();
+  /// ```
+  Stream<QuerySnapshot<T>> snapshots() => _snapshotStream(
+    firestore,
+    (transport) => Watch<T>.query(this, transport: transport),
+    (snapshot) => QuerySnapshot<T>._(
+      query: this,
+      readTime: snapshot.readTime,
+      docs: snapshot.docs,
+      changes: snapshot.changes,
+    ),
+  );
+
   /// Plans and optionally executes this query, returning an [ExplainResults]
   /// object which contains information about the planning, and optionally
   /// the execution statistics and results.
@@ -854,9 +908,6 @@ interface class Query<T> {
   /// field mask to the result and returns only the specified subset of fields.
   /// You can specify a list of field paths to return, or use an empty list to
   /// only return the references of matching documents.
-  ///
-  /// Queries that contain field masks cannot be listened to via `onSnapshot()`
-  /// listeners.
   ///
   /// This function returns a new (immutable) instance of the Query (rather than
   /// modify the existing instance) to impose the field mask.

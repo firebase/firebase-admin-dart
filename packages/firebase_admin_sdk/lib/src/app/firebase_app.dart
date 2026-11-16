@@ -337,11 +337,11 @@ class FirebaseApp {
     try {
       // Delete all services. Every delete() runs even if one throws; the
       // first error is rethrown once the app's own cleanup below is done.
-      await Future.wait(
-        _services.values.map((service) {
-          return service.delete();
-        }),
-      );
+      // Future.sync turns a synchronous throw into a failed future, so it
+      // cannot stop the remaining services from being deleted.
+      await Future.wait([
+        for (final service in _services.values) Future.sync(service.delete),
+      ]);
     } finally {
       _services.clear();
 

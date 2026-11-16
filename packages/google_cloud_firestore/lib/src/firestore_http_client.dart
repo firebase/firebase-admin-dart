@@ -257,7 +257,6 @@ class FirestoreHttpClient {
     return _clientFuture ??= _createClient();
   }
 
-
   // googleapis_auth never closes a caller-supplied baseClient.
   Http2WithHttp1FallbackClient? _transport;
 
@@ -298,12 +297,17 @@ class FirestoreHttpClient {
   ) async {
     final client = await _client;
 
-    final projectId = getProjectId() ?? await google_cloud.computeProjectId();
-
-    _cachedProjectId = projectId;
+    final projectId = await resolveProjectId();
 
     return firestoreGuard(() => fn(client, projectId));
   }
+
+  /// Resolves the project ID as [getProjectId] does, falling back to the
+  /// async strategies (gcloud CLI, metadata server), and caches it in
+  /// [cachedProjectId].
+  Future<String> resolveProjectId() async =>
+      getProjectId() ??
+      (_cachedProjectId = await google_cloud.computeProjectId());
 
   /// Executes a Firestore v1 API operation with automatic projectId injection.
   Future<R> v1<R>(
