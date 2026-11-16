@@ -56,7 +56,8 @@ Node's source is the reference (see [Port of the Node.js Admin SDK](/architectur
 | Options object | Pipelines: named parameters. Admin services: Node's options class, one to one. | Elsewhere, follow the service. |
 | Untyped option map | Typed options or named parameters | The Pipeline `rawOptions` is a deliberate escape hatch beside typed options.[^raw-options] |
 | Member with a Dart core-library equivalent (`toJSON`, `isEqual`, `toLower`, `app.delete()`) | The Dart name (`toJson`, `==`, `toLowerCase`, `close`) | Added alongside, not always a replacement: `FirebaseApp.deleteApp` and a public `isEqual` on `VectorValue`, `VectorQuery` and `VectorQuerySnapshot` still exist. |
-| Promise, `AsyncIterable` | `Future`, `Stream` | Docs use Dart terms: `Future`, `null`, `[name]`. A stray "undefined" in a dartdoc is a leftover. Node's `Readable` APIs are a gap; see [Firestore runs over REST, with buffered streaming](/firestore/rest-transport.md). |
+| Promise, `AsyncIterable` | `Future`, `Stream` | Docs use Dart terms: `Future`, `null`, `[name]`. A stray "undefined" in a dartdoc is a leftover. Node's `Readable` APIs are a gap; see [Firestore runs over REST, with gRPC only for Listen](/firestore/rest-transport.md). |
+| `onSnapshot` callbacks returning an unsubscribe function | `snapshots()`, a `Stream`; cancelling the subscription unsubscribes | A maintainer decision, for Firestore's `DocumentReference` and `Query`; see [Firestore runs over REST, with gRPC only for Listen](/firestore/rest-transport.md). |
 | JS Web SDK synonyms, such as `equalValue` | Not added | Only the Node Admin SDK is the reference. |
 | (an API Node lacks) | A Dart-only convenience beside the Node API, not instead of it | |
 
@@ -92,7 +93,7 @@ Outside the parity test, the general rule isn't stated anywhere; it is inferred 
 - [Port of the Node.js Admin SDK](/architecture/node-port.md)
 - [Pipelines parity with Node is checked by machine](/firestore/pipelines/node-parity.md)
 - [Credential: sealed class, factories and discovery](/app/credentials.md)
-- [Firestore runs over REST, with buffered streaming](/firestore/rest-transport.md)
+- [Firestore runs over REST, with gRPC only for Listen](/firestore/rest-transport.md)
 - [Firestore gaps: ignoreUndefinedProperties, update() pairs](/firestore/known-gaps.md)
 - [URL casing; JSON keys stay Node's](/conventions/acronym-casing.md)
 - [App HTTP client: public access, ownership and lazy creation](/app/http-clients.md)
