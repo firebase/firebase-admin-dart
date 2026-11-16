@@ -14,6 +14,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
 import 'package:google_cloud_firestore/src/generated/google/firestore/v1/firestore.pbgrpc.dart'
@@ -23,6 +24,7 @@ import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
 import 'package:googleapis_auth/auth_io.dart' as googleapis_auth;
 import 'package:grpc/grpc.dart' as grpc;
 import 'package:http/http.dart' as http;
+import 'package:http2/http2.dart' as http2;
 import 'package:test/test.dart';
 
 const _database = 'projects/test-project/databases/(default)';
@@ -72,6 +74,52 @@ class _FakeAuthClient extends http.BaseClient
     request.headers['User-Agent'] = 'not-forwarded';
     return _base.send(request);
   }
+}
+
+/// A raw HTTP/2 server that answers every call with [count] `Listen`
+/// responses coalesced into a single DATA frame, then keeps the call open.
+///
+/// A `grpc.Server` writes one message per frame, so the client never has more
+/// than one response queued at a time.
+Future<ServerSocket> _serveCoalescedResponses(int count) async {
+  final socket = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+  final message = pb.ListenResponse(
+    targetChange: pb.TargetChange(),
+  ).writeToBuffer();
+  final frame = BytesBuilder();
+  for (var i = 0; i < count; i++) {
+    frame
+      ..addByte(0)
+      ..add([
+        message.length >> 24 & 0xff,
+        message.length >> 16 & 0xff,
+        message.length >> 8 & 0xff,
+        message.length & 0xff,
+      ])
+      ..add(message);
+  }
+  final payload = frame.takeBytes();
+  final connections = <http2.ServerTransportConnection>[];
+  socket.listen((client) {
+    final connection = http2.ServerTransportConnection.viaSocket(client);
+    connections.add(connection);
+    connection.incomingStreams.listen((stream) {
+      stream.incomingMessages.listen(null, onError: (_) {});
+      stream
+        ..sendHeaders([
+          http2.Header.ascii(':status', '200'),
+          http2.Header.ascii('content-type', 'application/grpc'),
+        ])
+        ..sendData(payload);
+    }, onError: (_) {});
+  });
+  addTearDown(() async {
+    await socket.close();
+    for (final connection in connections) {
+      await connection.terminate();
+    }
+  });
+  return socket;
 }
 
 void main() {
@@ -421,6 +469,54 @@ void main() {
 
       expect(await done.timeout(const Duration(seconds: 5)), isEmpty);
       expect(transport.open, throwsStateError);
+    });
+  });
+
+  group('GrpcListenTransport with coalesced responses', () {
+    late GrpcListenTransport transport;
+
+    setUp(() async {
+      final server = await _serveCoalescedResponses(200);
+      transport = GrpcListenTransport(
+        endpoint: ListenEndpoint(
+          host: InternetAddress.loopbackIPv4.address,
+          port: server.port,
+          secure: false,
+          isEmulator: true,
+        ),
+        database: _database,
+      );
+      addTearDown(transport.close);
+    });
+
+    test('close drops responses grpc already queued', () async {
+      final stream = transport.open();
+      final done = Completer<void>();
+      var received = 0;
+      stream.responses.listen((_) {
+        if (++received == 1) unawaited(stream.close());
+      }, onDone: done.complete);
+
+      await done.future.timeout(const Duration(seconds: 5));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    });
+
+    test('close while paused drops responses grpc already queued', () async {
+      final stream = transport.open();
+      final done = Completer<void>();
+      late final StreamSubscription<firestore_v1.ListenResponse> subscription;
+      subscription = stream.responses.listen((_) {
+        if (subscription.isPaused) return;
+        subscription.pause();
+        unawaited(
+          stream.close().whenComplete(
+            () => Timer(const Duration(milliseconds: 20), subscription.resume),
+          ),
+        );
+      }, onDone: done.complete);
+
+      await done.future.timeout(const Duration(seconds: 5));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
     });
   });
 }

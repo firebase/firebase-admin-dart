@@ -51,9 +51,10 @@ abstract interface class ListenStream {
 
   /// Cancels this call.
   ///
-  /// [responses] still delivers the responses and any error already
-  /// received, then closes; the cancellation itself adds no error. Calling
-  /// [send] afterwards throws a [StateError].
+  /// Responses delivered before the call is cancelled may still arrive on
+  /// [responses]; anything still queued in the transport when the stream
+  /// ends is dropped. The cancellation itself adds no error. Calling [send]
+  /// afterwards throws a [StateError].
   Future<void> close();
 }
 
@@ -562,6 +563,8 @@ final class _GrpcListenStream implements ListenStream {
   Stream<firestore_v1.ListenResponse> get responses => _responses.stream;
 
   void _onData(pb.ListenResponse response) {
+    // grpc can deliver messages it already queued after the call was cancelled.
+    if (_ended) return;
     final firestore_v1.ListenResponse converted;
     try {
       converted = listenResponseFromProto(response);
