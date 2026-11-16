@@ -51,7 +51,7 @@ Alternatives that were tried or rejected:
 
 - [App HTTP client: public access, ownership and lazy creation](/app/http-clients.md)
 - [Firestore is a standalone package](/firestore/standalone-package.md)
-- [Firestore runs over REST, with gRPC only for Listen](/firestore/rest-transport.md)
+- [Firestore runs over REST, with buffered streaming](/firestore/rest-transport.md)
 
 [^admin-transport]: The app client's transport
 [^firestore-transport]: Firestore's transport
