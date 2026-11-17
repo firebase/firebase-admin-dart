@@ -274,6 +274,41 @@ void main() {
       expect(snapshot.docs.map((doc) => doc.id), ['d3', 'd4']);
     });
 
+    test('vector explain() reverses results back into query order', () async {
+      final results = await firestore
+          .collection('col')
+          .orderBy('n')
+          .limitToLast(2)
+          .findNearest(
+            vectorField: 'embedding',
+            queryVector: [1.0, 1.0],
+            limit: 2,
+            distanceMeasure: DistanceMeasure.euclidean,
+          )
+          .explain(const ExplainOptions(analyze: true));
+
+      expect(results.snapshot!.docs.map((doc) => doc.id), ['d3', 'd4']);
+    });
+
+    test('aggregate and vector queries require an orderBy', () {
+      final query = firestore.collection('col').limitToLast(2);
+      expect(
+        () => query.aggregate(const sum('n')).get(),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => query
+            .findNearest(
+              vectorField: 'embedding',
+              queryVector: [1.0, 1.0],
+              limit: 2,
+              distanceMeasure: DistanceMeasure.euclidean,
+            )
+            .get(),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
     test('explain() reverses results back into query order', () async {
       final results = await firestore
           .collection('col')

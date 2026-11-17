@@ -603,9 +603,8 @@ interface class Query<T> {
 
   /// The structured query to send to the backend.
   ///
-  /// For limitToLast queries this is translated to a version with reversed
-  /// ordering and flipped startAt/endAt, so the backend returns the last
-  /// results. Callers that read documents must reverse them back (see
+  /// For limitToLast queries this flips every orderBy direction and swaps
+  /// startAt/endAt, so the backend returns the last results. Callers that read documents must reverse them back (see
   /// [_reverseIfLimitToLast]).
   firestore_v1.StructuredQuery _toRequestStructuredQuery() {
     final structuredQuery = _toStructuredQuery();
