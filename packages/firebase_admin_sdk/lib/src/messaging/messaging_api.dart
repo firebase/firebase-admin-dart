@@ -81,8 +81,8 @@ class FidMessage extends Message {
   Map<String, dynamic> toJson() => _jsonMap(_toRequest().toJson());
 
   @override
-  fmc1.Message _toRequest() => _FidRequestMessage(
-    targetFid: fid,
+  fmc1.Message _toRequest() => fmc1.Message(
+    fid: fid,
     data: data,
     notification: notification?._toRequest(),
     android: android?._toRequest(),
@@ -130,24 +130,6 @@ Object? _jsonValue(Object? value) {
       // Preserve jsonEncode's handling of custom objects and invalid values.
       return jsonDecode(jsonEncode(value));
   }
-}
-
-// googleapis 16 does not yet expose the FID field.
-class _FidRequestMessage extends fmc1.Message {
-  _FidRequestMessage({
-    required this.targetFid,
-    super.data,
-    super.notification,
-    super.android,
-    super.webpush,
-    super.apns,
-    super.fcmOptions,
-  });
-
-  final String targetFid;
-
-  @override
-  Map<String, dynamic> toJson() => {...super.toJson(), 'fid': targetFid};
 }
 
 /// A message targeting a specific registration token.

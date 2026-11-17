@@ -224,6 +224,23 @@ void main() {
       expect(request.message?.condition, isNull);
     });
 
+    test('sends a FidMessage using the generated FID field', () async {
+      when(
+        () => messages.send(any(), any()),
+      ).thenAnswer((_) async => fmc1.Message(name: 'test'));
+
+      expect(await messaging.send(FidMessage(fid: 'installation-id')), 'test');
+
+      final request =
+          verify(() => messages.send(captureAny(), any())).captured.single
+              as fmc1.SendMessageRequest;
+      expect(request.message.runtimeType, fmc1.Message);
+      expect(request.message?.fid, 'installation-id');
+      expect(request.message?.token, isNull);
+      expect(request.message?.topic, isNull);
+      expect(request.message?.condition, isNull);
+    });
+
     test('sends a FidMessage in the HTTP v1 request body', () async {
       final client = MockAuthClient();
       late String body;
