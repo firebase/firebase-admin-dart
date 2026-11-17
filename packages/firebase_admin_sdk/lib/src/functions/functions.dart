@@ -14,6 +14,8 @@
 
 import 'dart:async';
 import 'dart:convert';
+// Deprecated in googleapis 18 in favor of package:google_cloud_tasks_v2.
+// ignore: deprecated_member_use
 import 'package:googleapis/cloudtasks/v2.dart' as tasks2;
 import 'package:googleapis_auth/auth_io.dart' as googleapis_auth;
 import 'package:meta/meta.dart';

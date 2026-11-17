@@ -473,15 +473,6 @@ class AuthHttpClient {
       projectId,
     ),
   );
-
-  Future<R> v3<R>(
-    Future<R> Function(auth3.IdentityToolkitApi api, String projectId) fn,
-  ) => _run(
-    (client, projectId) => fn(
-      auth3.IdentityToolkitApi(client, rootUrl: _authApiHost.toString()),
-      projectId,
-    ),
-  );
 }
 
 /// Tenant-aware HTTP client that builds tenant-specific resource paths.
