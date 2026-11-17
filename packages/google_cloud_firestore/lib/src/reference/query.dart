@@ -591,74 +591,67 @@ interface class Query<T> {
       );
     }
 
-    final structuredQuery = _toStructuredQuery();
-
-    // For limitToLast queries, the structured query has to be translated to a version with
-    // reversed ordered, and flipped startAt/endAt to work properly.
-    if (_queryOptions.limitType == LimitType.last) {
-      if (!_queryOptions.hasFieldOrders) {
-        throw ArgumentError(
-          'limitToLast() queries require specifying at least one orderBy() clause.',
-        );
-      }
-
-      final reversedOrderBy = _queryOptions.fieldOrders.map((order) {
-        // Flip the orderBy directions since we want the last results
-        final dir = order.direction == _Direction.descending
-            ? _Direction.ascending
-            : _Direction.descending;
-        return _FieldOrder(
-          fieldPath: order.fieldPath,
-          direction: dir,
-        )._toProto();
-      }).toList();
-
-      // Swap the cursors to match the now-flipped query ordering.
-      final reversedStartAt = _queryOptions.endAt != null
-          ? _toCursor(
-              _QueryCursor(
-                values: _queryOptions.endAt!.values,
-                before: !_queryOptions.endAt!.before,
-              ),
-            )
-          : null;
-      final reversedEndAt = _queryOptions.startAt != null
-          ? _toCursor(
-              _QueryCursor(
-                values: _queryOptions.startAt!.values,
-                before: !_queryOptions.startAt!.before,
-              ),
-            )
-          : null;
-
-      final reversedStructuredQuery = firestore_v1.StructuredQuery(
-        select: structuredQuery.select,
-        from: structuredQuery.from,
-        where: structuredQuery.where,
-        orderBy: reversedOrderBy,
-        startAt: reversedStartAt,
-        endAt: reversedEndAt,
-        offset: structuredQuery.offset,
-        limit: structuredQuery.limit,
-      );
-
-      return firestore_v1.RunQueryRequest(
-        parent: parent,
-        structuredQuery: reversedStructuredQuery,
-        transaction: transactionId.let(base64Decode),
-        readTime: readTime?._toProto().timestampValue,
-        newTransaction: transactionOptions,
-        explainOptions: explainOptions,
-      );
-    }
-
     return firestore_v1.RunQueryRequest(
       parent: parent,
-      structuredQuery: structuredQuery,
+      structuredQuery: _toRequestStructuredQuery(),
       transaction: transactionId.let(base64Decode),
       readTime: readTime?._toProto().timestampValue,
       newTransaction: transactionOptions,
       explainOptions: explainOptions,
+    );
+  }
+
+  /// The structured query to send to the backend.
+  ///
+  /// For limitToLast queries this is translated to a version with reversed
+  /// ordering and flipped startAt/endAt, so the backend returns the last
+  /// results. Callers that read documents must reverse them back (see
+  /// [_reverseIfLimitToLast]).
+  firestore_v1.StructuredQuery _toRequestStructuredQuery() {
+    final structuredQuery = _toStructuredQuery();
+    if (_queryOptions.limitType != LimitType.last) return structuredQuery;
+
+    if (!_queryOptions.hasFieldOrders) {
+      throw ArgumentError(
+        'limitToLast() queries require specifying at least one orderBy() clause.',
+      );
+    }
+
+    final reversedOrderBy = _queryOptions.fieldOrders.map((order) {
+      // Flip the orderBy directions since we want the last results
+      final dir = order.direction == _Direction.descending
+          ? _Direction.ascending
+          : _Direction.descending;
+      return _FieldOrder(fieldPath: order.fieldPath, direction: dir)._toProto();
+    }).toList();
+
+    // Swap the cursors to match the now-flipped query ordering.
+    final reversedStartAt = _queryOptions.endAt != null
+        ? _toCursor(
+            _QueryCursor(
+              values: _queryOptions.endAt!.values,
+              before: !_queryOptions.endAt!.before,
+            ),
+          )
+        : null;
+    final reversedEndAt = _queryOptions.startAt != null
+        ? _toCursor(
+            _QueryCursor(
+              values: _queryOptions.startAt!.values,
+              before: !_queryOptions.startAt!.before,
+            ),
+          )
+        : null;
+
+    return firestore_v1.StructuredQuery(
+      select: structuredQuery.select,
+      from: structuredQuery.from,
+      where: structuredQuery.where,
+      orderBy: reversedOrderBy,
+      startAt: reversedStartAt,
+      endAt: reversedEndAt,
+      offset: structuredQuery.offset,
+      limit: structuredQuery.limit,
     );
   }
 
