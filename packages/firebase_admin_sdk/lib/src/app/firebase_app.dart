@@ -111,8 +111,8 @@ class FirebaseApp {
 
   Future<googleapis_auth.AuthClient> _createDefaultClient() async {
     final scopes = [
-      auth3.IdentityToolkitApi.cloudPlatformScope,
-      auth3.IdentityToolkitApi.firebaseScope,
+      auth1.IdentityToolkitApi.cloudPlatformScope,
+      auth1.IdentityToolkitApi.firebaseScope,
       ...options.additionalScopes,
     ];
     final credential =
