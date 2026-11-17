@@ -34,8 +34,18 @@ import 'package:meta/meta.dart';
 @internal
 class Http2WithHttp1FallbackClient extends BaseClient {
   Http2WithHttp1FallbackClient({Http2Client? http2, Client? http1})
-    : _http2 = http2 ?? Http2Client(),
+    : _http2 =
+          http2 ??
+          Http2Client(maxStreamsPerConnection: _maxStreamsPerConnection),
       _http1 = http1;
+
+  /// Streams multiplexed onto one HTTP/2 connection before another is dialed.
+  ///
+  /// `Http2Client` defaults to 100, which puts every concurrent request on one
+  /// TCP connection, so bulk reads share a single congestion window. With 10,
+  /// 20 parallel Firestore reads use 2 connections and benchmarked within ~5%
+  /// of HTTP/1.1, against ~1.2-1.5x slower on one connection.
+  static const _maxStreamsPerConnection = 10;
 
   final Http2Client _http2;
 

@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Spread concurrent requests over more HTTP/2 connections: each connection now carries up to 10 streams instead of 100, so large parallel reads no longer share one TCP connection. In benchmarks, 20 parallel bulk reads went from about 1.2–1.5× slower than HTTP/1.1 to within about 5%.
 - Fixed Firestore requests running about 2× slower under concurrent load since 0.5.5. `package:http2` advertised only a 64 KiB receive window, which every request on a pooled HTTP/2 connection shared; `http2` 3.2.0 raises it to 4 MiB per stream and 16 MiB per connection. Requires `http2: ^3.2.0`.
 - Fixed `Firestore.terminate()` creating the auth client of a Firestore that never sent a request just to close it. Without Application Default Credentials this threw `MetadataServerException`, and a failed credential lookup left the HTTP/2 transport open. Requests made after `terminate()` now throw a `StateError` (an `Error`, not an `Exception`) instead of opening a new client.
 - Added `CollectionReference.listDocumentsPages()`, which lists a collection's documents, including missing documents, one `DocumentReferencePage` at a time. It takes an optional `pageSize` and a `pageToken` to resume from a previous page's `nextPageToken`, so large collections can be walked without holding every reference in memory.

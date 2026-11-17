@@ -1,5 +1,6 @@
 ## 0.5.7-wip
 
+- `FirebaseApp.client` now carries up to 10 concurrent requests per HTTP/2 connection instead of 100, so large parallel responses are spread over more TCP connections.
 - Require `http2: ^3.2.0`, whose `Http2Client` uses 4 MiB stream and 16 MiB connection receive windows instead of 64 KiB, so concurrent requests over the pooled `FirebaseApp.client` connection are no longer throttled to 64 KiB per round trip.
 - Add FidMessage to support sending messages via Firebase Installation ID (FID). (thanks to @jt274)
 - Require `googleapis: '>=17.0.0 <20.0.0'`. Version 17.0.0 adds the FCM `fid` field, and 18.0.0 and 19.0.0 are now supported.
