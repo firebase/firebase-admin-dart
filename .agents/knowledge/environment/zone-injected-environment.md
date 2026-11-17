@@ -1,0 +1,68 @@
+---
+type: Decision
+title: Environment reads go through a zone override first
+description: Code that reads environment variables checks `Zone.current[envSymbol]` before `Platform.environment`, so tests can inject or remove variables.
+tags: [environment, testing]
+agents_md: when-touching
+governs:
+  - packages/firebase_admin_sdk/lib/src/app/environment.dart
+  - packages/firebase_admin_sdk/lib/src/app/app_registry.dart
+  - packages/firebase_admin_sdk/lib/src/app/firebase_app.dart
+  - packages/firebase_admin_sdk/lib/src/app/credential.dart
+  - packages/google_cloud_firestore/lib/src/environment.dart
+  - packages/google_cloud_firestore/lib/google_cloud_firestore.dart
+  - packages/*/test/fixtures/**
+sources:
+  - id: admin-symbol
+    resource: ../../../packages/firebase_admin_sdk/lib/src/app/credential.dart
+    symbol: "const envSymbol = #_envSymbol;"
+    title: The admin package's `envSymbol`
+  - id: firestore-lookup
+    resource: ../../../packages/google_cloud_firestore/lib/src/environment.dart
+    symbol: Zone.current[envSymbol]
+    title: Firestore's zone-first lookup
+  - id: admin-lookup
+    resource: ../../../packages/firebase_admin_sdk/lib/src/app/environment.dart
+    symbol: Zone.current[envSymbol] as Map<String, String>? ?? Platform.environment
+    title: The admin package's zone-first lookup
+  - id: firestore-symbol
+    resource: ../../../packages/google_cloud_firestore/lib/google_cloud_firestore.dart
+    symbol: "const envSymbol = #_envSymbol;"
+    title: Firestore's `envSymbol`
+---
+
+# Where it lives
+
+- Enforced by: nothing; review only.
+- The zone-first lookups: `environment.dart` in each package.[^admin-lookup][^firestore-lookup]
+- The two keys: `envSymbol` in the admin `credential.dart` and in `lib/google_cloud_firestore.dart`, each the library-private `#_envSymbol`.[^admin-symbol][^firestore-symbol]
+
+# Decision
+
+Code that reads environment variables checks `Zone.current[envSymbol]` before `Platform.environment`, so tests can inject or remove variables. An injected map replaces the process environment instead of layering on top of it.
+
+**Two keys, not one.** Each package declares its own `envSymbol`, and private symbols are scoped to their library, so a zone override made for `firebase_admin_sdk` doesn't reach `google_cloud_firestore`. Pass Firestore's environment through `Settings.environmentOverride`.
+
+Consumers that read the environment natively, such as `google_cloud_storage`, ignore zones.
+
+# Why
+
+The maintainers' stated reason: if the code uses zones, the tests should use them too. Zones allow more robust and isolated testing, especially for production tests that need to unset emulator variables.
+
+Rejected alternative: shell scripts that set variables around `dart test`. Zones replaced the `environmentOverride` map as the tests' main mechanism; `google_cloud_firestore` also reads `Settings.environmentOverride`, after the zone, and admin unit tests configure Firestore through it.
+
+# Rules for agents
+
+- **Must not:** read `Platform.environment` directly in new library code. The test fixtures are the exception: they copy `Platform.environment` to build the zone's override map, and the Firestore fixtures read it for their emulator guard.
+
+# Related
+
+- [Emulators found only through standard environment variables](/environment/emulator-detection.md)
+- [Storage wraps google_cloud_storage; emulator via native env](/storage/google-cloud-storage-wrapper.md)
+- [One fixed project-ID resolution order](/app/project-id-resolution.md)
+- [Inject test doubles and use the guarded emulator helpers](/tests/helpers-and-injection.md)
+
+[^admin-lookup]: The admin package's lookups
+[^firestore-lookup]: Firestore's lookup
+[^admin-symbol]: The admin `envSymbol`
+[^firestore-symbol]: Firestore's `envSymbol`
