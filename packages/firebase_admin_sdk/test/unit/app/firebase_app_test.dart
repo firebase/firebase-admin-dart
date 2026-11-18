@@ -934,6 +934,40 @@ void main() {
       );
 
       test(
+        'finishes cleanup and rethrows when a service throws synchronously',
+        () async {
+          final app = FirebaseApp.initializeApp(
+            options: const AppOptions(projectId: mockProjectId),
+          );
+          final failing = app.getOrInitService(
+            'failing',
+            (app) => _FakeService(
+              app,
+              error: StateError('delete failed'),
+              throwSynchronously: true,
+            ),
+          );
+          final healthy = app.getOrInitService('healthy', _FakeService.new);
+
+          await expectLater(
+            app.close(),
+            throwsA(
+              isA<StateError>().having(
+                (e) => e.message,
+                'message',
+                'delete failed',
+              ),
+            ),
+          );
+
+          expect(failing.deleted, isTrue);
+          expect(healthy.deleted, isTrue);
+          expect(app.isDeleted, isTrue);
+          expect(FirebaseApp.apps, isEmpty);
+        },
+      );
+
+      test(
         'closes an unused firestore without creating its auth client',
         () async {
           final app = FirebaseApp.initializeApp(
@@ -1070,14 +1104,19 @@ void main() {
 }
 
 class _FakeService extends FirebaseService {
-  _FakeService(super.app, {this.error});
+  _FakeService(super.app, {this.error, this.throwSynchronously = false});
 
   final Error? error;
+  final bool throwSynchronously;
   bool deleted = false;
 
   @override
-  Future<void> delete() async {
+  Future<void> delete() {
     deleted = true;
-    if (error case final error?) throw error;
+    if (error case final error?) {
+      if (throwSynchronously) throw error;
+      return Future.error(error);
+    }
+    return Future.value();
   }
 }

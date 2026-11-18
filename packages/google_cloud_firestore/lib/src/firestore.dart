@@ -327,25 +327,88 @@ class Firestore {
     return Firestore._(settings: settings);
   }
 
+  /// Creates a Firestore instance with injected collaborators.
+  ///
+  /// [listenTransport] creates the transport that `snapshots()` listeners
+  /// share. It is called after the project ID is resolved, and again on
+  /// the next listen if it throws, until it succeeds once.
   @internal
   factory Firestore.internal({
     Settings? settings,
     FirestoreHttpClient? client,
+    ListenTransport Function()? listenTransport,
   }) {
-    return Firestore._(settings: settings, client: client);
+    return Firestore._(
+      settings: settings,
+      client: client,
+      listenTransport: listenTransport,
+    );
   }
 
-  Firestore._({Settings? settings, FirestoreHttpClient? client})
-    : _settings = settings ?? const Settings() {
-    final credential =
+  Firestore._({
+    Settings? settings,
+    FirestoreHttpClient? client,
+    ListenTransport Function()? listenTransport,
+  }) : _settings = settings ?? const Settings(),
+       _createListenTransport = listenTransport {
+    _credential =
         _settings.credential ?? Credential.fromApplicationDefaultCredentials();
     _firestoreClient =
         client ??
-        FirestoreHttpClient(credential: credential, settings: _settings);
+        FirestoreHttpClient(credential: _credential, settings: _settings);
   }
 
   final Settings _settings;
+  late final Credential _credential;
   late final FirestoreHttpClient _firestoreClient;
+
+  /// Creates the transport for `snapshots()` listeners, when injected.
+  final ListenTransport Function()? _createListenTransport;
+
+  /// The transport `snapshots()` listeners share, once the first one opens.
+  ListenTransport? _listenTransport;
+
+  /// The `snapshots()` subscriptions that have not ended yet.
+  final _snapshotListeners = <_SnapshotListener<Object?, Object?>>{};
+
+  /// Whether [terminate] was called.
+  var _terminated = false;
+
+  /// The number of `snapshots()` subscriptions that have not ended yet.
+  @internal
+  @visibleForTesting
+  int get activeSnapshotListenerCount => _snapshotListeners.length;
+
+  /// The project ID lookup in progress, shared by concurrent listeners.
+  Future<String>? _projectIdLookup;
+
+  /// The transport `snapshots()` listeners share, created on first use.
+  ///
+  /// Requires the project ID to be resolved, since the transport is bound to
+  /// [_formattedDatabaseName].
+  ListenTransport get _sharedListenTransport => _listenTransport ??=
+      _createListenTransport?.call() ??
+      GrpcListenTransport.fromSettings(
+        settings: _settings,
+        credential: _credential,
+        database: _formattedDatabaseName,
+      );
+
+  /// Resolves the project ID, running the async discovery strategies that
+  /// REST calls would run when no synchronous one finds it.
+  ///
+  /// Concurrent callers share one lookup. A failed lookup is forgotten, so
+  /// the next call tries again.
+  Future<void> _resolveProjectId() async {
+    if (_knownProjectId != null) return;
+    final lookup = _projectIdLookup ??= _firestoreClient.resolveProjectId();
+    try {
+      await lookup;
+    } catch (_) {
+      if (identical(_projectIdLookup, lookup)) _projectIdLookup = null;
+      rethrow;
+    }
+  }
 
   /// The serializer to use for the Protobuf transformation.
   /// @internal
@@ -831,9 +894,45 @@ class Firestore {
 
   /// Terminates the Firestore client and closes all open connections.
   ///
+  /// Every active [DocumentReference.snapshots] or [Query.snapshots]
+  /// subscription is stopped: its stream closes with a done event and no
+  /// error, after its stream to the backend is closed. Listening to such a
+  /// stream afterwards delivers a [StateError] and closes.
+  ///
+  /// Every listener, the listen transport and the HTTP client are closed even
+  /// if closing one of them fails; the first such error is then rethrown.
+  /// Calling terminate again, including while a call is still in progress,
+  /// returns the same future.
+  ///
   /// After calling terminate, the Firestore instance is no longer usable.
-  Future<void> terminate() async {
-    // Close connections if needed
-    await _firestoreClient.close();
+  Future<void> terminate() => _terminateFuture ??= _terminate();
+
+  /// The [terminate] call in progress or completed, shared by every caller.
+  Future<void>? _terminateFuture;
+
+  Future<void> _terminate() async {
+    _terminated = true;
+    final listeners = [..._snapshotListeners];
+    _snapshotListeners.clear();
+
+    // Every step runs even if an earlier one fails; the first error is
+    // rethrown once everything is closed.
+    (Object, StackTrace)? firstError;
+    Future<void> attempt(Future<void>? Function() close) async {
+      try {
+        await close();
+      } catch (error, stackTrace) {
+        firstError ??= (error, stackTrace);
+      }
+    }
+
+    await Future.wait([
+      for (final listener in listeners) attempt(listener._stop),
+    ]);
+    await attempt(() => _listenTransport?.close());
+    await attempt(_firestoreClient.close);
+    if (firstError case (final error, final stackTrace)) {
+      Error.throwWithStackTrace(error, stackTrace);
+    }
   }
 }

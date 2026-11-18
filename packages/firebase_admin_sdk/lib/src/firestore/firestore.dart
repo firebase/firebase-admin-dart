@@ -185,11 +185,36 @@ class Firestore implements FirebaseService {
     return a.credential == b.credential;
   }
 
+  /// Registers [database] as the instance for [databaseId], with the given
+  /// [settings] (none by default).
+  @internal
+  @visibleForTesting
+  void addDatabaseForTesting(
+    String databaseId,
+    google_cloud_firestore.Firestore database, {
+    google_cloud_firestore.Settings? settings,
+  }) {
+    _databases[databaseId] = database;
+    _settings[databaseId] = settings;
+  }
+
+  /// Terminates every database instance, then forgets them all.
+  ///
+  /// Every instance is terminated and forgotten even if terminating one
+  /// fails; the first such error is then rethrown.
   @override
   Future<void> delete() async {
-    // Terminate all Firestore instances
-    await Future.wait(_databases.values.map((db) => db.terminate()));
-    _databases.clear();
-    _settings.clear();
+    try {
+      // Future.wait lets every terminate finish before rethrowing the first
+      // error.
+      // Future.sync turns a synchronous throw into a failed future, so it
+      // cannot stop the remaining databases from being terminated.
+      await Future.wait([
+        for (final db in _databases.values) Future.sync(db.terminate),
+      ]);
+    } finally {
+      _databases.clear();
+      _settings.clear();
+    }
   }
 }

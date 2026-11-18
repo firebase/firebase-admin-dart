@@ -231,7 +231,50 @@ interface class DocumentReference<T> implements _Serializable {
     );
   }
 
-  // TODO snapshots
+  /// Listens to the document this [DocumentReference] refers to.
+  ///
+  /// Delivers a [DocumentSnapshot] once the backend has sent the current
+  /// state of the document, then another each time it changes. When the
+  /// document does not exist, or is deleted, the snapshot's
+  /// [DocumentSnapshot.exists] is `false`.
+  ///
+  /// The returned stream starts nothing until it is listened to. Every
+  /// subscription opens its own stream to the backend and receives its own
+  /// snapshots, starting with the current state of the document; the stream
+  /// can be listened to more than once. Cancelling a subscription closes its
+  /// stream.
+  ///
+  /// The backend keeps being read while a subscription is paused, and every
+  /// snapshot it produces in the meantime is buffered and delivered on
+  /// resume. A long pause on a document that changes often therefore grows
+  /// memory without bound: cancel the subscription rather than pausing it
+  /// for long.
+  ///
+  /// Transient errors, such as a dropped connection, are retried with
+  /// backoff and do not reach the stream until retries are exhausted, when
+  /// the last one is delivered. A permanent error, such as missing
+  /// permissions, is delivered as the single error event of the
+  /// subscription, which then closes. A failure to determine the project ID
+  /// is delivered as the only error event as soon as the lookup fails,
+  /// without retry; a subscription started after that tries again.
+  /// [Firestore.terminate] closes every active subscription with a done
+  /// event.
+  ///
+  /// ```dart
+  /// final subscription = firestore.doc('cities/SF').snapshots().listen((
+  ///   snapshot,
+  /// ) {
+  ///   print(snapshot.exists ? snapshot.data() : 'SF does not exist');
+  /// });
+  ///
+  /// // Later, stop listening.
+  /// await subscription.cancel();
+  /// ```
+  Stream<DocumentSnapshot<T>> snapshots() => _snapshotStream(
+    firestore,
+    (transport) => Watch<T>.document(this, transport: transport),
+    (snapshot) => snapshot.documentFor(this),
+  );
 
   @override
   firestore_v1.Value _toProto() {

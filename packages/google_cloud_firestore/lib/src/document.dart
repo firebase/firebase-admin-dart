@@ -27,7 +27,7 @@ class Optional<T> {
 /// verify a document's existence.
 @immutable
 class DocumentSnapshot<T> {
-  const DocumentSnapshot._({
+  DocumentSnapshot._({
     required this.ref,
     required this.readTime,
     required this.createTime,
@@ -280,20 +280,27 @@ class DocumentSnapshot<T> {
     );
   }
 
+  /// Whether [other] is a snapshot of the same document with the same data.
+  ///
+  /// The read, create and update times are ignored.
   @override
   bool operator ==(Object other) {
+    // Protobuf messages compare by identity, so compare their JSON forms.
     return other is DocumentSnapshot<T> &&
         runtimeType == other.runtimeType &&
         ref == other.ref &&
-        const DeepCollectionEquality().equals(_fieldsProto, other._fieldsProto);
+        const DeepCollectionEquality().equals(_fieldsJson, other._fieldsJson);
   }
 
   @override
   int get hashCode => Object.hash(
     runtimeType,
     ref,
-    const DeepCollectionEquality().hash(_fieldsProto),
+    const DeepCollectionEquality().hash(_fieldsJson),
   );
+
+  /// The JSON form of the fields, computed once for [==] and [hashCode].
+  late final Object? _fieldsJson = _fieldsProto?.toJson();
 }
 
 class _DocumentSnapshotBuilder<T> {
@@ -338,7 +345,7 @@ class _DocumentSnapshotBuilder<T> {
 }
 
 class QueryDocumentSnapshot<T> extends DocumentSnapshot<T> {
-  const QueryDocumentSnapshot._({
+  QueryDocumentSnapshot._({
     required super.ref,
     required super.readTime,
     required super.createTime,
