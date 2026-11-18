@@ -164,9 +164,7 @@ class FirebaseMessagingRequestHandler {
       FidMulticastMessage(:final fids) => fids,
     };
 
-    if (fids.isNotEmpty) {
-      _validateMessageCount(tokens.length + fids.length);
-    }
+    _validateMessageCount(tokens.length + fids.length);
 
     return sendEach([
       for (final token in tokens)

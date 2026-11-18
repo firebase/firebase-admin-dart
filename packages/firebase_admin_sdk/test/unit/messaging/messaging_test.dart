@@ -14,6 +14,7 @@
 
 // ignore_for_file: deprecated_member_use
 
+import 'dart:collection';
 import 'dart:convert';
 
 import 'package:firebase_admin_sdk/src/messaging/messaging.dart';
@@ -35,6 +36,21 @@ class FirebaseCloudMessagingApiMock extends Mock
     implements fmc1.FirebaseCloudMessagingApi {}
 
 class ProjectsResourceMock extends Mock implements fmc1.ProjectsResource {}
+
+class _LengthOnlyTokens extends ListBase<String> {
+  @override
+  int get length => 501;
+
+  @override
+  set length(int value) => throw UnsupportedError('Cannot change length');
+
+  @override
+  String operator [](int index) => throw StateError('Tokens were read');
+
+  @override
+  void operator []=(int index, String value) =>
+      throw UnsupportedError('Cannot change tokens');
+}
 
 extension on Object? {
   T cast<T>() => this as T;
@@ -872,14 +888,13 @@ void main() {
           ),
         ),
       );
+      verifyNever(() => httpClient.v1<BatchResponse>(any()));
     });
 
     test('should validate tokens list does not exceed 500', () {
       expect(
         () => messaging.sendEachForMulticast(
-          MulticastMessage(
-            tokens: List.generate(501, (index) => 'token$index'),
-          ),
+          MulticastMessage(tokens: _LengthOnlyTokens()),
         ),
         throwsA(
           isA<FirebaseMessagingAdminException>().having(
@@ -889,6 +904,7 @@ void main() {
           ),
         ),
       );
+      verifyNever(() => httpClient.v1<BatchResponse>(any()));
     });
 
     test('should support dryRun mode', () async {
