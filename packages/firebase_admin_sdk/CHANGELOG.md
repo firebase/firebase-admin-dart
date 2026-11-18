@@ -1,6 +1,7 @@
 ## 0.5.7-wip
 
 - Require `http2: ^3.2.0`, whose `Http2Client` uses 4 MiB stream and 16 MiB connection receive windows instead of 64 KiB, so concurrent requests over the pooled `FirebaseApp.client` connection are no longer throttled to 64 KiB per round trip.
+- Add FidMessage to support sending messages via Firebase Installation ID (FID). (thanks to @jt274)
 - Require `googleapis: '>=17.0.0 <20.0.0'`. Version 17.0.0 adds the FCM `fid` field, and 18.0.0 and 19.0.0 are now supported.
 - Fixed `updateUser` deleting the user's display name, photo URL and phone number whenever the `UpdateRequest` left them out, for example `UpdateRequest(disabled: true)`. Fields you leave out are now unchanged, and setting one to `null` still deletes it.
 - Fixed linking a provider with `UpdateRequest.providerToLink`. Federated providers such as `google.com` were rejected as invalid, and the `email` and `phone` providers threw. `UpdateRequest.copyWith` no longer throws a `TypeError`.

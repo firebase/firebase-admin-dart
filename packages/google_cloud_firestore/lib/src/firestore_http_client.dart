@@ -257,7 +257,6 @@ class FirestoreHttpClient {
     return _clientFuture ??= _createClient();
   }
 
-
   // googleapis_auth never closes a caller-supplied baseClient.
   Http2WithHttp1FallbackClient? _transport;
 
