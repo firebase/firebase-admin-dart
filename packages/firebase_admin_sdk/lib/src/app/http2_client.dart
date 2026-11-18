@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// `Http2Client` is `@experimental` upstream; the `^3.1.0` pin bounds the risk.
+// `Http2Client` is `@experimental` upstream; the `^3.2.0` pin bounds the risk.
 // ignore_for_file: experimental_member_use
 import 'dart:async';
 
