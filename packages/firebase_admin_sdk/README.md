@@ -647,6 +647,23 @@ print('Sent: ${response.successCount}, Failed: ${response.failureCount}');
 
 #### sendEachForMulticast
 
+Send to up to 500 non-empty Firebase Installation IDs (FIDs). Responses
+correspond to the order of the FIDs supplied.
+
+```dart
+final response = await messaging.sendEachForMulticast(
+  FidMulticastMessage(
+    fids: ['<fid-1>', '<fid-2>', '<fid-3>'],
+    notification: Notification(title: 'Hello', body: 'World!'),
+  ),
+);
+print('Sent: ${response.successCount}, Failed: ${response.failureCount}');
+```
+
+Registration tokens remain supported. To send to tokens and FIDs together,
+provide `fids` alongside `tokens`; responses list tokens first, then FIDs, with
+at most 500 targets in total.
+
 ```dart
 // Send one message to multiple device tokens
 final response = await messaging.sendEachForMulticast(

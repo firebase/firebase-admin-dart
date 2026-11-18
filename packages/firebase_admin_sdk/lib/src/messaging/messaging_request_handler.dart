@@ -73,18 +73,7 @@ class FirebaseMessagingRequestHandler {
   ///   (validation only) mode.
   Future<BatchResponse> sendEach(List<Message> messages, {bool? dryRun}) {
     return _httpClient.v1((api, projectId) async {
-      if (messages.isEmpty) {
-        throw FirebaseMessagingAdminException(
-          MessagingClientErrorCode.invalidArgument,
-          'messages must be a non-empty array',
-        );
-      }
-      if (messages.length > _fmcMaxBatchSize) {
-        throw FirebaseMessagingAdminException(
-          MessagingClientErrorCode.invalidArgument,
-          'messages list must not contain more than $_fmcMaxBatchSize items',
-        );
-      }
+      _validateMessageCount(messages.length);
 
       final parent = _httpClient.buildParent(projectId);
       final responses = await Future.wait<SendResponse>(
@@ -135,39 +124,72 @@ class FirebaseMessagingRequestHandler {
     });
   }
 
-  /// Sends the given multicast message to all the FCM registration tokens
-  /// specified in it.
+  void _validateMessageCount(int count) {
+    if (count == 0) {
+      throw FirebaseMessagingAdminException(
+        MessagingClientErrorCode.invalidArgument,
+        'messages must be a non-empty array',
+      );
+    }
+    if (count > _fmcMaxBatchSize) {
+      throw FirebaseMessagingAdminException(
+        MessagingClientErrorCode.invalidArgument,
+        'messages list must not contain more than $_fmcMaxBatchSize items',
+      );
+    }
+  }
+
+  /// Sends the given multicast message to its registration tokens and/or FIDs.
   ///
   /// This method uses the [sendEach] API under the hood to send the given
   /// message to all the target recipients. The responses list obtained from the
-  /// return value corresponds to the order of tokens in the `MulticastMessage`.
+  /// return value corresponds to the target order: tokens first, then FIDs.
   /// An error from this method or a `BatchResponse` with all failures indicates a total
   /// failure, meaning that the messages in the list could be sent. Partial failures or
   /// failures are only indicated by a `BatchResponse` return value.
   ///
-  /// - [message]: A multicast message containing up to 500 tokens.
+  /// - [message]: A multicast message containing 1 to 500 targets in total.
   /// - [dryRun]: Whether to send the message in the dry-run
   ///   (validation only) mode.
   Future<BatchResponse> sendEachForMulticast(
-    MulticastMessage message, {
+    MulticastMessagePayload message, {
     bool? dryRun,
   }) {
-    return sendEach(
-      message.tokens
-          .map(
-            (token) => TokenMessage(
-              token: token,
-              data: message.data,
-              notification: message.notification,
-              android: message.android,
-              apns: message.apns,
-              fcmOptions: message.fcmOptions,
-              webpush: message.webpush,
-            ),
-          )
-          .toList(),
-      dryRun: dryRun,
-    );
+    final tokens = switch (message) {
+      MulticastMessage(:final tokens) => tokens,
+      FidMulticastMessage() => <String>[],
+    };
+    final fids = switch (message) {
+      MulticastMessage(:final fids) => fids ?? <String>[],
+      FidMulticastMessage(:final fids) => fids,
+    };
+
+    if (fids.isNotEmpty) {
+      _validateMessageCount(tokens.length + fids.length);
+    }
+
+    return sendEach([
+      for (final token in tokens)
+        TokenMessage(
+          token: token,
+          data: message.data,
+          notification: message.notification,
+          android: message.android,
+          apns: message.apns,
+          fcmOptions: message.fcmOptions,
+          webpush: message.webpush,
+        ),
+      for (final fid in fids)
+        FidMessage(
+          fid: fid,
+          data: message.data,
+          notification: message.notification,
+          android: message.android,
+          apns: message.apns,
+          fcmOptions: message.fcmOptions,
+          webpush: message.webpush,
+        ),
+    ], dryRun: dryRun);
   }
 
   /// Subscribes a list of registration tokens to an FCM topic.

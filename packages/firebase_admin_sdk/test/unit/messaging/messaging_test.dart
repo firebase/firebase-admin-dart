@@ -585,6 +585,249 @@ void main() {
   group('sendEachForMulticast', () {
     setUp(() => mockV1<BatchResponse>());
 
+    test('dispatches individual FID payloads over HTTP', () async {
+      final client = MockAuthClient();
+      final bodies = <Object?>[];
+      when(() => client.send(any())).thenAnswer((invocation) async {
+        final request = invocation.positionalArguments.single as BaseRequest;
+        expect(request.method, 'POST');
+        expect(
+          request.url.toString(),
+          'https://fcm.googleapis.com/v1/projects/$projectId/messages:send?alt=json',
+        );
+        bodies.add(jsonDecode(await request.finalize().bytesToString()));
+        return StreamedResponse(
+          Stream.value(utf8.encode('{"name":"messages/test"}')),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+      final app = createApp(client: client);
+      final handler = Messaging.internal(app);
+
+      final result = await handler.sendEachForMulticast(
+        FidMulticastMessage(fids: ['fid1', 'fid2'], data: {'key': 'value'}),
+      );
+
+      expect(result.successCount, 2);
+      expect(
+        bodies,
+        unorderedEquals([
+          {
+            'message': {
+              'fid': 'fid1',
+              'data': {'key': 'value'},
+            },
+          },
+          {
+            'message': {
+              'fid': 'fid2',
+              'data': {'key': 'value'},
+            },
+          },
+        ]),
+      );
+      verify(() => client.send(any())).called(2);
+    });
+
+    test('sends FIDs with all payload fields and dry run', () async {
+      when(() => messages.send(any(), any())).thenAnswer((invocation) async {
+        final request =
+            invocation.positionalArguments.first as fmc1.SendMessageRequest;
+        return fmc1.Message(name: 'message-${request.message?.fid}');
+      });
+
+      final result = await messaging.sendEachForMulticast(
+        FidMulticastMessage(
+          fids: ['fid1', 'fid2'],
+          data: {'key': 'value'},
+          notification: Notification(title: 'Title', body: 'Body'),
+          android: AndroidConfig(collapseKey: 'collapse'),
+          apns: ApnsConfig(headers: {'apns-priority': '10'}),
+          webpush: WebpushConfig(headers: {'TTL': '300'}),
+          fcmOptions: FcmOptions(analyticsLabel: 'label'),
+        ),
+        dryRun: true,
+      );
+
+      expect(result.successCount, 2);
+      expect(result.failureCount, 0);
+      expect(result.responses.map((response) => response.messageId), [
+        'message-fid1',
+        'message-fid2',
+      ]);
+      final capture = verify(() => messages.send(captureAny(), captureAny()))
+        ..called(2);
+      for (var i = 0; i < 2; i++) {
+        final request = capture.captured[i * 2] as fmc1.SendMessageRequest;
+        expect(capture.captured[i * 2 + 1], 'projects/$projectId');
+        expect(request.validateOnly, isTrue);
+        expect(request.message?.fid, 'fid${i + 1}');
+        expect(request.message?.token, isNull);
+        expect(request.message?.topic, isNull);
+        expect(request.message?.condition, isNull);
+        expect(request.message?.data, {'key': 'value'});
+        expect(request.message?.notification?.title, 'Title');
+        expect(request.message?.notification?.body, 'Body');
+        expect(request.message?.android?.collapseKey, 'collapse');
+        expect(request.message?.apns?.headers, {'apns-priority': '10'});
+        expect(request.message?.webpush?.headers, {'TTL': '300'});
+        expect(request.message?.fcmOptions?.analyticsLabel, 'label');
+      }
+    });
+
+    test(
+      'preserves mixed target and response order with partial failures',
+      () async {
+        when(() => messages.send(any(), any())).thenAnswer((invocation) async {
+          final request =
+              invocation.positionalArguments.first as fmc1.SendMessageRequest;
+          final target = request.message?.token ?? request.message?.fid;
+          if (target == 'fid1') {
+            throw fmc1.DetailedApiRequestError(
+              404,
+              'Not found',
+              jsonResponse: {
+                'error': {'message': 'UNREGISTERED'},
+              },
+            );
+          }
+          if (target == 'token1') {
+            await Future<void>.delayed(const Duration(milliseconds: 5));
+          }
+          return fmc1.Message(name: 'message-$target');
+        });
+
+        final result = await messaging.sendEachForMulticast(
+          MulticastMessage(
+            tokens: ['token1', 'token2'],
+            fids: ['fid1', 'fid2'],
+            data: {'key': 'value'},
+          ),
+        );
+
+        expect(result.successCount, 3);
+        expect(result.failureCount, 1);
+        expect(result.responses.map((response) => response.messageId), [
+          'message-token1',
+          'message-token2',
+          null,
+          'message-fid2',
+        ]);
+        expect(
+          result.responses[2].error,
+          isA<FirebaseMessagingAdminException>().having(
+            (error) => error.errorCode,
+            'errorCode',
+            MessagingClientErrorCode.registrationTokenNotRegistered,
+          ),
+        );
+        final capture = verify(() => messages.send(captureAny(), any()))
+          ..called(4);
+        final requests = capture.captured.cast<fmc1.SendMessageRequest>();
+        expect(requests.map((request) => request.message?.token), [
+          'token1',
+          'token2',
+          null,
+          null,
+        ]);
+        expect(requests.map((request) => request.message?.fid), [
+          null,
+          null,
+          'fid1',
+          'fid2',
+        ]);
+        for (final request in requests) {
+          expect(request.message?.data, {'key': 'value'});
+          expect(request.validateOnly, isNull);
+        }
+      },
+    );
+
+    test('rejects an empty FID before sending any messages', () {
+      expect(
+        () => messaging.sendEachForMulticast(
+          MulticastMessage(tokens: ['token'], fids: ['valid', '']),
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+      verifyNever(() => messages.send(any(), any()));
+    });
+
+    test('validates empty and oversized FID and mixed batches', () async {
+      for (final payload in <MulticastMessagePayload>[
+        FidMulticastMessage(fids: []),
+        MulticastMessage(tokens: [], fids: []),
+      ]) {
+        await expectLater(
+          () => messaging.sendEachForMulticast(payload),
+          throwsA(
+            isA<FirebaseMessagingAdminException>().having(
+              (error) => error.errorCode,
+              'errorCode',
+              MessagingClientErrorCode.invalidArgument,
+            ),
+          ),
+        );
+      }
+
+      for (final payload in <MulticastMessagePayload>[
+        FidMulticastMessage(fids: List.filled(501, 'fid')),
+        MulticastMessage(
+          tokens: List.filled(250, 'token'),
+          fids: List.filled(251, 'fid'),
+        ),
+      ]) {
+        await expectLater(
+          () => messaging.sendEachForMulticast(payload),
+          throwsA(
+            isA<FirebaseMessagingAdminException>().having(
+              (error) => error.errorCode,
+              'errorCode',
+              MessagingClientErrorCode.invalidArgument,
+            ),
+          ),
+        );
+      }
+      verifyNever(() => messages.send(any(), any()));
+    });
+
+    test('accepts 500 FID-only or combined targets', () async {
+      when(
+        () => messages.send(any(), any()),
+      ).thenAnswer((_) async => fmc1.Message(name: 'success'));
+
+      final payloads = <MulticastMessagePayload>[
+        FidMulticastMessage(fids: List.filled(500, 'fid')),
+        MulticastMessage(
+          tokens: List.filled(250, 'token'),
+          fids: List.filled(250, 'fid'),
+        ),
+      ];
+      for (final payload in payloads) {
+        final result = await messaging.sendEachForMulticast(payload);
+        expect(result.successCount, 500);
+        expect(result.failureCount, 0);
+        verify(() => messages.send(any(), any())).called(500);
+      }
+    });
+
+    test('accepts a legacy multicast with only FIDs', () async {
+      when(
+        () => messages.send(any(), any()),
+      ).thenAnswer((_) async => fmc1.Message(name: 'success'));
+
+      final result = await messaging.sendEachForMulticast(
+        MulticastMessage(tokens: [], fids: ['fid']),
+      );
+      expect(result.successCount, 1);
+      final request =
+          verify(() => messages.send(captureAny(), any())).captured.single
+              as fmc1.SendMessageRequest;
+      expect(request.message?.fid, 'fid');
+      expect(request.message?.token, isNull);
+    });
+
     test('should convert multicast message to token messages', () async {
       when(() => messages.send(any(), any())).thenAnswer((i) {
         final request = i.positionalArguments.first as fmc1.SendMessageRequest;

@@ -222,11 +222,27 @@ class ConditionMessage extends Message {
   }
 }
 
-/// Payload for the [Messaging.sendEachForMulticast] method. The payload contains all the fields
-/// in the BaseMessage type, and a list of tokens.
+/// A multicast payload for [Messaging.sendEachForMulticast].
+///
+/// Use [FidMulticastMessage] for FIDs or [MulticastMessage] for registration
+/// tokens and, optionally, FIDs.
+sealed class MulticastMessagePayload extends _BaseMessage {
+  MulticastMessagePayload._({
+    super.data,
+    super.notification,
+    super.android,
+    super.webpush,
+    super.apns,
+    super.fcmOptions,
+  }) : super._();
+}
+
+/// Payload for [Messaging.sendEachForMulticast] targeting registration tokens
+/// and optionally Firebase Installation IDs (FIDs).
 ///
 /// See [Send to multiple devices](https://firebase.google.com/docs/cloud-messaging/send/admin-sdk#send-messages-to-multiple-devices)
-class MulticastMessage extends _BaseMessage {
+class MulticastMessage extends MulticastMessagePayload {
+  /// Creates a multicast payload with registration tokens and optional FIDs.
   MulticastMessage({
     super.data,
     super.notification,
@@ -235,9 +251,31 @@ class MulticastMessage extends _BaseMessage {
     super.apns,
     super.fcmOptions,
     required this.tokens,
+    this.fids,
   }) : super._();
 
+  /// Registration tokens to target.
   final List<String> tokens;
+
+  /// Optional Firebase Installation IDs to target after [tokens].
+  final List<String>? fids;
+}
+
+/// Payload for [Messaging.sendEachForMulticast] targeting Firebase installations.
+class FidMulticastMessage extends MulticastMessagePayload {
+  /// Creates a multicast payload targeting [fids].
+  FidMulticastMessage({
+    super.data,
+    super.notification,
+    super.android,
+    super.webpush,
+    super.apns,
+    super.fcmOptions,
+    required this.fids,
+  }) : super._();
+
+  /// Firebase Installation IDs to target. Each ID must be non-empty.
+  final List<String> fids;
 }
 
 /// A notification that can be included in [Message].
