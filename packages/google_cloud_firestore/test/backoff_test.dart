@@ -210,5 +210,61 @@ void main() {
       );
       await future1;
     });
+
+    group('nextDelay()', () {
+      ExponentialBackoff createBackoff() => ExponentialBackoff(
+        options: const ExponentialBackoffSetting(
+          initialDelayMs: 10,
+          backoffFactor: 2,
+          maxDelayMs: 40,
+          jitterFactor: 0,
+        ),
+      );
+
+      test('follows the backoff curve without waiting', () {
+        final backoff = createBackoff();
+        expect(
+          [for (var i = 0; i < 5; i++) backoff.nextDelay().inMilliseconds],
+          [0, 10, 20, 40, 40],
+        );
+      });
+
+      test('honours reset() and resetToMax()', () {
+        final backoff = createBackoff()
+          ..nextDelay()
+          ..nextDelay()
+          ..resetToMax();
+        expect(backoff.nextDelay().inMilliseconds, 40);
+        backoff.reset();
+        expect(backoff.nextDelay(), Duration.zero);
+      });
+
+      test('throws after maxRetryAttempts+1 calls', () {
+        final backoff = createBackoff();
+        for (var i = 0; i <= ExponentialBackoff.maxRetryAttempts; i++) {
+          backoff.nextDelay();
+        }
+        expect(
+          backoff.nextDelay,
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('Exceeded maximum number of retries'),
+            ),
+          ),
+        );
+      });
+
+      test('shares its retry count with backoffAndWait()', () async {
+        final backoff = createBackoff();
+        for (var i = 0; i < ExponentialBackoff.maxRetryAttempts; i++) {
+          backoff.nextDelay();
+        }
+        backoff.reset();
+        await backoff.backoffAndWait();
+        expect(backoff.nextDelay().inMilliseconds, 10);
+      });
+    });
   });
 }
