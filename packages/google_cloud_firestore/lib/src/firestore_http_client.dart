@@ -140,10 +140,10 @@ class Http2WithHttp1FallbackClient extends BaseClient {
 
   /// Streams multiplexed onto one HTTP/2 connection before another is dialed.
   ///
-  /// `Http2Client` defaults to 100, which puts every concurrent request on one
-  /// TCP connection, so bulk reads share a single congestion window. With 10,
-  /// 20 parallel Firestore reads use 2 connections and benchmarked within ~5%
-  /// of HTTP/1.1, against ~1.2-1.5x slower on one connection.
+  /// Lower than `Http2Client`'s default of 100, so concurrent requests spread
+  /// over more than one connection. Chosen by measurement: 20 parallel reads
+  /// of a 5,000-document collection ran close to HTTP/1.1 at 10, and slower
+  /// with all 20 on one connection.
   static const _maxStreamsPerConnection = 10;
 
   final Http2Client _http2;

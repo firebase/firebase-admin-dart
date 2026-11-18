@@ -1,6 +1,5 @@
 ## 0.5.7-wip
 
-- `FirebaseApp.client` now carries up to 10 concurrent requests per HTTP/2 connection instead of 100, so large parallel responses are spread over more TCP connections.
 - **Breaking:** `sendEachForMulticast` now accepts `MulticastMessagePayload`; implementers of `Messaging` must update overrides to use the wider parameter type. Add `FidMulticastMessage` for sending to multiple Firebase Installation IDs, and allow mixed token and FID targets in `MulticastMessage`. Deprecate `MulticastMessage` and its `tokens` field in favor of FIDs. (thanks to @jt274)
 - Require `http2: ^3.2.0`, whose `Http2Client` uses 4 MiB stream and 16 MiB connection receive windows instead of 64 KiB, so concurrent requests over the pooled `FirebaseApp.client` connection are no longer throttled to 64 KiB per round trip.
 - Add FidMessage to support sending messages via Firebase Installation ID (FID). (thanks to @jt274)
