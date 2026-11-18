@@ -28,7 +28,7 @@ dart test test/pipeline_api_parity_test.dart test/pipeline_golden_test.dart
 
 ## 3. Everything else
 
-Compare by layer. For a single API, do all six. For a whole product, do layers 1, 2 and 5 and the cross-compatibility items under "Classify", report, and offer to go deeper.
+Compare by layer. For a single API, do all seven. For a whole product, do layers 1, 2 and 5 and the cross-compatibility items under "Classify", report, and offer to go deeper.
 
 1. **Surface:** Node's exported classes, members, option fields and enum values against the Dart barrel's exports. On the Dart side, include public classes in part files that the barrel doesn't `hide`.
 2. **Signatures:** parameters, optionality, defaults and return types, after applying the Dart idioms.
@@ -36,6 +36,7 @@ Compare by layer. For a single API, do all six. For a whole product, do layers 1
 4. **Wire format:** endpoint, HTTP method, field names, field masks, headers, response decoding.
 5. **Error codes:** Node's server-to-client table against Dart's.
 6. **Tests:** Node `describe` blocks with no Dart counterpart.
+7. **Implicit behaviour:** what each side does when the language's own conversions are applied to a value: JSON encoding, string conversion, equality and ordering. A class takes part in these without declaring a member. In JavaScript, `JSON.stringify` writes the own enumerable properties of an object that has no `toJSON()`, underscore-prefixed fields included, and `<` goes through `valueOf()`; in Dart, `jsonEncode` throws on an object that has no `toJson()`. So "neither side declares `toJson`" is not parity. Read what the Node constructor assigns to `this`, or run it (`npm install <package>` in a directory outside the repository, then `node -e`), and report the keys Node writes.
 
 ## 4. Classify
 
