@@ -1,6 +1,6 @@
 ## 0.5.7-wip
 
-- Add `FidMulticastMessage` for sending to multiple Firebase Installation IDs, and allow mixed token and FID targets in `MulticastMessage`.
+- Add `FidMulticastMessage` for sending to multiple Firebase Installation IDs, and allow mixed token and FID targets in `MulticastMessage`. (thanks to @jt274)
 - Add FidMessage to support sending messages via Firebase Installation ID (FID). (thanks to @jt274)
 - Require `googleapis: '>=17.0.0 <20.0.0'`. Version 17.0.0 adds the FCM `fid` field, and 18.0.0 and 19.0.0 are now supported.
 - Fixed `updateUser` deleting the user's display name, photo URL and phone number whenever the `UpdateRequest` left them out, for example `UpdateRequest(disabled: true)`. Fields you leave out are now unchanged, and setting one to `null` still deletes it.
