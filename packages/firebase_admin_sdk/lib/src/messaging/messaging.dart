@@ -84,21 +84,23 @@ class Messaging implements FirebaseService {
     return _requestHandler.sendEach(messages, dryRun: dryRun);
   }
 
-  /// Sends the given multicast message to all the FCM registration tokens
-  /// specified in it.
+  /// Sends a multicast message to its FCM registration tokens and/or Firebase
+  /// Installation IDs (FIDs).
   ///
   /// This method uses the [Messaging.sendEach] API under the hood to send the given
   /// message to all the target recipients. The responses list obtained from the
-  /// return value corresponds to the order of tokens in the `MulticastMessage`.
+  /// return value corresponds to the target order: tokens first, then FIDs.
+  /// An empty FID produces an individual `messaging/invalid-payload` failure;
+  /// other targets are still sent.
   /// An error from this method or a `BatchResponse` with all failures indicates a total
   /// failure, meaning that the messages in the list could be sent. Partial failures or
   /// failures are only indicated by a `BatchResponse` return value.
   ///
-  /// - [message]: A multicast message containing up to 500 tokens.
+  /// - [message]: A multicast message containing 1 to 500 targets in total.
   /// - [dryRun]: Whether to send the message in the dry-run
   ///   (validation only) mode.
   Future<BatchResponse> sendEachForMulticast(
-    MulticastMessage message, {
+    MulticastMessagePayload message, {
     bool? dryRun,
   }) {
     return _requestHandler.sendEachForMulticast(message, dryRun: dryRun);
