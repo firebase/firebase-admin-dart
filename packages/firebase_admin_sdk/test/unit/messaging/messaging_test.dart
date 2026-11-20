@@ -14,6 +14,7 @@
 
 // ignore_for_file: deprecated_member_use
 
+import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 
@@ -760,14 +761,124 @@ void main() {
       },
     );
 
-    test('rejects an empty FID before sending any messages', () {
-      expect(
-        () => messaging.sendEachForMulticast(
-          MulticastMessage(tokens: ['token'], fids: ['valid', '']),
-        ),
-        throwsA(isA<ArgumentError>()),
+    test(
+      'reports empty FIDs per target without blocking valid targets',
+      () async {
+        when(() => messages.send(any(), any())).thenAnswer((invocation) async {
+          final request =
+              invocation.positionalArguments.first as fmc1.SendMessageRequest;
+          return fmc1.Message(
+            name: request.message?.fid ?? request.message?.token,
+          );
+        });
+
+        final result = await messaging.sendEachForMulticast(
+          MulticastMessage(tokens: ['token'], fids: ['', 'valid', '']),
+          dryRun: true,
+        );
+        expect(result.successCount, 2);
+        expect(result.failureCount, 2);
+        expect(result.responses.map((response) => response.messageId), [
+          'token',
+          null,
+          'valid',
+          null,
+        ]);
+        for (final index in [1, 3]) {
+          expect(result.responses[index].success, isFalse);
+          expect(
+            result.responses[index].error,
+            isA<FirebaseMessagingAdminException>()
+                .having(
+                  (error) => error.code,
+                  'code',
+                  'messaging/invalid-payload',
+                )
+                .having(
+                  (error) => error.message,
+                  'message',
+                  'Exactly one of fid, topic, token or condition is required',
+                ),
+          );
+        }
+        final requests = (verify(
+          () => messages.send(captureAny(), any()),
+        )..called(2)).captured.cast<fmc1.SendMessageRequest>();
+        expect(requests.map((request) => request.message?.fid), [
+          null,
+          'valid',
+        ]);
+        expect(requests.map((request) => request.validateOnly), [true, true]);
+      },
+    );
+
+    test('reports all-empty FIDs as individual failures', () async {
+      final result = await messaging.sendEachForMulticast(
+        FidMulticastMessage(fids: ['', '']),
       );
+
+      expect(result.successCount, 0);
+      expect(result.failureCount, 2);
+      for (final response in result.responses) {
+        expect(response.success, isFalse);
+        expect(response.error?.code, 'messaging/invalid-payload');
+      }
+      verifyNever(() => httpClient.v1<BatchResponse>(any()));
       verifyNever(() => messages.send(any(), any()));
+    });
+
+    test('combines invalid FIDs with server failures in order', () async {
+      when(() => messages.send(any(), any())).thenAnswer((invocation) async {
+        final request =
+            invocation.positionalArguments.first as fmc1.SendMessageRequest;
+        if (request.message?.fid == 'rejected') {
+          throw fmc1.DetailedApiRequestError(
+            404,
+            'Not found',
+            jsonResponse: {
+              'error': {'message': 'UNREGISTERED'},
+            },
+          );
+        }
+        return fmc1.Message(name: request.message?.fid);
+      });
+
+      final result = await messaging.sendEachForMulticast(
+        FidMulticastMessage(fids: ['', 'rejected', 'valid']),
+      );
+      expect(result.successCount, 1);
+      expect(result.failureCount, 2);
+      expect(result.responses[0].error?.code, 'messaging/invalid-payload');
+      expect(
+        result.responses[1].error?.code,
+        'messaging/registration-token-not-registered',
+      );
+      expect(result.responses[2].messageId, 'valid');
+      verify(() => messages.send(any(), any())).called(2);
+    });
+
+    test('preserves response order if caller mutates target lists', () async {
+      final response = Completer<fmc1.Message>();
+      when(
+        () => messages.send(any(), any()),
+      ).thenAnswer((_) => response.future);
+      final tokens = <String>['token'];
+      final fids = <String>['', 'valid'];
+
+      final pending = messaging.sendEachForMulticast(
+        MulticastMessage(tokens: tokens, fids: fids),
+      );
+      await Future<void>.delayed(Duration.zero);
+      tokens.clear();
+      fids.clear();
+      response.complete(fmc1.Message(name: 'sent'));
+
+      final result = await pending;
+      expect(result.successCount, 2);
+      expect(result.failureCount, 1);
+      expect(result.responses.map((item) => item.success), [true, false, true]);
+      expect(result.responses[1].error?.code, 'messaging/invalid-payload');
+      verify(() => messages.send(any(), any())).called(2);
     });
 
     test('validates empty and oversized FID and mixed batches', () async {
@@ -778,11 +889,17 @@ void main() {
         await expectLater(
           () => messaging.sendEachForMulticast(payload),
           throwsA(
-            isA<FirebaseMessagingAdminException>().having(
-              (error) => error.errorCode,
-              'errorCode',
-              MessagingClientErrorCode.invalidArgument,
-            ),
+            isA<FirebaseMessagingAdminException>()
+                .having(
+                  (error) => error.errorCode,
+                  'errorCode',
+                  MessagingClientErrorCode.invalidArgument,
+                )
+                .having(
+                  (error) => error.message,
+                  'message',
+                  'Either tokens or fids must be a non-empty array',
+                ),
           ),
         );
       }
@@ -797,11 +914,17 @@ void main() {
         await expectLater(
           () => messaging.sendEachForMulticast(payload),
           throwsA(
-            isA<FirebaseMessagingAdminException>().having(
-              (error) => error.errorCode,
-              'errorCode',
-              MessagingClientErrorCode.invalidArgument,
-            ),
+            isA<FirebaseMessagingAdminException>()
+                .having(
+                  (error) => error.errorCode,
+                  'errorCode',
+                  MessagingClientErrorCode.invalidArgument,
+                )
+                .having(
+                  (error) => error.message,
+                  'message',
+                  'The total number of tokens and fids must not exceed 500.',
+                ),
           ),
         );
       }
@@ -877,35 +1000,62 @@ void main() {
       }
     });
 
-    test('should validate empty tokens list', () {
-      expect(
-        () => messaging.sendEachForMulticast(MulticastMessage(tokens: [])),
-        throwsA(
-          isA<FirebaseMessagingAdminException>().having(
-            (e) => e.message,
-            'message',
-            'messages must be a non-empty array',
-          ),
-        ),
+    test('empty token list returns a failed Future', () async {
+      final future = messaging.sendEachForMulticast(
+        MulticastMessage(tokens: []),
+      );
+      await future.then<void>(
+        (_) => fail('Expected validation failure'),
+        onError: (Object error) {
+          expect(
+            error,
+            isA<FirebaseMessagingAdminException>().having(
+              (e) => e.message,
+              'message',
+              'Either tokens or fids must be a non-empty array',
+            ),
+          );
+        },
       );
       verifyNever(() => httpClient.v1<BatchResponse>(any()));
     });
 
-    test('should validate tokens list does not exceed 500', () {
-      expect(
-        () => messaging.sendEachForMulticast(
-          MulticastMessage(tokens: _LengthOnlyTokens()),
-        ),
-        throwsA(
-          isA<FirebaseMessagingAdminException>().having(
-            (e) => e.message,
-            'message',
-            'messages list must not contain more than 500 items',
-          ),
-        ),
+    test('multicast validation errors reach catchError', () async {
+      var caught = false;
+      final future = messaging
+          .sendEachForMulticast(FidMulticastMessage(fids: []))
+          .catchError((Object error, StackTrace stackTrace) {
+            caught = true;
+            expect(error, isA<FirebaseMessagingAdminException>());
+            Error.throwWithStackTrace(error, stackTrace);
+          });
+      await expectLater(
+        future,
+        throwsA(isA<FirebaseMessagingAdminException>()),
       );
+      expect(caught, isTrue);
       verifyNever(() => httpClient.v1<BatchResponse>(any()));
     });
+
+    test(
+      'oversized token list returns a failed Future without reading tokens',
+      () async {
+        final future = messaging.sendEachForMulticast(
+          MulticastMessage(tokens: _LengthOnlyTokens()),
+        );
+        await expectLater(
+          future,
+          throwsA(
+            isA<FirebaseMessagingAdminException>().having(
+              (e) => e.message,
+              'message',
+              'The total number of tokens and fids must not exceed 500.',
+            ),
+          ),
+        );
+        verifyNever(() => httpClient.v1<BatchResponse>(any()));
+      },
+    );
 
     test('should support dryRun mode', () async {
       when(() => messages.send(any(), any())).thenAnswer((i) {

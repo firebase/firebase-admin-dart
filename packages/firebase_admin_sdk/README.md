@@ -647,8 +647,9 @@ print('Sent: ${response.successCount}, Failed: ${response.failureCount}');
 
 #### sendEachForMulticast
 
-Send to up to 500 non-empty Firebase Installation IDs (FIDs). Responses
-correspond to the order of the FIDs supplied.
+Send to up to 500 Firebase Installation IDs (FIDs). Responses correspond to the
+order of the FIDs supplied. An empty FID produces an individual
+`messaging/invalid-payload` error without preventing other targets from being sent.
 
 ```dart
 final response = await messaging.sendEachForMulticast(
@@ -660,7 +661,7 @@ final response = await messaging.sendEachForMulticast(
 print('Sent: ${response.successCount}, Failed: ${response.failureCount}');
 ```
 
-Registration tokens remain supported. To send to tokens and FIDs together,
+The token-based `MulticastMessage` is deprecated but remains supported. To send to tokens and FIDs together,
 provide `fids` alongside `tokens`; responses list tokens first, then FIDs, with
 at most 500 targets in total.
 

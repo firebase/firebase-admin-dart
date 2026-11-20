@@ -90,6 +90,8 @@ class Messaging implements FirebaseService {
   /// This method uses the [Messaging.sendEach] API under the hood to send the given
   /// message to all the target recipients. The responses list obtained from the
   /// return value corresponds to the target order: tokens first, then FIDs.
+  /// An empty FID produces an individual `messaging/invalid-payload` failure;
+  /// other targets are still sent.
   /// An error from this method or a `BatchResponse` with all failures indicates a total
   /// failure, meaning that the messages in the list could be sent. Partial failures or
   /// failures are only indicated by a `BatchResponse` return value.

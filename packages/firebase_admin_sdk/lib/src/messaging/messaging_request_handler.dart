@@ -154,19 +154,32 @@ class FirebaseMessagingRequestHandler {
   Future<BatchResponse> sendEachForMulticast(
     MulticastMessagePayload message, {
     bool? dryRun,
-  }) {
-    final tokens = switch (message) {
-      MulticastMessage(:final tokens) => tokens,
-      FidMulticastMessage() => <String>[],
-    };
-    final fids = switch (message) {
-      MulticastMessage(:final fids) => fids ?? <String>[],
-      FidMulticastMessage(:final fids) => fids,
+  }) async {
+    final (inputTokens, inputFids) = switch (message) {
+      MulticastMessage(:final tokens, :final fids) => (
+        tokens,
+        fids ?? const <String>[],
+      ),
+      FidMulticastMessage(:final fids) => (const <String>[], fids),
     };
 
-    _validateMessageCount(tokens.length + fids.length);
+    final count = inputTokens.length + inputFids.length;
+    if (count == 0) {
+      throw FirebaseMessagingAdminException(
+        MessagingClientErrorCode.invalidArgument,
+        'Either tokens or fids must be a non-empty array',
+      );
+    }
+    if (count > _fmcMaxBatchSize) {
+      throw FirebaseMessagingAdminException(
+        MessagingClientErrorCode.invalidArgument,
+        'The total number of tokens and fids must not exceed $_fmcMaxBatchSize.',
+      );
+    }
 
-    return sendEach([
+    final tokens = List<String>.of(inputTokens);
+    final fids = List<String>.of(inputFids);
+    final validMessages = <Message>[
       for (final token in tokens)
         TokenMessage(
           token: token,
@@ -178,16 +191,46 @@ class FirebaseMessagingRequestHandler {
           webpush: message.webpush,
         ),
       for (final fid in fids)
-        FidMessage(
-          fid: fid,
-          data: message.data,
-          notification: message.notification,
-          android: message.android,
-          apns: message.apns,
-          fcmOptions: message.fcmOptions,
-          webpush: message.webpush,
-        ),
-    ], dryRun: dryRun);
+        if (fid.isNotEmpty)
+          FidMessage(
+            fid: fid,
+            data: message.data,
+            notification: message.notification,
+            android: message.android,
+            apns: message.apns,
+            fcmOptions: message.fcmOptions,
+            webpush: message.webpush,
+          ),
+    ];
+
+    final result = validMessages.isEmpty
+        ? null
+        : await sendEach(validMessages, dryRun: dryRun);
+    if (validMessages.length == count) {
+      return result!;
+    }
+
+    var validIndex = 0;
+    final responses = <SendResponse>[
+      for (final _ in tokens) result!.responses[validIndex++],
+      for (final fid in fids)
+        if (fid.isNotEmpty)
+          result!.responses[validIndex++]
+        else
+          SendResponse._(
+            success: false,
+            error: FirebaseMessagingAdminException(
+              MessagingClientErrorCode.invalidPayload,
+              'Exactly one of fid, topic, token or condition is required',
+            ),
+          ),
+    ];
+    final successCount = result?.successCount ?? 0;
+    return BatchResponse._(
+      responses: responses,
+      successCount: successCount,
+      failureCount: count - successCount,
+    );
   }
 
   /// Subscribes a list of registration tokens to an FCM topic.

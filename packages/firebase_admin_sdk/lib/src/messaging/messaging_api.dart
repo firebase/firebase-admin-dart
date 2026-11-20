@@ -241,6 +241,7 @@ sealed class MulticastMessagePayload extends _BaseMessage {
 /// and optionally Firebase Installation IDs (FIDs).
 ///
 /// See [Send to multiple devices](https://firebase.google.com/docs/cloud-messaging/send/admin-sdk#send-messages-to-multiple-devices)
+@Deprecated('Use FidMulticastMessage instead.')
 class MulticastMessage extends MulticastMessagePayload {
   /// Creates a multicast payload with registration tokens and optional FIDs.
   MulticastMessage({
@@ -255,6 +256,7 @@ class MulticastMessage extends MulticastMessagePayload {
   }) : super._();
 
   /// Registration tokens to target.
+  @Deprecated('Use FidMulticastMessage.fids instead.')
   final List<String> tokens;
 
   /// Optional Firebase Installation IDs to target after [tokens].
@@ -274,7 +276,8 @@ class FidMulticastMessage extends MulticastMessagePayload {
     required this.fids,
   }) : super._();
 
-  /// Firebase Installation IDs to target. Each ID must be non-empty.
+  /// Firebase Installation IDs to target. Empty IDs receive a per-target
+  /// `messaging/invalid-payload` error.
   final List<String> fids;
 }
 
