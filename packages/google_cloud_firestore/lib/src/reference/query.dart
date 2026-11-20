@@ -53,21 +53,36 @@ interface class Query<T> {
   /// Using the converter allows you to specify generic type arguments when
   /// storing and retrieving objects from Firestore.
   ///
-  /// Passing `null` for both parameters removes the current converter and
-  /// returns an untyped `Query<DocumentData>`.
+  /// Calling `withConverter<DocumentData>()` with neither parameter removes
+  /// the current converter and returns an untyped `Query<DocumentData>`.
+  ///
+  /// Throws an [ArgumentError] when exactly one of [fromFirestore] and
+  /// [toFirestore] is passed, since the two functions must always be provided
+  /// together, and when neither is passed with a type argument that cannot
+  /// hold [DocumentData].
   @mustBeOverridden
   Query<U> withConverter<U>({
     FromFirestore<U>? fromFirestore,
     ToFirestore<U>? toFirestore,
   }) {
-    // If null, use the default JSON converter
-    final converter = (fromFirestore == null || toFirestore == null)
-        ? _jsonConverter as _FirestoreDataConverter<U>
-        : (fromFirestore: fromFirestore, toFirestore: toFirestore);
+    if (fromFirestore == null && toFirestore == null) {
+      final reset = Query<DocumentData>._(
+        firestore: firestore,
+        queryOptions: _queryOptions.withConverter(_jsonConverter),
+      );
+      if (reset is! Query<U>) throw _withConverterResetError<U>();
+      return reset as Query<U>;
+    }
+    if (fromFirestore == null || toFirestore == null) {
+      throw _withConverterPairError();
+    }
 
     return Query<U>._(
       firestore: firestore,
-      queryOptions: _queryOptions.withConverter(converter),
+      queryOptions: _queryOptions.withConverter((
+        fromFirestore: fromFirestore,
+        toFirestore: toFirestore,
+      )),
     );
   }
 

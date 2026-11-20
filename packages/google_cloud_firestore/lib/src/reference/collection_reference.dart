@@ -203,15 +203,23 @@ interface class CollectionReference<T> extends Query<T> {
     FromFirestore<U>? fromFirestore,
     ToFirestore<U>? toFirestore,
   }) {
-    // If null, use the default JSON converter
-    final converter = (fromFirestore == null || toFirestore == null)
-        ? _jsonConverter as _FirestoreDataConverter<U>
-        : (fromFirestore: fromFirestore, toFirestore: toFirestore);
+    if (fromFirestore == null && toFirestore == null) {
+      final reset = CollectionReference<DocumentData>._(
+        firestore: firestore,
+        path: _resourcePath,
+        converter: _jsonConverter,
+      );
+      if (reset is! CollectionReference<U>) throw _withConverterResetError<U>();
+      return reset as CollectionReference<U>;
+    }
+    if (fromFirestore == null || toFirestore == null) {
+      throw _withConverterPairError();
+    }
 
     return CollectionReference<U>._(
       firestore: firestore,
-      path: _queryOptions.parentPath._append(id),
-      converter: converter,
+      path: _resourcePath,
+      converter: (fromFirestore: fromFirestore, toFirestore: toFirestore),
     );
   }
 
