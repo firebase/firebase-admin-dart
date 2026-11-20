@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Spread more than 10 concurrent requests over multiple HTTP/2 connections: each connection now carries up to 10 streams instead of 100, and up to 10 idle connections stay open between bursts. This speeds up large parallel reads, which previously shared one connection. Nothing changes at 10 or fewer concurrent requests.
 - Fixed `sum` and `average` aggregations and `findNearest()` vector queries built from a `limitToLast()` query running over the first documents instead of the last. They now send the same flipped ordering and cursors as `Query.get()`, and vector query results are returned in the query's order, matching the Node Admin SDK. Like `Query.get()`, they now throw an `ArgumentError` when the `limitToLast()` query has no `orderBy()` clause instead of silently running the wrong query.
 - Fixed `limitToLast()` queries returning documents in reverse order from `Query.get()`, `Query.explain()` and `Transaction.getQuery()`. Results and `docChanges` now follow the query's `orderBy`, matching the Node Admin SDK.
 - Fixed Firestore requests running about 2× slower under concurrent load since 0.5.5. `package:http2` advertised only a 64 KiB receive window, which every request on a pooled HTTP/2 connection shared; `http2` 3.2.0 raises it to 4 MiB per stream and 16 MiB per connection. Requires `http2: ^3.2.0`.

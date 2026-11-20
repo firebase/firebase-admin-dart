@@ -133,10 +133,35 @@ class EmulatorClient extends BaseClient implements googleapis_auth.AuthClient {
 @internal
 class Http2WithHttp1FallbackClient extends BaseClient {
   Http2WithHttp1FallbackClient({Http2Client? http2, Client? http1})
-    : _http2 = http2 ?? Http2Client(),
+    : _http2 =
+          http2 ??
+          Http2Client(
+            maxStreamsPerConnection: _maxStreamsPerConnection,
+            maxIdleConnections: _maxIdleConnections,
+          ),
       _http1 = http1;
 
+  /// Streams multiplexed onto one HTTP/2 connection before another is dialed.
+  ///
+  /// Lower than `Http2Client`'s default of 100, so concurrent requests spread
+  /// over more than one connection. Chosen by measurement: 20 parallel reads
+  /// of a 5,000-document collection ran close to HTTP/1.1 at 10, and slower
+  /// with all 20 on one connection.
+  static const _maxStreamsPerConnection = 10;
+
+  /// Idle connections the pool keeps open after a burst of requests drains.
+  ///
+  /// The pool measures idle capacity in streams, so 10 connections of 10
+  /// streams keep the same 100 idle slots as `Http2Client`'s defaults (one
+  /// connection of 100). Without it, every burst above 10 concurrent requests
+  /// would dial its extra connections again.
+  static const _maxIdleConnections = 10;
+
   final Http2Client _http2;
+
+  /// For testing: the HTTP/2 transport requests are routed to.
+  @visibleForTesting
+  Http2Client get http2 => _http2;
 
   Client? _http1;
 
