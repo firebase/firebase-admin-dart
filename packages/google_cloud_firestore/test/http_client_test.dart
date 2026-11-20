@@ -61,6 +61,14 @@ void main() {
       expect(response.body, 'ok');
     });
 
+    test('spreads concurrent requests over pooled connections', () {
+      final client = Http2WithHttp1FallbackClient();
+      addTearDown(client.close);
+
+      expect(client.http2.maxStreamsPerConnection, 10);
+      expect(client.http2.maxIdleConnections, 10);
+    });
+
     test('sends https requests over the HTTP/2 transport', () async {
       final http1 = _RecordingClient();
       final client = Http2WithHttp1FallbackClient(http1: http1);
