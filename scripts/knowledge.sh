@@ -6,6 +6,7 @@
 #
 # Usage (from anywhere):
 #   ./scripts/knowledge.sh for <path>...   # the concepts to read before editing these paths
+#   ./scripts/knowledge.sh for --sources <path>...   # also where each one lives in the code
 #   ./scripts/knowledge.sh index           # rewrite index.md from the concepts' frontmatter
 #   ./scripts/knowledge.sh check           # what CI runs: fails when the bundle no longer
 #                                          # matches the repository
@@ -15,6 +16,8 @@
 #   - names a source file or symbol that no longer exists, or a `governs` glob
 #     that matches no file;
 #   - links to a concept that doesn't exist;
+# It also fails when AGENTS.md or a skill in .agents/skills links to a file that
+# doesn't exist.
 #   - cites a pull request or issue number (concepts state the decision, not its history).
 
 set -uo pipefail
@@ -199,13 +202,25 @@ check() {
     [ -e "${link%%#*}" ] || fail AGENTS.md "links to $link, which doesn't exist"
   done < <(grep -oE '\]\([^)[:space:]]+\)' AGENTS.md | sed -E 's/^\]\(//; s/\)$//' | grep -vE '^(https?:|#)')
 
+  # Skills link into the bundle too, relative to their own directory.
+  while IFS= read -r file; do
+    dir=$(dirname "$file")
+    while IFS= read -r link; do
+      [ -e "$dir/${link%%#*}" ] || fail "$file" "links to $link, which doesn't exist"
+    done < <(grep -oE '\]\([^)[:space:]]+\)' "$file" | sed -E 's/^\]\(//; s/\)$//' | grep -vE '^(https?:|#|/)')
+    # A skill can be copied out of the repo, so it also names concepts from the repo root.
+    while IFS= read -r link; do
+      [ -e "$link" ] || fail "$file" "names $link, which doesn't exist"
+    done < <(grep -oE '\.agents/knowledge/[A-Za-z0-9_/.-]+\.md' "$file" | sort -u)
+  done < <(find .agents/skills -name SKILL.md | sort)
+
   if ! index | cmp -s - "$KB/index.md"; then
     fail "$KB/index.md" "out of date: run ./scripts/knowledge.sh index"
   fi
 
   echo
   if ((problems > 0)); then
-    echo "$problems problem(s) in $KB. Update the concepts to match the code (see $KB/index.md)."
+    echo "$problems problem(s). Update the concept, skill or AGENTS.md named on each line to match the code (see $KB/index.md)."
     return 1
   fi
   echo "✓ $KB: $(concepts | wc -l | tr -d ' ') concepts match the repository."
@@ -240,7 +255,14 @@ relative() {
   local dir
   case "$path" in
     /*) ;;
-    *) path="$CALLER_DIR/$path" ;;
+    *)
+      # A path from the repo root, given from a subdirectory, means the root.
+      if [ ! -e "$CALLER_DIR/${path%%/*}" ] && [ -e "$ROOT/${path%%/*}" ]; then
+        path="$ROOT/$path"
+      else
+        path="$CALLER_DIR/$path"
+      fi
+      ;;
   esac
   # Resolve symlinks in the part that exists, e.g. /tmp → /private/tmp on macOS.
   dir=$path
@@ -267,7 +289,7 @@ relative() {
 # for <path>...: the concepts whose `governs` globs match any of the paths. A
 # path can be a file that doesn't exist yet, or a directory (every file in it).
 for_paths() {
-  local arg path file glob kind value pairs paths resolved=0
+  local arg path file glob kind value pairs paths resolved=0 with_sources=0
   pairs=$(mktemp)
   paths=$(mktemp)
   # Expanded now: `pairs` and `paths` are local and gone by the time EXIT fires.
@@ -280,6 +302,10 @@ for_paths() {
   done < <(concepts) >"$pairs"
 
   for arg in "$@"; do
+    if [ "$arg" = --sources ]; then
+      with_sources=1
+      continue
+    fi
     if ! path=$(relative "$arg"); then
       echo "✗ $arg is outside the repository." >&2
       continue
@@ -329,7 +355,7 @@ for_paths() {
       if [ "$kind" = concept ]; then
         echo "$value  ($(field "$value" agents_md)): $(field "$value" description)"
         # Where the knowledge lives in the code: the concept's repo sources.
-        while IFS=$'\t' read -r _ res sym; do
+        ((with_sources)) && while IFS=$'\t' read -r _ res sym; do
           case "$res" in http://* | https://* | /*) continue ;; esac
           echo "    $(relative "$ROOT/$(dirname "$value")/$res")${sym:+  ($sym)}"
         done < <(sources "$value")
@@ -340,7 +366,7 @@ for_paths() {
 
   rm -f "$pairs" "$paths"
   echo
-  echo "Read the concepts listed before editing. If your change makes one wrong, update it in the same PR."
+  echo "Before editing, read \"Rules for agents\" in each (\"Steps\" in a playbook). --sources lists where each lives in the code. If your change makes a concept wrong, update it in the same PR."
 }
 
 case "${1:-}" in
@@ -349,13 +375,21 @@ case "${1:-}" in
   for)
     shift
     if (($# == 0)); then
-      echo "Usage: $0 for <path>..." >&2
+      echo "Usage: $0 for [--sources] <path>..." >&2
+      exit 2
+    fi
+    paths=0
+    for arg in "$@"; do
+      [ "$arg" = --sources ] || paths=$((paths + 1))
+    done
+    if ((paths == 0)); then
+      echo "Usage: $0 for [--sources] <path>..." >&2
       exit 2
     fi
     for_paths "$@"
     ;;
   *)
-    echo "Usage: $0 check | index | for <path>..." >&2
+    echo "Usage: $0 check | index | for [--sources] <path>..." >&2
     exit 2
     ;;
 esac
