@@ -476,6 +476,8 @@ interface class Query<T> {
       }
     }
 
+    _reverseIfLimitToLast(docs);
+
     // Create snapshot only if we have documents (analyze: true)
     if (docs.isNotEmpty || ((options?.analyze ?? false) && readTime != null)) {
       snapshot = QuerySnapshot<T>._(
@@ -542,6 +544,8 @@ interface class Query<T> {
           snapshots.add(finalDoc.build() as QueryDocumentSnapshot<T>);
         }
 
+        _reverseIfLimitToLast(snapshots);
+
         return QuerySnapshot<T>._(
           query: this,
           readTime: readTime,
@@ -551,6 +555,13 @@ interface class Query<T> {
       hasPartialProgress: () => snapshots.isNotEmpty,
       allowRetry: transactionId == null,
     );
+  }
+
+  /// limitToLast queries are sent with flipped orderBy directions, so the
+  /// backend returns results in reverse. Flip them back to the query's order.
+  void _reverseIfLimitToLast(List<QueryDocumentSnapshot<T>> docs) {
+    if (_queryOptions.limitType != LimitType.last) return;
+    docs.setAll(0, docs.reversed.toList());
   }
 
   String _buildProtoParentPath() {
