@@ -595,8 +595,20 @@ final messaging = app.messaging();
 
 #### send
 
+Use `FidMessage` to target a device by its non-empty Firebase Installation ID
+(FID), including when migrating from registration tokens to FIDs.
+
 ```dart
-// Send to a specific device
+// Send to a Firebase installation
+await messaging.send(
+  FidMessage(
+    fid: '<firebase-installation-id>',
+    notification: Notification(title: 'Hello', body: 'World!'),
+    data: {'key': 'value'},
+  ),
+);
+
+// Send to a specific registration token
 await messaging.send(
   TokenMessage(
     token: '<device-token>',

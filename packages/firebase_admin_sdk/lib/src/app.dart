@@ -22,7 +22,7 @@ import 'package:google_cloud/constants.dart' as google_cloud;
 import 'package:google_cloud/google_cloud.dart' as google_cloud;
 import 'package:google_cloud_firestore/google_cloud_firestore.dart'
     as google_cloud_firestore;
-import 'package:googleapis/identitytoolkit/v3.dart' as auth3;
+import 'package:googleapis/identitytoolkit/v1.dart' as auth1;
 import 'package:googleapis_auth/auth_io.dart' as googleapis_auth;
 import 'package:http/http.dart';
 import 'package:meta/meta.dart';
