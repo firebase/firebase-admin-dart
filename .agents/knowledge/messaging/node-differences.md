@@ -1,7 +1,7 @@
 ---
 type: Divergence
-title: "Messaging: no FID targets, topic management on FCM v1"
-description: "Dart has no FID message types and no `enableLegacyHttpTransport`, and topic subscription takes only a `List<String>`; as in Node, `subscribeToTopic` and `unsubscribeFromTopic` use the FCM v1 topic-subscription API with per-token requests, while the old IID-based calls remain as `@Deprecated` `*Legacy` methods."
+title: "Messaging: FID multicast gap, topic management on FCM v1"
+description: "Dart supports single FID targets but not FID multicast or `enableLegacyHttpTransport`, and topic subscription takes only a `List<String>`; as in Node, topic management uses the FCM v1 API with per-token requests, while the old IID-based calls remain as `@Deprecated` `*Legacy` methods."
 tags: [messaging, fcm, node-parity]
 agents_md: when-touching
 governs:
@@ -10,7 +10,7 @@ sources:
   - id: dart-message
     resource: ../../../packages/firebase_admin_sdk/lib/src/messaging/messaging_api.dart
     symbol: sealed class Message
-    title: "Dart's sealed `Message`: token, topic and condition targets"
+    title: "Dart's sealed `Message` targets"
   - id: node-fid-message
     resource: https://github.com/firebase/firebase-admin-node/blob/main/src/messaging/messaging-api.ts
     symbol: FidMessage
@@ -50,7 +50,7 @@ sources:
 
 # Node.js
 
-## No FID targets
+## Messaging targets and legacy transport
 
 - `Message = FidMessage | TokenMessage | ...`, and `FidMulticastMessage`. The token form is deprecated in favour of FIDs.[^node-fid-message]
 - `enableLegacyHttpTransport()`.[^node-legacy-transport]
@@ -58,13 +58,13 @@ sources:
 
 # Dart
 
-## No FID targets
+## Messaging targets and legacy transport
 
-- `Message` has token, topic and condition targets. There are no FID message types.
+- `Message` includes an FID target, but there is no FID multicast message type.
 - There is no `enableLegacyHttpTransport`.
 - `subscribeToTopic` and `unsubscribeFromTopic` take a `List<String>` only.
 
-Missing FID support is a gap. Taking a `List<String>` instead of Node's `string | string[]` union is a Dart idiom.
+Missing FID multicast support is a gap. Taking a `List<String>` instead of Node's `string | string[]` union is a Dart idiom.
 
 ## Topic management on FCM v1
 
@@ -74,9 +74,9 @@ Node has the same design: per-token v1 requests with a concurrency limit of 100,
 
 # Why
 
-## No FID targets
+## Messaging targets and legacy transport
 
-The reason isn't recorded. Ask a maintainer before changing it. Whether FID-based messaging is planned, and whether APIs Node has deprecated (such as `enableLegacyHttpTransport`) should be ported at all, are open questions for the maintainers.
+The reason for the remaining gaps isn't recorded. Whether APIs Node has deprecated (such as `enableLegacyHttpTransport`) should be ported at all is an open question for the maintainers.
 
 ## Topic management on FCM v1
 
@@ -88,7 +88,7 @@ When the `*Legacy` methods can be removed isn't recorded. Ask a maintainer.
 
 # Rules for agents
 
-- **Ask first:** before adding FID message types or `enableLegacyHttpTransport`, or changing the topic-subscription parameter type.
+- **Ask first:** before adding `enableLegacyHttpTransport` or changing the topic-subscription parameter type.
 - **Must not:** remove the `*Legacy` methods without a deprecation cycle.
 - **Must not:** report not-registered tokens as successes.
 

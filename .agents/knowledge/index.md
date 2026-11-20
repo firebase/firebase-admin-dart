@@ -82,7 +82,7 @@ okf_version: "0.2"
 
 # Messaging
 
-* [Messaging: no FID targets, topic management on FCM v1](messaging/node-differences.md) - Dart has no FID message types and no `enableLegacyHttpTransport`, and topic subscription takes only a `List<String>`; as in Node, `subscribeToTopic` and `unsubscribeFromTopic` use the FCM v1 topic-subscription API with per-token requests, while the old IID-based calls remain as `@Deprecated` `*Legacy` methods.
+* [Messaging: FID multicast gap, topic management on FCM v1](messaging/node-differences.md) - Dart supports single FID targets but not FID multicast or `enableLegacyHttpTransport`, and topic subscription takes only a `List<String>`; as in Node, topic management uses the FCM v1 API with per-token requests, while the old IID-based calls remain as `@Deprecated` `*Legacy` methods.
 
 # Playbooks
 

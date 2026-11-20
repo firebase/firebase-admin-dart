@@ -17,10 +17,10 @@ dependencies:
   google_cloud: '>=0.4.0 <0.6.0'
   google_cloud_firestore: '>=0.5.4 <0.7.0'
   google_cloud_storage: '>=0.6.0 <0.8.0'
-  googleapis: '>=16.0.0 <18.0.0'
+  googleapis: '>=17.0.0 <20.0.0'
   googleapis_auth: ^2.3.3
   http: ^1.6.0
-  http2: ^3.1.0
+  http2: ^3.2.0
   http_parser: ^4.1.2
   intl: ^0.20.0
   meta: ^1.17.0
