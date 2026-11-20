@@ -72,6 +72,20 @@ class ExponentialBackoff {
       throw Exception('A backoff operation is already in progress.');
     }
 
+    final delay = nextDelay();
+
+    _awaitingBackoffCompletion = true;
+    await Future<void>.delayed(delay);
+    _awaitingBackoffCompletion = false;
+  }
+
+  /// Returns the delay to wait before the next attempt, and increases the
+  /// delay for any subsequent attempts, as [backoffAndWait] does without
+  /// waiting.
+  ///
+  /// For callers that wait on a timer of their own, so that the wait can be
+  /// cancelled. Throws once the retries are exhausted.
+  Duration nextDelay() {
     if (_retryCount > maxRetryAttempts) {
       throw Exception('Exceeded maximum number of retries allowed.');
     }
@@ -82,23 +96,23 @@ class ExponentialBackoff {
     _currentBaseMs = _currentBaseMs.clamp(initialDelayMs, maxDelayMs);
     _retryCount += 1;
 
-    _awaitingBackoffCompletion = true;
-    await Future<void>.delayed(Duration(milliseconds: delayWithJitterMs));
-    _awaitingBackoffCompletion = false;
+    return Duration(milliseconds: delayWithJitterMs);
   }
 
   /// Resets the backoff delay and retry count.
   ///
-  /// The very next [backoffAndWait] will have no delay. If it is called again
-  /// (i.e. due to an error), [initialDelayMs] (plus jitter) will be used, and
-  /// subsequent ones will increase according to the [backoffFactor].
+  /// The very next [backoffAndWait] or [nextDelay] will have no delay. If
+  /// either is called again (i.e. due to an error), [initialDelayMs] (plus
+  /// jitter) will be used, and subsequent ones will increase according to the
+  /// [backoffFactor].
   void reset() {
     _retryCount = 0;
     _currentBaseMs = 0;
   }
 
   /// Resets the backoff delay to the maximum delay (e.g. for use after a
-  /// RESOURCE_EXHAUSTED error).
+  /// RESOURCE_EXHAUSTED error), so the next [backoffAndWait] or [nextDelay]
+  /// waits [maxDelayMs] (plus jitter).
   void resetToMax() {
     _currentBaseMs = maxDelayMs;
   }
