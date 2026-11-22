@@ -217,49 +217,45 @@ void main() {
       },
     );
 
-    test(
-      'publishTemplate(force: true) bypasses ETag validation',
-      () async {
-        // 1. Build a candidate from the current active template, but stamp
-        //    a deliberately stale ETag to force the version-mismatch path.
-        final current = await rc.getTemplate();
-        final stamp = DateTime.now().toUtc().toIso8601String();
-        final cleanCurrent = Map<String, RemoteConfigParameter>.from(
-          current.parameters,
-        )..remove('dart_admin_sdk_e2e_marker');
-        final staleCandidate = RemoteConfigTemplate(
-          // Stale: not the server's actual current ETag.
-          etag: 'etag-deliberately-stale',
-          conditions: current.conditions,
-          parameters: <String, RemoteConfigParameter>{
-            ...cleanCurrent,
-            'dart_admin_sdk_e2e_marker': RemoteConfigParameter(
-              defaultValue: ExplicitParameterValue(value: 'force-$stamp'),
-              description: 'e2e force-publish $stamp',
-              valueType: ParameterValueType.string,
-            ),
-          },
-          parameterGroups: current.parameterGroups,
-          version: const Version(description: 'dart_admin_sdk e2e force'),
-        );
+    test('publishTemplate(force: true) bypasses ETag validation', () async {
+      // 1. Build a candidate from the current active template, but stamp
+      //    a deliberately stale ETag to force the version-mismatch path.
+      final current = await rc.getTemplate();
+      final stamp = DateTime.now().toUtc().toIso8601String();
+      final cleanCurrent = Map<String, RemoteConfigParameter>.from(
+        current.parameters,
+      )..remove('dart_admin_sdk_e2e_marker');
+      final staleCandidate = RemoteConfigTemplate(
+        // Stale: not the server's actual current ETag.
+        etag: 'etag-deliberately-stale',
+        conditions: current.conditions,
+        parameters: <String, RemoteConfigParameter>{
+          ...cleanCurrent,
+          'dart_admin_sdk_e2e_marker': RemoteConfigParameter(
+            defaultValue: ExplicitParameterValue(value: 'force-$stamp'),
+            description: 'e2e force-publish $stamp',
+            valueType: ParameterValueType.string,
+          ),
+        },
+        parameterGroups: current.parameterGroups,
+        version: const Version(description: 'dart_admin_sdk e2e force'),
+      );
 
-        // 2. Without force, the server rejects the stale ETag.
-        restoreBaselineOnTearDown();
-        await expectLater(
-          rc.publishTemplate(staleCandidate),
-          throwsA(isA<FirebaseRemoteConfigException>()),
-        );
+      // 2. Without force, the server rejects the stale ETag.
+      restoreBaselineOnTearDown();
+      await expectLater(
+        rc.publishTemplate(staleCandidate),
+        throwsA(isA<FirebaseRemoteConfigException>()),
+      );
 
-        // 3. With force=true, the SDK sends `If-Match: *` and the publish
-        //    succeeds despite the stale ETag in the candidate.
-        final published = await rc.publishTemplate(staleCandidate, force: true);
-        expect(
-          published.parameters.containsKey('dart_admin_sdk_e2e_marker'),
-          isTrue,
-        );
-      },
-      timeout: const Timeout(Duration(seconds: 60)),
-    );
+      // 3. With force=true, the SDK sends `If-Match: *` and the publish
+      //    succeeds despite the stale ETag in the candidate.
+      final published = await rc.publishTemplate(staleCandidate, force: true);
+      expect(
+        published.parameters.containsKey('dart_admin_sdk_e2e_marker'),
+        isTrue,
+      );
+    }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('getServerTemplate + evaluate produces a ServerConfig', () async {
       // Server-side templates are a separate resource and can only be
