@@ -15,29 +15,23 @@
 // Firebase Remote Config integration tests.
 //
 // SAFETY: Remote Config has no emulator, so these tests hit the real API.
-// They run a publish/rollback cycle against the project identified by the
-// `RC_TEST_PROJECT_ID` env var. The rollback at the end of the suite
-// restores the project's prior template version, so the net change to the
-// project is zero on a successful run.
+// They run a publish/rollback cycle against the canonical [projectId]. Each
+// test that publishes registers a teardown that rolls back to the template
+// version captured at the start, whether or not the test passed.
 //
-// Local: `gcloud beta auth application-default login`,
-//        `export RC_TEST_PROJECT_ID=<your-project>`, and
-//        `RUN_PROD_TESTS=true dart test test/integration/remote_config/`.
-// CI:    runs in the `test-wif` GitHub Actions job, which authenticates
-//        via Workload Identity Federation; the bound service account must
-//        have `roles/firebaseremoteconfig.admin` on the project, and the
-//        project ID must be supplied via the `RC_TEST_PROJECT_ID` env var
-//        (e.g. via a workflow-level `env:` block backed by a secret).
-
-import 'dart:io';
+// Tagged `prod`: gated out of the default emulator suite (see
+// `dart_test.yaml` and `scripts/coverage.sh`). Run locally with
+// `gcloud beta auth application-default login` then
+// `dart test test/integration/remote_config -P prod`. The bound
+// credential must have `roles/firebaseremoteconfig.admin` and
+// `roles/firebaseanalytics.viewer` (the latter is needed by the rollback
+// endpoint, which validates against Google Analytics).
 
 import 'package:firebase_admin_sdk/firebase_admin_sdk.dart';
 import 'package:firebase_admin_sdk/remote_config.dart';
 import 'package:test/test.dart';
 
 import '../../fixtures/helpers.dart';
-
-final _rcProjectId = Platform.environment['RC_TEST_PROJECT_ID'];
 
 const _validConditions = [
   RemoteConfigCondition(
@@ -61,16 +55,6 @@ final _validParameter = RemoteConfigParameter(
 );
 
 void main() {
-  // Three conditions must hold for the suite to run:
-  //   - RC_TEST_PROJECT_ID is set (target project for the round-trip).
-  //   - Credentials are available (CI WIF sets GOOGLE_APPLICATION_CREDENTIALS;
-  //     local opt-in via RUN_PROD_TESTS=true).
-  final projectId = _rcProjectId;
-  final shouldRun = projectId != null && (hasWifEnv || hasProdEnv);
-  final skipReason = shouldRun
-      ? null
-      : 'Requires RC_TEST_PROJECT_ID plus GOOGLE_APPLICATION_CREDENTIALS or RUN_PROD_TESTS=true';
-
   group('RemoteConfig (production)', () {
     late FirebaseApp app;
     late RemoteConfig rc;
@@ -79,7 +63,7 @@ void main() {
     setUpAll(() async {
       app = FirebaseApp.initializeApp(
         name: 'rc-e2e-${DateTime.now().microsecondsSinceEpoch}',
-        options: AppOptions(projectId: projectId),
+        options: const AppOptions(projectId: projectId),
       );
       rc = app.remoteConfig();
       baseline = await rc.getTemplate();
@@ -88,6 +72,18 @@ void main() {
     tearDownAll(() async {
       await app.close();
     });
+
+    // Registers a rollback to the baseline captured in `setUpAll`. Call it
+    // before publishing, so the live project is restored even when a later
+    // assertion fails. The bound service account needs
+    // `roles/firebaseanalytics.viewer` on the linked GA property in addition
+    // to `roles/firebaseremoteconfig.admin`, since the rollback endpoint
+    // validates against Google Analytics data.
+    void restoreBaselineOnTearDown() {
+      final priorVersion = baseline.version?.versionNumber;
+      if (priorVersion == null) return;
+      addTearDown(() => rc.rollback(priorVersion));
+    }
 
     test('getTemplate returns a template with a non-empty etag', () {
       expect(baseline.etag, isNotEmpty);
@@ -163,6 +159,7 @@ void main() {
           version: Version(description: 'dart_admin_sdk e2e $stamp'),
         );
 
+        restoreBaselineOnTearDown();
         final published = await rc.publishTemplate(candidate);
         expect(published.etag, isNot(equals(baseline.etag)));
         expect(
@@ -177,11 +174,7 @@ void main() {
         expect((marker!.defaultValue! as ExplicitParameterValue).value, stamp);
 
         // 3. Roll back to the prior version; project state should match
-        //    the baseline we captured in setUpAll. The bound service
-        //    account needs `roles/firebaseanalytics.viewer` on the
-        //    linked GA property in addition to
-        //    `roles/firebaseremoteconfig.admin`, since RC's rollback
-        //    endpoint validates against Google Analytics data.
+        //    the baseline we captured in setUpAll.
         final priorVersion = baseline.version?.versionNumber;
         if (priorVersion != null) {
           final rolledBack = await rc.rollback(priorVersion);
@@ -251,6 +244,7 @@ void main() {
         );
 
         // 2. Without force, the server rejects the stale ETag.
+        restoreBaselineOnTearDown();
         await expectLater(
           rc.publishTemplate(staleCandidate),
           throwsA(isA<FirebaseRemoteConfigException>()),
@@ -263,13 +257,6 @@ void main() {
           published.parameters.containsKey('dart_admin_sdk_e2e_marker'),
           isTrue,
         );
-
-        // 4. Cleanup: roll back to baseline so subsequent tests see the
-        //    original state.
-        final priorVersion = baseline.version?.versionNumber;
-        if (priorVersion != null) {
-          await rc.rollback(priorVersion);
-        }
       },
       timeout: const Timeout(Duration(seconds: 60)),
     );
@@ -315,5 +302,5 @@ void main() {
         ValueSource.valueStatic,
       );
     });
-  }, skip: skipReason);
+  }, tags: 'prod');
 }

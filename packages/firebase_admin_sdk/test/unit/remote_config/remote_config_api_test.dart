@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:convert';
+
 import 'package:firebase_admin_sdk/remote_config.dart';
 import 'package:test/test.dart';
 
@@ -124,6 +126,26 @@ void main() {
           ),
         ),
       );
+    });
+
+    test('createTemplateFromJson rejects JSON of the wrong shape', () {
+      for (final json in [
+        '{"etag": "e", "parameters": {"flag": "not-an-object"}}',
+        '{"etag": "e", "conditions": ["not-an-object"]}',
+        '{"etag": 7}',
+      ]) {
+        expect(
+          () => rc.createTemplateFromJson(json),
+          throwsA(
+            isA<FirebaseRemoteConfigException>().having(
+              (e) => e.errorCode,
+              'errorCode',
+              RemoteConfigErrorCode.invalidArgument,
+            ),
+          ),
+          reason: json,
+        );
+      }
     });
 
     test('createTemplateFromJson throws on empty input', () {
@@ -420,6 +442,175 @@ void main() {
           ),
         ),
       );
+    });
+
+    test('set() rejects JSON of the wrong shape', () {
+      final template = rc.initServerTemplate();
+      for (final json in [
+        '{"etag": "e", "conditions": ["not-an-object"]}',
+        '{"etag": "e", "parameters": {"flag": 1}}',
+        '{"etag": "e", "conditions": [{"name": 3}]}',
+      ]) {
+        expect(
+          () => template.set(json),
+          throwsA(
+            isA<FirebaseRemoteConfigException>().having(
+              (e) => e.errorCode,
+              'errorCode',
+              RemoteConfigErrorCode.invalidArgument,
+            ),
+          ),
+          reason: json,
+        );
+      }
+    });
+
+    test('toJson() encodes to a string that set() accepts', () {
+      const source = <String, Object?>{
+        'etag': 'etag-1',
+        'conditions': [
+          {
+            'name': 'beta',
+            'condition': {
+              'orCondition': {
+                'conditions': [
+                  {
+                    'andCondition': {
+                      'conditions': [
+                        {
+                          'percent': {
+                            'percentOperator': 'BETWEEN',
+                            'seed': 'abc',
+                            'microPercentRange': {
+                              'microPercentLowerBound': 0,
+                              'microPercentUpperBound': 100000000,
+                            },
+                          },
+                        },
+                        {
+                          'customSignal': {
+                            'customSignalOperator': 'STRING_CONTAINS',
+                            'customSignalKey': 'tier',
+                            'targetCustomSignalValues': ['gold'],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+        'parameters': {
+          'flag': {
+            'defaultValue': {'value': 'off'},
+            'conditionalValues': {
+              'beta': {'value': 'on'},
+            },
+          },
+        },
+        'version': {'versionNumber': '4'},
+      };
+      final original = rc.initServerTemplate(template: jsonEncode(source));
+
+      final encoded = jsonEncode(original.toJson().toJson());
+      expect(jsonDecode(encoded), source);
+
+      final restored = rc.initServerTemplate(template: encoded);
+      const context = EvaluationContext(
+        randomizationId: 'user-1',
+        customSignals: {'tier': 'gold'},
+      );
+      expect(restored.evaluate(context).getString('flag'), 'on');
+      expect(restored.evaluate().getString('flag'), 'off');
+    });
+
+    test('out-of-spec conditions in a template evaluate to false', () {
+      final template = rc.initServerTemplate(
+        template: jsonEncode({
+          'etag': 'etag-1',
+          'conditions': [
+            {
+              'name': 'percent-too-large',
+              'condition': {
+                'percent': {
+                  'percentOperator': 'LESS_OR_EQUAL',
+                  'microPercent': 100000001,
+                },
+              },
+            },
+            {
+              'name': 'seed-too-long',
+              'condition': {
+                'percent': {
+                  'percentOperator': 'GREATER_THAN',
+                  'microPercent': 0,
+                  'seed': 'x' * 33,
+                },
+              },
+            },
+            {
+              'name': 'no-targets',
+              'condition': {
+                'customSignal': {
+                  'customSignalOperator': 'STRING_DOES_NOT_CONTAIN',
+                  'customSignalKey': 'tier',
+                  'targetCustomSignalValues': <String>[],
+                },
+              },
+            },
+            {
+              'name': 'too-many-targets',
+              'condition': {
+                'customSignal': {
+                  'customSignalOperator': 'STRING_CONTAINS',
+                  'customSignalKey': 'tier',
+                  'targetCustomSignalValues': List.filled(101, 'gold'),
+                },
+              },
+            },
+            {
+              'name': 'in-spec',
+              'condition': {
+                'customSignal': {
+                  'customSignalOperator': 'STRING_CONTAINS',
+                  'customSignalKey': 'tier',
+                  'targetCustomSignalValues': ['gold'],
+                },
+              },
+            },
+          ],
+          'parameters': {
+            for (final name in [
+              'percent-too-large',
+              'seed-too-long',
+              'no-targets',
+              'too-many-targets',
+              'in-spec',
+            ])
+              name: {
+                'defaultValue': {'value': 'default'},
+                'conditionalValues': {
+                  name: {'value': 'matched'},
+                },
+              },
+          },
+        }),
+      );
+
+      final config = template.evaluate(
+        const EvaluationContext(
+          randomizationId: 'user-1',
+          customSignals: {'tier': 'gold'},
+        ),
+      );
+
+      expect(config.getString('percent-too-large'), 'default');
+      expect(config.getString('seed-too-long'), 'default');
+      expect(config.getString('no-targets'), 'default');
+      expect(config.getString('too-many-targets'), 'default');
+      expect(config.getString('in-spec'), 'matched');
     });
   });
 }

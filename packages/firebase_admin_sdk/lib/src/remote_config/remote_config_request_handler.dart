@@ -46,17 +46,11 @@ class RemoteConfigRequestHandler {
     // The validate-only response returns an etag with a `-0` suffix to indicate
     // success. Restore the original etag so callers can use the template for
     // follow-on operations.
-    if (result.etag == null || result.etag!.isEmpty) {
-      throw FirebaseRemoteConfigException(
-        RemoteConfigErrorCode.invalidArgument,
-        'ETag header missing from validateTemplate response.',
-      );
-    }
-    final parsed = RemoteConfigTemplate.fromJson(<String, Object?>{
+    _requireEtag(result.etag, 'validateTemplate response');
+    return RemoteConfigTemplate.fromJson(<String, Object?>{
       ...result.body,
       'etag': template.etag,
     });
-    return parsed;
   }
 
   Future<RemoteConfigTemplate> publishTemplate(
@@ -95,28 +89,25 @@ class RemoteConfigRequestHandler {
 
   Future<ServerTemplateData> getServerTemplate() async {
     final result = await _httpClient.getServerTemplate();
-    if (result.etag == null || result.etag!.isEmpty) {
-      throw FirebaseRemoteConfigException(
-        RemoteConfigErrorCode.invalidArgument,
-        'ETag header missing from getServerTemplate response.',
-      );
-    }
     return ServerTemplateData.fromJson(<String, Object?>{
       ...result.body,
-      'etag': result.etag,
+      'etag': _requireEtag(result.etag, 'getServerTemplate response'),
     });
   }
 
+  String _requireEtag(String? etag, [String source = 'response']) =>
+      switch (etag) {
+        final e? when e.isNotEmpty => e,
+        _ => throw FirebaseRemoteConfigException(
+          RemoteConfigErrorCode.invalidArgument,
+          'ETag header missing from $source.',
+        ),
+      };
+
   RemoteConfigTemplate _parseTemplate(RemoteConfigHttpResult result) {
-    if (result.etag == null || result.etag!.isEmpty) {
-      throw FirebaseRemoteConfigException(
-        RemoteConfigErrorCode.invalidArgument,
-        'ETag header missing from response.',
-      );
-    }
     return RemoteConfigTemplate.fromJson(<String, Object?>{
       ...result.body,
-      'etag': result.etag,
+      'etag': _requireEtag(result.etag),
     });
   }
 

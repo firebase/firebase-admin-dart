@@ -674,6 +674,10 @@ class NamedCondition {
 
   /// The structured condition tree.
   final OneOfCondition condition;
+
+  Map<String, Object?> toJson() {
+    return <String, Object?>{'name': name, 'condition': condition.toJson()};
+  }
 }
 
 /// Sealed type for the structured server-side condition tree.
@@ -810,23 +814,34 @@ class PercentCondition extends OneOfCondition {
   }) : super._() {
     final microPercent = this.microPercent;
     if (microPercent != null &&
-        (microPercent < 0 || microPercent > 100000000)) {
+        (microPercent < 0 || microPercent > _maxMicroPercent)) {
       throw FirebaseRemoteConfigException(
         RemoteConfigErrorCode.invalidArgument,
-        'microPercent must be in [0, 100000000], got $microPercent.',
+        'microPercent must be in [0, $_maxMicroPercent], got $microPercent.',
       );
     }
-    if (seed != null && seed!.length > 32) {
+    if (seed != null && seed!.length > _maxSeedLength) {
       throw FirebaseRemoteConfigException(
         RemoteConfigErrorCode.invalidArgument,
-        'seed must be 0-32 characters, got ${seed!.length}.',
+        'seed must be 0-$_maxSeedLength characters, got ${seed!.length}.',
       );
     }
   }
 
+  /// Builds a condition without the bounds checks, for values decoded from a
+  /// template. Out-of-spec values evaluate to false.
+  PercentCondition._unchecked({
+    this.percentOperator,
+    this.microPercent,
+    this.seed,
+    this.microPercentRange,
+  }) : super._();
+
+  /// Decodes a condition. Out-of-spec values are kept as they are and
+  /// evaluate to false, so one bad condition does not fail the whole template.
   factory PercentCondition.fromJson(Map<String, Object?> json) {
     final rangeJson = json['microPercentRange'];
-    return PercentCondition(
+    return PercentCondition._unchecked(
       percentOperator: PercentConditionOperator.fromName(
         json['percentOperator'] as String?,
       ),
@@ -837,6 +852,9 @@ class PercentCondition extends OneOfCondition {
           : null,
     );
   }
+
+  static const int _maxMicroPercent = 100000000;
+  static const int _maxSeedLength = 32;
 
   /// Operator to use; null is treated as [PercentConditionOperator.unknown].
   final PercentConditionOperator? percentOperator;
@@ -880,19 +898,32 @@ class CustomSignalCondition extends OneOfCondition {
           'targetCustomSignalValues must contain at least one value.',
         );
       }
-      if (targetCustomSignalValues.length > 100) {
+      if (targetCustomSignalValues.length > _maxTargetValues) {
         throw FirebaseRemoteConfigException(
           RemoteConfigErrorCode.invalidArgument,
-          'targetCustomSignalValues must contain at most 100 values, '
-          'got ${targetCustomSignalValues.length}.',
+          'targetCustomSignalValues must contain at most $_maxTargetValues '
+          'values, got ${targetCustomSignalValues.length}.',
         );
       }
     }
   }
 
+  /// Builds a condition without the bounds checks, for values decoded from a
+  /// template. Out-of-spec values evaluate to false.
+  CustomSignalCondition._unchecked({
+    this.customSignalOperator,
+    this.customSignalKey,
+    List<String>? targetCustomSignalValues,
+  }) : targetCustomSignalValues = targetCustomSignalValues == null
+           ? null
+           : List<String>.unmodifiable(targetCustomSignalValues),
+       super._();
+
+  /// Decodes a condition. Out-of-spec values are kept as they are and
+  /// evaluate to false, so one bad condition does not fail the whole template.
   factory CustomSignalCondition.fromJson(Map<String, Object?> json) {
     final values = json['targetCustomSignalValues'];
-    return CustomSignalCondition(
+    return CustomSignalCondition._unchecked(
       customSignalOperator: CustomSignalOperator.fromName(
         json['customSignalOperator'] as String?,
       ),
@@ -902,6 +933,8 @@ class CustomSignalCondition extends OneOfCondition {
           : null,
     );
   }
+
+  static const int _maxTargetValues = 100;
 
   /// Required. Operator used to compare the actual value against
   /// [targetCustomSignalValues]. Null is treated as
@@ -1072,6 +1105,17 @@ class ServerTemplateData {
 
   /// Optional version metadata.
   final Version? version;
+
+  /// The JSON form of this template, which [ServerTemplate.set] and
+  /// [RemoteConfig.initServerTemplate] accept once encoded as a string.
+  Map<String, Object?> toJson() {
+    return <String, Object?>{
+      'conditions': [for (final c in conditions) c.toJson()],
+      'parameters': _encodeMap(parameters, (p) => p.toJson()),
+      'etag': etag,
+      'version': ?version?.toJson(),
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1326,25 +1370,4 @@ class Value {
 
   /// Returns the source of this value.
   ValueSource getSource() => _source;
-}
-
-/// Options for [RemoteConfig.getServerTemplate].
-class GetServerTemplateOptions {
-  GetServerTemplateOptions({Map<String, Object>? defaultConfig})
-    : defaultConfig = defaultConfig == null
-          ? null
-          : Map<String, Object>.unmodifiable(defaultConfig);
-
-  /// Default config values used by [ServerConfig] for keys not defined in the
-  /// evaluated template. Values must be `String`, `num`, or `bool`.
-  final Map<String, Object>? defaultConfig;
-}
-
-/// Options for [RemoteConfig.initServerTemplate].
-class InitServerTemplateOptions extends GetServerTemplateOptions {
-  InitServerTemplateOptions({super.defaultConfig, this.template});
-
-  /// Optional pre-loaded template — either a [ServerTemplateData] instance or
-  /// a JSON string in [ServerTemplateData] shape.
-  final Object? template;
 }

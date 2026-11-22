@@ -100,7 +100,7 @@ okf_version: "0.2"
 # Scope
 
 * [Server only: no web, no mobile](scope/server-only.md) - Both packages are native, server-side libraries that depend on `dart:io` (and `firebase_admin_sdk` also on `dart:ffi`); web is not supported and the SDK must not be used in mobile apps.
-* [Firebase services Node has and Dart does not](scope/unsupported-services.md) - Eight Firebase products that Node's Admin SDK offers are marked 🔴 "Not supported" in the README, a ninth, Phone Number Verification, is missing without being listed, and none has a recorded permanent out-of-scope decision.
+* [Firebase services Node has and Dart does not](scope/unsupported-services.md) - Seven Firebase products that Node's Admin SDK offers are marked 🔴 "Not supported" in the README, an eighth, Phone Number Verification, is missing without being listed, and none has a recorded permanent out-of-scope decision.
 
 # Storage
 
@@ -109,4 +109,4 @@ okf_version: "0.2"
 # Tests
 
 * [Inject test doubles and use the guarded emulator helpers](tests/helpers-and-injection.md) - Unit tests inject doubles through the `@internal` factories, except that Storage's double is dropped under the Storage emulator and Firestore never sees `AppOptions.httpClient`; emulator tests build on helpers that refuse to run without the emulator and wipe shared state, so they run with `--concurrency=1`.
-* [Test tiers and tags, and the prod and WIF runs](tests/tiers-and-tags.md) - Every feature and fix needs tests, split into unit, emulator, prod and WIF tiers by `dart_test.yaml` tags, never by environment variables; `-P prod` and `-P wif` need real credentials and run only on request, the coverage scripts add `-P prod` whenever `GOOGLE_APPLICATION_CREDENTIALS` is set, and the Pipeline E2E suite is the only prod suite CI runs.
+* [Test tiers and tags, and the prod and WIF runs](tests/tiers-and-tags.md) - Every feature and fix needs tests, split into unit, emulator, prod and WIF tiers by `dart_test.yaml` tags, never by environment variables; `-P prod` and `-P wif` need real credentials and run only on request, the coverage scripts add `-P prod` whenever `GOOGLE_APPLICATION_CREDENTIALS` is set, and the only prod suites CI runs are the Pipeline E2E suite and the Remote Config suite.

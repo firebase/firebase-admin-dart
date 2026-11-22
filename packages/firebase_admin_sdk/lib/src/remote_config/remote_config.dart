@@ -101,22 +101,7 @@ class RemoteConfig implements FirebaseService {
         'JSON string must be a non-empty string.',
       );
     }
-    Object? decoded;
-    try {
-      decoded = jsonDecode(json);
-    } catch (e) {
-      throw FirebaseRemoteConfigException(
-        RemoteConfigErrorCode.invalidArgument,
-        'Failed to parse the JSON string: $json. $e',
-      );
-    }
-    if (decoded is! Map<String, Object?>) {
-      throw FirebaseRemoteConfigException(
-        RemoteConfigErrorCode.invalidArgument,
-        'JSON must decode to an object, got ${decoded.runtimeType}.',
-      );
-    }
-    return RemoteConfigTemplate.fromJson(decoded);
+    return _decodeJsonObject(json, RemoteConfigTemplate.fromJson);
   }
 
   /// Fetches and caches the current active server template, returning a
@@ -194,22 +179,7 @@ class ServerTemplate {
       return;
     }
     if (data is String) {
-      Object? parsed;
-      try {
-        parsed = jsonDecode(data);
-      } catch (e) {
-        throw FirebaseRemoteConfigException(
-          RemoteConfigErrorCode.invalidArgument,
-          'Failed to parse the JSON string: $data. $e',
-        );
-      }
-      if (parsed is! Map<String, Object?>) {
-        throw FirebaseRemoteConfigException(
-          RemoteConfigErrorCode.invalidArgument,
-          'JSON must decode to an object, got ${parsed.runtimeType}.',
-        );
-      }
-      _cache = ServerTemplateData.fromJson(parsed);
+      _cache = _decodeJsonObject(data, ServerTemplateData.fromJson);
       return;
     }
     throw FirebaseRemoteConfigException(
@@ -288,6 +258,9 @@ class ServerTemplate {
 
   /// Returns the cached [ServerTemplateData], or throws if no template has
   /// been loaded.
+  ///
+  /// To persist it, encode [ServerTemplateData.toJson] and pass the string
+  /// back to [set] or [RemoteConfig.initServerTemplate].
   ServerTemplateData toJson() {
     final cache = _cache;
     if (cache == null) {
@@ -298,5 +271,42 @@ class ServerTemplate {
       );
     }
     return cache;
+  }
+}
+
+/// Decodes the JSON object in [json] with [fromJson].
+///
+/// Throws [FirebaseRemoteConfigException] with code `invalid-argument` when
+/// [json] is not valid JSON, is not an object, or has a field of the wrong
+/// type.
+T _decodeJsonObject<T>(
+  String json,
+  T Function(Map<String, Object?> json) fromJson,
+) {
+  final Object? decoded;
+  try {
+    decoded = jsonDecode(json);
+  } on FormatException catch (e) {
+    throw FirebaseRemoteConfigException(
+      RemoteConfigErrorCode.invalidArgument,
+      'Failed to parse the JSON string: $json. $e',
+    );
+  }
+  if (decoded is! Map<String, Object?>) {
+    throw FirebaseRemoteConfigException(
+      RemoteConfigErrorCode.invalidArgument,
+      'JSON must decode to an object, got ${decoded.runtimeType}.',
+    );
+  }
+  try {
+    return fromJson(decoded);
+  } on FirebaseRemoteConfigException {
+    rethrow;
+  } catch (e) {
+    // A field of the wrong type fails a cast inside `fromJson`.
+    throw FirebaseRemoteConfigException(
+      RemoteConfigErrorCode.invalidArgument,
+      'Invalid Remote Config template: $e',
+    );
   }
 }

@@ -248,6 +248,36 @@ void main() {
       },
     );
 
+    test('throws when the response has no ETag header', () async {
+      for (final etag in [null, '']) {
+        when(
+          () => httpClient.publishTemplate(
+            body: any(named: 'body'),
+            etag: 'etag-1',
+            validateOnly: true,
+          ),
+        ).thenAnswer((_) async => (body: _sampleTemplateBody, etag: etag));
+
+        final input = rc.createTemplateFromJson('{"etag":"etag-1"}');
+        await expectLater(
+          rc.validateTemplate(input),
+          throwsA(
+            isA<FirebaseRemoteConfigException>()
+                .having(
+                  (e) => e.errorCode,
+                  'errorCode',
+                  RemoteConfigErrorCode.invalidArgument,
+                )
+                .having(
+                  (e) => e.message,
+                  'message',
+                  contains('validateTemplate response'),
+                ),
+          ),
+        );
+      }
+    });
+
     test('passes validateOnly: true', () async {
       when(
         () => httpClient.publishTemplate(
@@ -362,6 +392,31 @@ void main() {
       // into the cache and the parameter resolved via its default value.
       final config = template.evaluate();
       expect(config.getString('flag'), 'on');
+    });
+
+    test('throws when the response has no ETag header', () async {
+      for (final etag in [null, '']) {
+        when(() => httpClient.getServerTemplate()).thenAnswer(
+          (_) async => (body: _sampleServerTemplateBody, etag: etag),
+        );
+
+        await expectLater(
+          rc.getServerTemplate(),
+          throwsA(
+            isA<FirebaseRemoteConfigException>()
+                .having(
+                  (e) => e.errorCode,
+                  'errorCode',
+                  RemoteConfigErrorCode.invalidArgument,
+                )
+                .having(
+                  (e) => e.message,
+                  'message',
+                  contains('getServerTemplate response'),
+                ),
+          ),
+        );
+      }
     });
 
     test('initServerTemplate without a template throws on evaluate', () {

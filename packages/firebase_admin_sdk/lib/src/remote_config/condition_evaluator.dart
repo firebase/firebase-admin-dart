@@ -89,6 +89,13 @@ class ConditionEvaluator {
     final lower = cond.microPercentRange?.microPercentLowerBound ?? 0;
 
     final seed = cond.seed;
+    // Out-of-spec values can only come from a decoded template; they match
+    // nothing rather than failing the whole evaluation.
+    if (microPercent < 0 ||
+        microPercent > PercentCondition._maxMicroPercent ||
+        (seed != null && seed.length > PercentCondition._maxSeedLength)) {
+      return false;
+    }
     final seedPrefix = (seed != null && seed.isNotEmpty) ? '$seed.' : '';
     final stringToHash = '$seedPrefix$randomizationId';
 
@@ -114,12 +121,10 @@ class ConditionEvaluator {
   ) => _hashSeededRandomizationId(seededRandomizationId);
 
   static BigInt _hashSeededRandomizationId(String input) {
-    final bytes = sha256.convert(utf8.encode(input)).bytes;
-    final hex = StringBuffer();
-    for (final b in bytes) {
-      hex.write(b.toRadixString(16).padLeft(2, '0'));
-    }
-    return BigInt.parse(hex.toString(), radix: 16);
+    return sha256
+        .convert(utf8.encode(input))
+        .bytes
+        .fold(BigInt.zero, (acc, b) => (acc << 8) | BigInt.from(b));
   }
 
   bool _evaluateCustomSignal(
@@ -134,7 +139,8 @@ class ConditionEvaluator {
         op == CustomSignalOperator.unknown ||
         key == null ||
         targets == null ||
-        targets.isEmpty) {
+        targets.isEmpty ||
+        targets.length > CustomSignalCondition._maxTargetValues) {
       return false;
     }
 
@@ -160,7 +166,7 @@ class ConditionEvaluator {
       CustomSignalOperator.stringContainsRegex => _compareStrings(
         targets,
         actual,
-        (target, actualString) => RegExp(target).hasMatch(actualString),
+        _regexMatches,
       ),
       CustomSignalOperator.numericLessThan => _compareNumbers(
         actual,
@@ -234,6 +240,16 @@ bool _compareStrings(
 ) {
   final actualString = actualValue.toString();
   return targets.any((target) => predicate(target, actualString));
+}
+
+/// Whether [actual] contains a match of the pattern [target]. A pattern that
+/// does not compile matches nothing.
+bool _regexMatches(String target, String actual) {
+  try {
+    return RegExp(target).hasMatch(actual);
+  } on FormatException {
+    return false;
+  }
 }
 
 bool _compareNumbers(

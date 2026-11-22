@@ -105,26 +105,17 @@ class FirebaseRemoteConfigException extends FirebaseAdminException
   String toString() => 'FirebaseRemoteConfigException: $code: $message';
 }
 
-String? _serverErrorCode(Object? response) {
-  if (response is! Map || !response.containsKey('error')) return null;
-  final error = response['error'];
-  if (error is String) return error;
-  if (error is Map) {
-    if (error['status'] is String) return error['status'] as String;
-    if (error['code'] is String) return error['code'] as String;
-  }
-  return null;
-}
+String? _serverErrorCode(Object? response) => switch (response) {
+  {'error': final String code} => code,
+  {'error': {'status': final String status}} => status,
+  {'error': {'code': final String code}} => code,
+  _ => null,
+};
 
-String? _serverErrorMessage(Object? response) {
-  if (response is Map) {
-    final error = response['error'];
-    if (error is Map && error['message'] is String) {
-      return error['message'] as String;
-    }
-  }
-  return null;
-}
+String? _serverErrorMessage(Object? response) => switch (response) {
+  {'error': {'message': final String message}} => message,
+  _ => null,
+};
 
 /// Wraps the body of an async function so any thrown exception is rethrown as
 /// a [FirebaseRemoteConfigException] when applicable.

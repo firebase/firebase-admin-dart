@@ -1,5 +1,6 @@
 ## 0.5.7-wip
 
+- Added Remote Config through `app.remoteConfig()`: read, validate, publish and roll back templates, list versions, and fetch a server template and evaluate it in process with `ServerTemplate.evaluate`.
 - Require `http2: ^3.2.0`, whose `Http2Client` uses 4 MiB stream and 16 MiB connection receive windows instead of 64 KiB, so concurrent requests over the pooled `FirebaseApp.client` connection are no longer throttled to 64 KiB per round trip.
 - Add FidMessage to support sending messages via Firebase Installation ID (FID). (thanks to @jt274)
 - Require `googleapis: '>=17.0.0 <20.0.0'`. Version 17.0.0 adds the FCM `fid` field, and 18.0.0 and 19.0.0 are now supported.
@@ -45,7 +46,6 @@
 
 ## 0.5.2
 
-- Add Remote Config support: template management and server-side template evaluation.
 - Remove dependency on `package:equatable`.
 - Make `Query`, `CollectionReference`, `DocumentReference`, and `CollectionGroup` mockable.
 - `Credential.createClient(List<String> scopes)` — create an authenticated `AuthClient` directly

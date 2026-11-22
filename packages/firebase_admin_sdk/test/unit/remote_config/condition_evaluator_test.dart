@@ -357,6 +357,27 @@ void main() {
           isFalse,
         );
       });
+
+      test('STRING_CONTAINS_REGEX treats an invalid pattern as no match', () {
+        final cond = CustomSignalCondition(
+          customSignalOperator: CustomSignalOperator.stringContainsRegex,
+          customSignalKey: 'email',
+          targetCustomSignalValues: const ['(unclosed', r'@example\.com$'],
+        );
+        expect(
+          evaluator.evaluateConditions([
+            _named('c', cond),
+          ], ctxWith('email', '(unclosed'))['c'],
+          isFalse,
+        );
+        // A valid pattern after the invalid one still matches.
+        expect(
+          evaluator.evaluateConditions([
+            _named('c', cond),
+          ], ctxWith('email', 'alice@example.com'))['c'],
+          isTrue,
+        );
+      });
     });
 
     group('CustomSignalCondition - numeric operators', () {
