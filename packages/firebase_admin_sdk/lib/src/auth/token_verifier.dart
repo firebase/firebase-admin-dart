@@ -70,6 +70,7 @@ class FirebaseTokenVerifier {
     required this.issuer,
     required this.tokenInfo,
     required this.app,
+    http.Client? httpClient,
   }) : _shortNameArticle =
            RegExp(
              '[aeiou]',
@@ -79,6 +80,7 @@ class FirebaseTokenVerifier {
            : 'a',
        _signatureVerifier = PublicKeySignatureVerifier.withCertificateUrl(
          clientCertUrl,
+         httpClient: httpClient,
        );
 
   final FirebaseApp app;

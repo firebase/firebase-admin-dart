@@ -316,12 +316,21 @@ class FieldPath extends _Path<FieldPath> {
   /// Returns the number of segments of this field path.
   int get _length => segments.length;
 
+  /// Segments that are sent as-is; any other segment is backtick-quoted.
+  static final _simpleSegment = RegExp(r'^[_a-zA-Z][_a-zA-Z0-9]*$');
+
+  /// The canonical string form of this path, as the backend expects it.
+  ///
+  /// Segments are joined with dots. A segment that is not a simple
+  /// identifier (letters, digits and underscores, not starting with a digit)
+  /// is wrapped in backticks, with backslashes and backticks inside it
+  /// escaped by a backslash: `FieldPath(['a.b', 'c-d'])` is `` `a.b`.`c-d` ``.
+  /// Matches the Node SDK's `FieldPath.formattedName`.
   String get _formattedName {
-    final regex = RegExp(r'^[_a-zA-Z][_a-zA-Z0-9]*$');
     return segments
         .map((e) {
-          if (regex.hasMatch(e)) return e;
-          return '`${e.replaceAll(r'\', r'\\').replaceAll('`', r'\')}`';
+          if (_simpleSegment.hasMatch(e)) return e;
+          return '`${e.replaceAll(r'\', r'\\').replaceAll('`', r'\`')}`';
         })
         .join('.');
   }

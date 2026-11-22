@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// ignore_for_file: unused_import
-
 import 'package:firebase_admin_sdk/firebase_admin_sdk.dart';
 
 import 'package:firebase_admin_sdk_example/app_check_example.dart';
@@ -25,40 +23,30 @@ import 'package:firebase_admin_sdk_example/remote_config_example.dart';
 import 'package:firebase_admin_sdk_example/security_rules_example.dart';
 import 'package:firebase_admin_sdk_example/storage_example.dart';
 
+// Toggle examples on/off here instead of commenting/uncommenting calls below.
+const _runFunctions = false;
+const _runAuth = false;
+const _runFirestore = true;
+const _runStorage = false;
+const _runMessaging = false; // requires a valid FCM token
+const _runAppCheck = false; // requires a real project and credentials
+const _runSecurityRules = false; // requires a real project and credentials
+const _runRemoteConfig = false; // requires a real project and credentials
+
 // To run this example with emulators:
 // Run `dart run bin/run_with_emulator.dart` from the `example` directory.
 Future<void> main() async {
   final admin = FirebaseApp.initializeApp();
 
   try {
-    await functionsExample(admin);
-
-    // Uncomment to run auth example
-    // await authExample(admin);
-
-    // Uncomment to run project config example
-    // await projectConfigExample(admin);
-
-    // Uncomment to run the firestore example
-    // await firestoreExample(admin);
-
-    // Uncomment to run storage example
-    // await storageExample(admin);
-
-    // Uncomment to run tenant example (requires Identity Platform upgrade)
-    // await tenantExample(admin);
-
-    // Uncomment to run messaging example (requires valid fcm token)
-    // await messagingExample(admin);
-
-    // Uncomment to run app check example (requires a real project and credentials)
-    // await appCheckExample(admin);
-
-    // Uncomment to run security rules example (requires a real project and credentials)
-    // await securityRulesExample(admin);
-
-    // Uncomment to run remote config example (requires a real project and credentials)
-    // await remoteConfigExample(admin);
+    if (_runFunctions) await functionsExample(admin);
+    if (_runAuth) await authExample(admin);
+    if (_runFirestore) await firestoreExample(admin);
+    if (_runStorage) await storageExample(admin);
+    if (_runMessaging) await messagingExample(admin);
+    if (_runAppCheck) await appCheckExample(admin);
+    if (_runSecurityRules) await securityRulesExample(admin);
+    if (_runRemoteConfig) await remoteConfigExample(admin);
   } finally {
     await admin.close();
   }

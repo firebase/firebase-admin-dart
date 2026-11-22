@@ -1,4 +1,49 @@
-## 0.5.2-wip
+## 0.5.7-wip
+
+- Require `http2: ^3.2.0`, whose `Http2Client` uses 4 MiB stream and 16 MiB connection receive windows instead of 64 KiB, so concurrent requests over the pooled `FirebaseApp.client` connection are no longer throttled to 64 KiB per round trip.
+- Add FidMessage to support sending messages via Firebase Installation ID (FID). (thanks to @jt274)
+- Require `googleapis: '>=17.0.0 <20.0.0'`. Version 17.0.0 adds the FCM `fid` field, and 18.0.0 and 19.0.0 are now supported.
+- Fixed `updateUser` deleting the user's display name, photo URL and phone number whenever the `UpdateRequest` left them out, for example `UpdateRequest(disabled: true)`. Fields you leave out are now unchanged, and setting one to `null` still deletes it.
+- Fixed linking a provider with `UpdateRequest.providerToLink`. Federated providers such as `google.com` were rejected as invalid, and the `email` and `phone` providers threw. `UpdateRequest.copyWith` no longer throws a `TypeError`.
+- Fixed `FirebaseApp.close()` leaving the app half closed when a service fails to close. The app is now always marked deleted and its HTTP client closed, and the error is rethrown afterwards.
+- Migrate FCM topic management (`subscribeToTopic`, `unsubscribeFromTopic`) to FCM v1 REST API, and deprecate legacy IID methods (`subscribeToTopicLegacy`, `unsubscribeFromTopicLegacy`).
+- Use pooled HTTP/2 connections by default via `package:http2`'s `Http2Client` for `FirebaseApp.client`, multiplexing concurrent HTTPS requests over persistent connections while keeping plain HTTP endpoints (such as GCE metadata server) on HTTP/1.1 fallback.
+
+## 0.5.6
+
+- Widen dependency upper bounds for `googleapis` (`>=16.0.0 <18.0.0`), `google_cloud_firestore` (`>=0.5.4 <0.7.0`), and `google_cloud_storage` (`>=0.6.0 <0.8.0`).
+
+## 0.5.5
+
+- Ensure usage tracking headers (`X-Firebase-Client`, `X-Goog-Api-Client`) are appended to outgoing requests without overwriting existing client library headers or duplicating runtime tokens.
+- Fixed `app.storage()` ignoring `AppOptions.credential` and authenticating with
+  Application Default Credentials instead. Storage now uses the app's
+  authenticated client and project ID, like `Firestore` and `FirebaseApp.client`.
+- Fixed `app.storage()` starting a credential lookup on construction, which could
+  fail as an unhandled exception even when no storage operation was performed.
+  The underlying client is now created on first use.
+- Project ID resolution now consults the `AppOptions.credential` service account
+  before the ambient environment, the gcloud CLI and the GCE metadata server, and
+  ignores empty project ID environment variables. Apps configured with a service
+  account for one project while running on Google Cloud infrastructure in another
+  now resolve the service account's project instead of the host project. This
+  also applies to `Firestore`, which previously used `AppOptions.projectId` alone
+  and threw `StateError` when only a credential was configured.
+- Require `google_cloud_firestore: ^0.5.4`.
+
+## 0.5.4
+
+- Fixed double-close errors when calling `Storage.delete()` prior to `FirebaseApp.close()`.
+- Fixed `Firestore` requests not carrying the SDK's usage-tracking headers
+  (`X-Firebase-Client`, `X-Goog-Api-Client`).
+- Update dependency `googleapis_auth: ^2.3.3` to fix `auth/insufficient-permission`
+  errors with Application Default Credentials that have no quota project set.
+
+## 0.5.3
+
+- Require `google_cloud: '>=0.4.0 <0.6.0'`
+
+## 0.5.2
 
 - Add Remote Config support: template management and server-side template evaluation.
 - Remove dependency on `package:equatable`.

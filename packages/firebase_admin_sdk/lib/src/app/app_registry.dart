@@ -57,12 +57,19 @@ class AppRegistry {
     name ??= _defaultAppName;
     _validateAppName(name);
 
-    var wasInitializedFromEnv = false;
-    final effectiveOptions = options ?? fetchOptionsFromEnvironment();
-
-    if (options == null) {
-      wasInitializedFromEnv = true;
-    }
+    final (effectiveOptions, wasInitializedFromEnv) = switch (options) {
+      null => (fetchOptionsFromEnvironment(), true),
+      AppOptions(credential: null) => (
+        options.copyWith(
+          credential: _credentialFromEnv(
+            Zone.current[envSymbol] as Map<String, String>? ??
+                Platform.environment,
+          ),
+        ),
+        false,
+      ),
+      _ => (options, false),
+    };
 
     // App doesn't exist - create it
     if (!_apps.containsKey(name)) {

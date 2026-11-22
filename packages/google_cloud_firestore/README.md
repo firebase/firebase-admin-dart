@@ -80,6 +80,7 @@ import 'package:google_cloud_firestore/google_cloud_firestore.dart';
 
 // Option 1: Use Application Default Credentials (ADC)
 // Recommended for Google environments like Cloud Run, App Engine, etc.
+// The project ID is discovered automatically from the environment.
 final firestore = Firestore();
 
 // Option 2: With a service account file
@@ -101,6 +102,23 @@ final firestoreWithParams = Firestore(
       projectId: 'my-project',
     ),
   ),
+);
+```
+
+#### Using ADC locally with gcloud auth
+
+When authenticating locally via `gcloud auth application-default login`, the
+credentials produced (type: `authorized_user`) do not include a project ID.
+You must supply it either via an environment variable or in `Settings`:
+
+```bash
+export GOOGLE_CLOUD_PROJECT=your-project-id
+```
+
+```dart
+// Or set it explicitly in Settings
+final firestore = Firestore(
+  settings: Settings(projectId: 'your-project-id'),
 );
 ```
 
@@ -140,6 +158,441 @@ final querySnapshot = await firestore
 for (final doc in querySnapshot.docs) {
   print('${doc.id} => ${doc.data()}');
 }
+```
+
+### Firestore Pipeline Operations
+
+> **Enterprise edition only.** Pipelines require a Firestore Enterprise edition
+> database. Calling `execute()` against a Standard edition database fails with a
+> `FirestoreException` carrying an `unimplemented` status.
+
+Pipelines are server-side queries built as a chain of stages. Each stage takes
+the previous stage's output and produces the next, ending in `execute()`.
+
+```dart
+final snapshot = await firestore
+    .pipeline()
+    .collection('books')
+    .where(field('rating').greaterThan(4.0))
+    .sort([field('rating').descending()])
+    .select(['title', field('rating')])
+    .limit(10)
+    .execute();
+
+for (final result in snapshot.results) {
+  print(result.data());
+}
+```
+
+Runnable examples for every stage live in
+[`example/pipeline_example.dart`](example/pipeline_example.dart).
+
+#### Sources
+
+A pipeline starts from exactly one source, via `firestore.pipeline()`.
+
+| Source | Description |
+| --- | --- |
+| `collection(path)` | Documents in a single collection. |
+| `collectionReference(ref)` | Same, from a `CollectionReference`. |
+| `collectionGroup(id)` | Every collection with the given ID. |
+| `database()` | Every document in the database. |
+| `documents([refsOrPaths])` | An explicit set of documents, as references or paths. |
+| `createFrom(query)` | An existing `Query` or `VectorQuery`. |
+
+```dart
+firestore.pipeline().collection('books');
+firestore.pipeline().collectionReference(firestore.collection('books'));
+firestore.pipeline().collectionGroup('books');
+firestore.pipeline().database();
+firestore.pipeline().documents([firestore.doc('books/book-1')]);
+firestore.pipeline().documents(['books/book-1', 'books/book-2']);
+```
+
+#### Stages
+
+**`where`** — keeps documents matching a boolean expression.
+
+```dart
+.where(and([
+  field('genre').equal('fiction'),
+  field('rating').greaterThan(4.0),
+]))
+```
+
+**`select`** — chooses or computes the output fields. Entries may be field-name
+strings, `field(...)` references, or aliased expressions. Computed expressions
+must be aliased.
+
+```dart
+.select([
+  'title',
+  field('rating'),
+  field('title').toUpperCase().as('shoutedTitle'),
+])
+```
+
+**`addFields`** / **`removeFields`** — add computed fields to, or drop fields
+from, the documents flowing through.
+
+```dart
+.addFields([field('price').multiply(1.2).as('priceWithTax')])
+.removeFields(['internalNotes'])
+```
+
+**`aggregate`** — reduces documents to aggregates, optionally grouped. Both
+accumulators and groups are projections.
+
+```dart
+.aggregate(
+  [
+    PipelineFunctions.count().as('bookCount'),
+    field('rating').average().as('averageRating'),
+  ],
+  groups: ['genre'],
+)
+```
+
+**`distinct`** — unique combinations of the given groups.
+
+```dart
+.distinct(['genre', field('language')])
+```
+
+**`sort`**, **`offset`**, **`limit`** — ordering and pagination.
+
+```dart
+.sort([field('rating').descending(), field('title').ascending()])
+.offset(20)
+.limit(10)
+```
+
+**`unnest`** — emits one document per array element. The selectable's alias
+names the field each element lands on; `indexField` records its position.
+
+```dart
+.unnest(field('tags').as('tag'), indexField: 'tagIndex')
+```
+
+**`replaceWith`** — promotes a map to the top level, so each of its keys becomes
+a document field.
+
+```dart
+.replaceWith('metadata')
+```
+
+**`union`** — concatenates another pipeline's results, keeping duplicates.
+
+```dart
+.union(firestore.pipeline().collection('archivedBooks'))
+```
+
+**`sample`** — pseudo-randomly keeps a fixed number of documents, or a
+proportion between 0 and 1. Exactly one of the two must be given.
+
+```dart
+.sample(documents: 10)
+.sample(percentage: 0.25)
+```
+
+**`findNearest`** — vector nearest-neighbour search. Needs a vector index; see
+[E2E Testing](#e2e-testing) for the `gcloud` invocation.
+
+```dart
+.findNearest(
+  vectorField: 'embedding',
+  queryVector: FieldValue.vector([1, 2, 3]),
+  distanceMeasure: DistanceMeasure.cosine,
+  limit: 3,
+  distanceResultField: 'distance',
+)
+```
+
+`queryVector` takes a `VectorValue`, a plain list of numbers, or an
+expression. So does the second argument of `cosineDistance`, `dotProduct` and
+`euclideanDistance`; either way it is sent as a vector.
+
+**`rawStage`** — escape hatch for preview stages this SDK does not yet wrap.
+`search` is a thin wrapper over the same mechanism. As in the Node.js SDK, a
+`Map` argument is sent as a literal map, but a `List` or `Map` nested in it is
+sent as the `array(...)` or `map(...)` function that builds it, so it may hold
+expressions.
+
+```dart
+.rawStage('sample', [10, 'documents'], options: {'stable': true})
+```
+
+Every stage and source also takes `rawOptions`, for stage options this SDK
+does not wrap yet; they take precedence over the typed ones. A key may be a
+dot-separated path into a map option: `{'outer.inner': 1}` sends
+`outer: {inner: 1}`, merged with anything else set inside `outer`.
+
+```dart
+.limit(10, rawOptions: {'some_option.enabled': true})
+```
+
+Query-level options are passed to `execute()` rather than built onto the
+Pipeline, so a Pipeline value stays a pure description of what to fetch. Use
+`rawOptions` for options this SDK does not wrap yet; they take precedence, and
+dotted keys merge into the typed options, so `explain` plus
+`{'explain_options.output_format': 'json'}` sends one `explain_options` map.
+
+```dart
+.execute(
+  explain: const PipelineExplainOptions(
+    mode: PipelineExplainMode.analyze,
+    outputFormat: PipelineExplainOutputFormat.text,
+  ),
+)
+```
+
+#### Expressions
+
+Expressions come from two interchangeable entry points:
+
+- **Top-level helpers and fluent methods** — `field`, `constant`, `variable`,
+  `and`, `or`, `not`, the comparison helpers, then chained methods.
+- **`PipelineFunctions`** — the full catalog as static methods, useful when you
+  want the function form or a helper without a fluent equivalent.
+
+```dart
+// Equivalent:
+field('title').toUpperCase();
+PipelineFunctions.toUpper('title');
+```
+
+`Expression.field` / `Expression.constant` / `Expression.variable` are aliases
+for the top-level `field` / `constant` / `variable`, for callers who prefer a
+namespaced entry point.
+
+**Field paths.** `field` takes a `String` or a `FieldPath`. A `String` is a
+dot-separated path, so `field('address.city')` reads `city` inside the
+`address` map; use a `FieldPath` for a field whose name contains a dot. Names
+that are not simple identifiers need no escaping: they are sent
+backtick-quoted, as the Node.js SDK sends them. The same rules apply to every
+field name a stage or function takes, which may be a `FieldPath` wherever it
+may be a `String`, and `select`, `distinct` and `aggregate` key each field by
+its quoted path. An alias given to `as()` is sent as written, and the backend
+reads it as a field path too, so backtick-quote an alias that is not an
+identifier.
+
+```dart
+field('first-name');        // sent as `first-name`
+field('author.last name');  // sent as author.`last name`
+field(FieldPath(['a.b']));  // a single field named "a.b", sent as `a.b`
+```
+
+`variable` references a name bound by the enclosing expression, such as the
+element alias of `arrayFilter` / `arrayTransform`:
+
+```dart
+field('tags').arrayFilter('tag', variable('tag').notEqual('draft'));
+```
+
+**Field arguments vs value arguments.** A `String` in a *field* position means a
+field reference; in a *value* position it stays a string literal. The field
+position is the first argument of most helpers:
+
+```dart
+// Reads the `title` field, compares against the literal "Harry":
+PipelineFunctions.startsWith('title', 'Harry');
+
+// Compare two fields by wrapping the value position explicitly:
+PipelineFunctions.startsWith('title', field('prefix'));
+```
+
+A `List` or `Map` argument may mix literals and expressions. It is sent as an
+`array(...)` / `map(...)` function so the backend evaluates the expressions
+inside it; wrap it in `constant` to send a literal value instead:
+
+```dart
+PipelineFunctions.equalAny('rating', [field('score'), 5]);
+field('metadata').mapMerge([{'reviewer': field('editor')}]);
+```
+
+Selected expressions must be aliased with `as` (or `alias`):
+
+```dart
+.select([field('createdAt').timestampToUnixSeconds().as('createdSeconds')])
+```
+
+##### Function reference
+
+Dart helpers map onto backend function names as follows. Every name below is
+available on `PipelineFunctions`; most also exist as a fluent method.
+
+| Category | Dart | Backend |
+| --- | --- | --- |
+| Comparison | `equal`, `notEqual`, `lessThan`, `lessThanOrEqual`, `greaterThan`, `greaterThanOrEqual`, `cmp` | `equal`, `not_equal`, `less_than`, `less_than_or_equal`, `greater_than`, `greater_than_or_equal`, `cmp` |
+| Logical | `and`, `or`, `xor`, `nor`, `not`, `conditional`, `ifNull`, `coalesce`, `switchOn`, `equalAny`, `notEqualAny` | `and`, `or`, `xor`, `nor`, `not`, `conditional`, `if_null`, `coalesce`, `switch_on`, `equal_any`, `not_equal_any` |
+| Aggregate | `count`, `countAll`, `countIf`, `countDistinct`, `sum`, `average`, `minimum`, `maximum`, `first`, `last`, `arrayAgg`, `arrayAggDistinct` | `count`, `count_if`, `count_distinct`, `sum`, `average`, `minimum`, `maximum`, `first`, `last`, `array_agg`, `array_agg_distinct` |
+| Arithmetic | `add`, `subtract`, `multiply`, `divide`, `mod`, `abs`, `ceil`, `floor`, `round`, `trunc`, `sqrt`, `pow`, `exp`, `ln`, `log`, `log10`, `rand`, `logicalMinimum`, `logicalMaximum` | `add`, `subtract`, `multiply`, `divide`, `mod`, `abs`, `ceil`, `floor`, `round`, `trunc`, `sqrt`, `pow`, `exp`, `ln`, `log`, `log10`, `rand`, `minimum`, `maximum` |
+| Array | `array`, `arrayConcat`, `arrayContains`, `arrayContainsAll`, `arrayContainsAny`, `arrayFilter`, `arrayGet`, `arrayLength`, `arrayReverse`, `arrayFirst`, `arrayFirstN`, `arrayLast`, `arrayLastN`, `arrayIndexOf`, `arrayIndexOfAll`, `arrayLastIndexOf`, `arraySlice`, `arrayTransform`, `arrayTransformWithIndex`, `arrayMaximum`, `arrayMaximumN`, `arrayMinimum`, `arrayMinimumN`, `arraySum`, `maximumN`, `minimumN`, `join` | `array`, `array_concat`, `array_contains`, `array_contains_all`, `array_contains_any`, `array_filter`, `array_get`, `array_length`, `array_reverse`, `array_first`, `array_first_n`, `array_last`, `array_last_n`, `array_index_of`, `array_index_of_all`, `array_index_of`, `array_slice`, `array_transform`, `array_transform`, `maximum`, `maximum_n`, `minimum`, `minimum_n`, `sum`, `maximum_n`, `minimum_n`, `join` |
+| String | `byteLength`, `charLength`, `startsWith`, `endsWith`, `like`, `regexContains`, `regexMatch`, `regexFind`, `regexFindAll`, `stringConcat`, `stringContains`, `stringIndexOf`, `toUpper`, `toLower`, `substring`, `stringReverse`, `stringRepeat`, `stringReplaceAll`, `stringReplaceOne`, `trim`, `ltrim`, `rtrim`, `split` | `byte_length`, `char_length`, `starts_with`, `ends_with`, `like`, `regex_contains`, `regex_match`, `regex_find`, `regex_find_all`, `string_concat`, `string_contains`, `string_index_of`, `to_upper`, `to_lower`, `substring`, `string_reverse`, `string_repeat`, `string_replace_all`, `string_replace_one`, `trim`, `ltrim`, `rtrim`, `split` |
+| Generic | `length`, `reverse`, `concat` | `length`, `reverse`, `concat` |
+| Map | `map`, `mapGet`, `getField`, `mapSet`, `mapRemove`, `mapMerge`, `mapKeys`, `mapValues`, `mapEntries` | `map`, `map_get`, `get_field`, `map_set`, `map_remove`, `map_merge`, `map_keys`, `map_values`, `map_entries` |
+| Timestamp | `currentTimestamp`, `timestampTruncate`, `timestampAdd`, `timestampSubtract`, `timestampDiff`, `timestampExtract`, `timestampToUnixMicros`/`Millis`/`Seconds`, `unixMicrosToTimestamp`/`Millis`/`Seconds` | `current_timestamp`, `timestamp_trunc`, `timestamp_add`, `timestamp_subtract`, `timestamp_diff`, `timestamp_extract`, `timestamp_to_unix_*`, `unix_*_to_timestamp` |
+| Vector | `cosineDistance`, `dotProduct`, `euclideanDistance`, `vectorLength`, `geoDistance` | `cosine_distance`, `dot_product`, `euclidean_distance`, `vector_length`, `geo_distance` |
+| Reference | `collectionId`, `documentId`, `parent`, `referenceSlice`, `currentDocument` | `collection_id`, `document_id`, `parent`, `reference_slice`, `current_document` |
+| Type | `type`, `isType` | `type`, `is_type` |
+| Debug | `exists`, `isAbsent`, `ifAbsent`, `isError`, `ifError` | `exists`, `is_absent`, `if_absent`, `is_error`, `if_error` |
+| Search | `documentMatches`, `score` | `document_matches`, `score` |
+
+`length`/`reverse`/`concat` are the generic forms working on strings, arrays and
+maps; `charLength`/`stringReverse`/`stringConcat` and
+`arrayLength`/`arrayReverse`/`arrayConcat` are the type-specific ones.
+`minimum`/`maximum` are the aggregate forms; use `logicalMinimum` /
+`logicalMaximum` to compare several operands element-wise.
+
+`add` and `multiply` take extra operands as a trailing list, sent as nested
+two-operand calls (the backend's `add` and `multiply` take exactly two), and
+`map` takes a `Map` or a list alternating keys and values:
+
+```dart
+field('price').add(field('tax'), [field('shipping')]);
+PipelineFunctions.map({'title': field('title'), 'rating': 5});
+```
+
+Anything not yet wrapped is reachable via `PipelineFunctions.raw` or
+`pipelineFunction`. Their arguments are sent as-is, so build a collection that
+holds expressions with `PipelineFunctions.array` / `PipelineFunctions.map`:
+
+```dart
+PipelineFunctions.raw('some_new_function', [field('x'), 42]);
+```
+
+#### Executing and reading results
+
+`execute()` optionally reads the database as it was at a past timestamp.
+
+```dart
+final snapshot = await firestore
+    .pipeline()
+    .collection('books')
+    .execute(readTime: Timestamp.fromDate(DateTime.now().subtract(
+      const Duration(minutes: 5),
+    )));
+```
+
+To run a Pipeline at a transaction's snapshot, use
+`Transaction.executePipeline()` instead:
+
+```dart
+final titles = await firestore.runTransaction((transaction) async {
+  final snapshot = await transaction.executePipeline(
+    firestore.pipeline().collection('books').where(field('active').equal(true)),
+  );
+  return [for (final result in snapshot.results) result.get('title')];
+});
+```
+
+`PipelineSnapshot` carries the results plus execution metadata:
+
+| Member | Description |
+| --- | --- |
+| `results` | The returned `PipelineResult`s. |
+| `size`, `empty` | Result count, and whether there are none. |
+| `executionTime` | When the results were valid. |
+| `explainStats` | An `ExplainStats`, when requested via `execute(explain: ...)`. |
+| `pipeline` | The Pipeline that produced this snapshot. |
+
+`ExplainStats` exposes `text` for the `TEXT` and `JSON` output formats,
+`typeName` for the payload's proto type, and `raw` with the payload exactly as
+the backend encoded it, so a format this SDK does not decode is never lost.
+
+```dart
+final snapshot = await firestore
+    .pipeline()
+    .collection('books')
+    .execute(
+      explain: const PipelineExplainOptions(
+        mode: PipelineExplainMode.analyze,
+        outputFormat: PipelineExplainOutputFormat.text,
+      ),
+    );
+
+print(snapshot.explainStats?.text);
+```
+
+Each `PipelineResult` exposes its fields and, when the backend includes document
+metadata, its identity:
+
+```dart
+for (final result in snapshot.results) {
+  print(result.data());               // all decoded fields
+  print(result.get('title'));         // a single field
+  print(result.get('metadata.lang')); // a nested field (or pass a FieldPath)
+  print(result.ref?.path);            // null when a projection dropped metadata
+  print(result.id);                   // the document ID, or null
+  print(result.createTime);
+  print(result.updateTime);
+}
+```
+
+Projection stages such as `select` and `aggregate` may drop document metadata,
+in which case `name`, `ref`, `id`, `createTime` and `updateTime` are `null`.
+
+#### Migrating a Query to a Pipeline
+
+`createFrom` converts an existing `Query` or `VectorQuery`, preserving its
+filters, field mask, ordering, cursors, limit and offset. This is the easiest way
+to adopt pipelines incrementally: convert what you have, then append
+Pipeline-only stages.
+
+```dart
+final query = firestore
+    .collection('books')
+    .where('genre', WhereFilter.equal, 'fiction')
+    .orderBy('rating', descending: true)
+    .limit(5);
+
+final snapshot = await firestore
+    .pipeline()
+    .createFrom(query)
+    // Stages below have no Query equivalent.
+    .addFields([field('rating').multiply(10).as('score')])
+    .execute();
+```
+
+Two behavioural notes:
+
+- Query semantics require a field to exist before it can match, so each
+  converted filter is paired with an existence check. `WhereFilter.notIn` is the
+  exception, matching absent fields as the backend does.
+- The query must target the same database as the pipeline, otherwise
+  `createFrom` throws an `ArgumentError`.
+
+#### E2E Testing
+
+Real-project Pipeline E2E tests live in `test/e2e/pipeline/`, one file per
+area (sources, stages, results, execution, aggregates, and one per function
+family). They are skipped unless you provide a project and credentials:
+
+```bash
+export FIRESTORE_PIPELINE_E2E_PROJECT_ID="your-project-id"
+export FIRESTORE_PIPELINE_E2E_DATABASE_ID="your-enterprise-database-id"
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
+dart test -P prod test/e2e/pipeline/ --concurrency=1
+```
+
+`test/pipeline_e2e_coverage_test.dart` runs with the ordinary unit tests and
+needs no credentials. It statically checks that the E2E suite references every
+public Pipeline API member, supplies and omits every optional parameter, and
+passes both an expression and a plain value to every value position, so a new
+Pipeline function needs a live case before the build goes green. See
+[`test/e2e/README.md`](test/e2e/README.md) for the layout and helpers.
+
+The E2E suite includes vector nearest-neighbor coverage. Create the vector index
+once for the test collection group before running the suite in CI:
+
+```bash
+gcloud firestore indexes composite create \
+  --project="your-project-id" \
+  --database="your-enterprise-database-id" \
+  --collection-group="pipeline_e2e_books" \
+  --query-scope=COLLECTION \
+  --field-config=field-path="runId",order=ASCENDING \
+  --field-config=field-path="embedding",vector-config='{"dimension":"3","flat":"{}"}'
 ```
 
 #### Get All

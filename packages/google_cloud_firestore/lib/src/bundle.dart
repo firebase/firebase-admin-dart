@@ -145,20 +145,18 @@ class BundledQuery {
 
     if (query.select != null) {
       json['select'] = {
-        'fields':
-            query.select!.fields
-                ?.map((f) => {'fieldPath': f.fieldPath})
-                .toList() ??
-            [],
+        'fields': query.select!.fields
+            .map((f) => {'fieldPath': f.fieldPath})
+            .toList(),
       };
     }
 
-    if (query.from != null && query.from!.isNotEmpty) {
-      json['from'] = query.from!
+    if (query.from.isNotEmpty) {
+      json['from'] = query.from
           .map(
             (f) => {
               'collectionId': f.collectionId,
-              if (f.allDescendants ?? false) 'allDescendants': true,
+              if (f.allDescendants) 'allDescendants': true,
             },
           )
           .toList();
@@ -168,8 +166,8 @@ class BundledQuery {
       json['where'] = _filterToJson(query.where!);
     }
 
-    if (query.orderBy != null && query.orderBy!.isNotEmpty) {
-      json['orderBy'] = query.orderBy!
+    if (query.orderBy.isNotEmpty) {
+      json['orderBy'] = query.orderBy
           .map(
             (o) => {
               'field': {'fieldPath': o.field?.fieldPath},
@@ -181,15 +179,15 @@ class BundledQuery {
 
     if (query.startAt != null) {
       json['startAt'] = {
-        'values': query.startAt!.values?.map(_valueToJson).toList() ?? [],
-        if (query.startAt!.before ?? false) 'before': true,
+        'values': query.startAt!.values.map(_valueToJson).toList(),
+        if (query.startAt!.before) 'before': true,
       };
     }
 
     if (query.endAt != null) {
       json['endAt'] = {
-        'values': query.endAt!.values?.map(_valueToJson).toList() ?? [],
-        if (query.endAt!.before ?? false) 'before': true,
+        'values': query.endAt!.values.map(_valueToJson).toList(),
+        if (query.endAt!.before) 'before': true,
       };
     }
 
@@ -197,7 +195,7 @@ class BundledQuery {
       json['limit'] = query.limit;
     }
 
-    if (query.offset != null) {
+    if (query.offset != 0) {
       json['offset'] = query.offset;
     }
 
@@ -205,13 +203,15 @@ class BundledQuery {
   }
 
   /// Converts a Filter to JSON.
-  static Map<String, dynamic> _filterToJson(firestore_v1.Filter filter) {
+  static Map<String, dynamic> _filterToJson(
+    firestore_v1.StructuredQuery_Filter filter,
+  ) {
     if (filter.compositeFilter != null) {
       final composite = filter.compositeFilter!;
       return {
         'compositeFilter': {
           'op': composite.op,
-          'filters': composite.filters?.map(_filterToJson).toList() ?? [],
+          'filters': composite.filters.map(_filterToJson).toList(),
         },
       };
     }
@@ -249,21 +249,24 @@ class BundledQuery {
       return {'booleanValue': value.booleanValue};
     }
     if (value.integerValue != null) {
-      return {'integerValue': value.integerValue};
+      return {'integerValue': value.integerValue.toString()};
     }
     if (value.doubleValue != null) {
       return {'doubleValue': value.doubleValue};
     }
     if (value.timestampValue != null) {
-      // timestampValue in googleapis is a String (ISO 8601 format)
-      return {'timestampValue': value.timestampValue};
+      return {
+        'timestampValue': _toGoogleDateTime(
+          seconds: value.timestampValue!.seconds,
+          nanoseconds: value.timestampValue!.nanos,
+        ),
+      };
     }
     if (value.stringValue != null) {
       return {'stringValue': value.stringValue};
     }
     if (value.bytesValue != null) {
-      // bytesValue in googleapis is already base64-encoded String
-      return {'bytesValue': value.bytesValue};
+      return {'bytesValue': base64Encode(value.bytesValue!)};
     }
     if (value.referenceValue != null) {
       return {'referenceValue': value.referenceValue};
@@ -277,20 +280,16 @@ class BundledQuery {
     if (value.arrayValue != null) {
       final array = value.arrayValue!;
       return {
-        'arrayValue': {
-          'values': array.values?.map(_valueToJson).toList() ?? [],
-        },
+        'arrayValue': {'values': array.values.map(_valueToJson).toList()},
       };
     }
     if (value.mapValue != null) {
       final map = value.mapValue!;
       return {
         'mapValue': {
-          'fields':
-              map.fields?.map(
-                (key, value) => MapEntry(key, _valueToJson(value)),
-              ) ??
-              {},
+          'fields': map.fields.map(
+            (key, value) => MapEntry(key, _valueToJson(value)),
+          ),
         },
       };
     }
@@ -382,13 +381,19 @@ class BundleElement {
   static Map<String, dynamic> _documentToJson(firestore_v1.Document doc) {
     return {
       'name': doc.name,
-      if (doc.fields != null)
-        'fields': doc.fields!.map(
-          (key, value) => MapEntry(key, BundledQuery._valueToJson(value)),
+      'fields': doc.fields.map(
+        (key, value) => MapEntry(key, BundledQuery._valueToJson(value)),
+      ),
+      if (doc.createTime != null)
+        'createTime': _toGoogleDateTime(
+          seconds: doc.createTime!.seconds,
+          nanoseconds: doc.createTime!.nanos,
         ),
-      // createTime and updateTime in googleapis are ISO 8601 strings
-      if (doc.createTime != null) 'createTime': doc.createTime,
-      if (doc.updateTime != null) 'updateTime': doc.updateTime,
+      if (doc.updateTime != null)
+        'updateTime': _toGoogleDateTime(
+          seconds: doc.updateTime!.seconds,
+          nanoseconds: doc.updateTime!.nanos,
+        ),
     };
   }
 }
@@ -513,7 +518,7 @@ class BundleBuilder {
       final docProto = snapshot.exists
           ? firestore_v1.Document(
               name: snapshot.ref._formattedName,
-              fields: snapshot._fieldsProto?.fields,
+              fields: snapshot._fieldsProto?.fields ?? const {},
               createTime: snapshot.createTime?._toProto().timestampValue,
               updateTime: snapshot.updateTime?._toProto().timestampValue,
             )

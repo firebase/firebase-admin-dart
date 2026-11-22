@@ -25,7 +25,14 @@
 //
 // Option 2: Application Default Credentials (alternative)
 //   1. Run: gcloud auth application-default login
-//   2. The SDK will automatically find these credentials if GOOGLE_APPLICATION_CREDENTIALS is not set.
+//   2. Set GOOGLE_CLOUD_PROJECT in your environment:
+//        export GOOGLE_CLOUD_PROJECT=your-project-id
+//   3. In main() below, remove the GOOGLE_APPLICATION_CREDENTIALS entry from
+//      the environment map (or set it to point at your ADC credentials file).
+//
+//   Note: credentials produced by `gcloud auth application-default login`
+//   (type: "authorized_user") do not contain a project_id field, so
+//   GOOGLE_CLOUD_PROJECT (or GCLOUD_PROJECT) must be set explicitly.
 //
 // For available environment variables, see:
 // packages/firebase_admin_sdk/lib/src/app/environment.dart
@@ -38,6 +45,11 @@ Future<void> main() async {
   final process = await Process.start(
     Platform.resolvedExecutable,
     ['run', 'bin/example.dart'],
+    // Option 1 (default): service account key file.
+    // Option 2 (gcloud auth): replace with {'GOOGLE_CLOUD_PROJECT': 'your-project-id'}.
+    // Note: `gcloud auth application-default login` credentials (type: "authorized_user")
+    // do not include a project_id, so the project must be supplied either via
+    // GOOGLE_CLOUD_PROJECT / GCLOUD_PROJECT or by passing projectId to AppOptions.
     environment: {'GOOGLE_APPLICATION_CREDENTIALS': 'service-account-key.json'},
     mode: ProcessStartMode.inheritStdio,
   );

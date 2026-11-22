@@ -154,6 +154,29 @@ class AppOptions {
   /// ```
   final Map<String, dynamic>? databaseAuthVariableOverride;
 
+  AppOptions copyWith({
+    Credential? credential,
+    String? projectId,
+    String? databaseURL,
+    String? storageBucket,
+    String? serviceAccountId,
+    googleapis_auth.AuthClient? httpClient,
+    List<String>? additionalScopes,
+    Map<String, dynamic>? databaseAuthVariableOverride,
+  }) {
+    return AppOptions(
+      credential: credential ?? this.credential,
+      projectId: projectId ?? this.projectId,
+      databaseURL: databaseURL ?? this.databaseURL,
+      storageBucket: storageBucket ?? this.storageBucket,
+      serviceAccountId: serviceAccountId ?? this.serviceAccountId,
+      httpClient: httpClient ?? this.httpClient,
+      additionalScopes: additionalScopes ?? this.additionalScopes,
+      databaseAuthVariableOverride:
+          databaseAuthVariableOverride ?? this.databaseAuthVariableOverride,
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

@@ -44,23 +44,19 @@ void main() {
         timeout: const Timeout(Duration(seconds: 30)),
       );
 
-      test(
-        'SDK-created ADC client is closed when app.close() is called',
-        () {
-          return runZoned(() async {
-            final app = FirebaseApp.initializeApp(
-              name: 'adc-close-${DateTime.now().microsecondsSinceEpoch}',
-              options: const AppOptions(projectId: projectId),
-            );
+      test('SDK-created ADC client is closed when app.close() is called', () {
+        return runZoned(() async {
+          final app = FirebaseApp.initializeApp(
+            name: 'adc-close-${DateTime.now().microsecondsSinceEpoch}',
+            options: const AppOptions(projectId: projectId),
+          );
 
-            await app.client;
-            await app.close();
+          await app.client;
+          await app.close();
 
-            expect(app.isDeleted, isTrue);
-          }, zoneValues: {envSymbol: prodEnv()});
-        },
-        timeout: const Timeout(Duration(seconds: 30)),
-      );
+          expect(app.isDeleted, isTrue);
+        }, zoneValues: {envSymbol: prodEnv()});
+      }, timeout: const Timeout(Duration(seconds: 30)));
     }, tags: 'prod');
 
     group('_createDefaultClient – service account path', () {
@@ -94,29 +90,25 @@ void main() {
       final refreshTokenFile =
           Platform.environment['FIREBASE_REFRESH_TOKEN_CREDENTIALS'];
 
-      test(
-        'creates an authenticated client via refresh token credential',
-        () {
-          return runZoned(() async {
-            final credential = Credential.fromRefreshToken(
-              File(refreshTokenFile!),
-            );
+      test('creates an authenticated client via refresh token credential', () {
+        return runZoned(() async {
+          final credential = Credential.fromRefreshToken(
+            File(refreshTokenFile!),
+          );
 
-            final app = FirebaseApp.initializeApp(
-              name: 'rt-client-${DateTime.now().microsecondsSinceEpoch}',
-              options: AppOptions(projectId: projectId, credential: credential),
-            );
+          final app = FirebaseApp.initializeApp(
+            name: 'rt-client-${DateTime.now().microsecondsSinceEpoch}',
+            options: AppOptions(projectId: projectId, credential: credential),
+          );
 
-            try {
-              final client = await app.client;
-              expect(client, isNotNull);
-            } finally {
-              await app.close();
-            }
-          }, zoneValues: {envSymbol: prodEnv()});
-        },
-        timeout: const Timeout(Duration(seconds: 30)),
-      );
+          try {
+            final client = await app.client;
+            expect(client, isNotNull);
+          } finally {
+            await app.close();
+          }
+        }, zoneValues: {envSymbol: prodEnv()});
+      }, timeout: const Timeout(Duration(seconds: 30)));
 
       test(
         'SDK-created refresh token client is closed when app.close() is called',

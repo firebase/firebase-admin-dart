@@ -39,7 +39,7 @@ class AppCheckTokenGenerator {
   ///
   /// [appId] - The Application ID to use for the generated token.
   ///
-  /// @returns A Promise fulfilled with a custom token signed with a service account key
+  /// Returns a [Future] that completes with a custom token signed with a service account key
   /// that can be exchanged to an App Check token.
   Future<String> createCustomToken(
     String appId, [

@@ -39,7 +39,7 @@ class FunctionsRequestHandler {
   Future<void> enqueue(
     Map<String, dynamic> data,
     String functionName,
-    String? extensionId,
+    FunctionScope scope,
     TaskOptions? options,
   ) async {
     validateNonEmptyString(functionName, 'functionName');
@@ -54,17 +54,16 @@ class FunctionsRequestHandler {
 
       validateNonEmptyString(resources.resourceId, 'resourceId');
 
-      // Apply extension ID prefix if provided
-      var queueId = resources.resourceId;
-      if (extensionId != null && extensionId.isNotEmpty) {
-        queueId = 'ext-$extensionId-$queueId';
-      }
+      final (queueId, extensionOrKitId) = _resolveResourceId(
+        resources.resourceId,
+        scope,
+      );
 
       // Build the task
       final task = _buildTask(data, resources, queueId, options);
 
       // Update task with proper authentication (OIDC token or Authorization header)
-      await _updateTaskAuth(task, await _httpClient.client, extensionId);
+      await _updateTaskAuth(task, await _httpClient.client, extensionOrKitId);
 
       final parent = _httpClient.buildTasksParent(
         projectId: resources.projectId!,
@@ -94,7 +93,7 @@ class FunctionsRequestHandler {
   Future<void> delete(
     String id,
     String functionName,
-    String? extensionId,
+    FunctionScope scope,
   ) async {
     validateNonEmptyString(functionName, 'functionName');
     validateNonEmptyString(id, 'id');
@@ -117,11 +116,7 @@ class FunctionsRequestHandler {
 
       validateNonEmptyString(resources.resourceId, 'resourceId');
 
-      // Apply extension ID prefix if provided
-      var queueId = resources.resourceId;
-      if (extensionId != null && extensionId.isNotEmpty) {
-        queueId = 'ext-$extensionId-$queueId';
-      }
+      final (queueId, _) = _resolveResourceId(resources.resourceId, scope);
 
       // Build the full task name
       final taskName = _httpClient.buildTaskName(
@@ -141,6 +136,28 @@ class FunctionsRequestHandler {
         rethrow; // Will be caught by _functionsGuard
       }
     });
+  }
+
+  (String resourceId, String? extensionOrKitId) _resolveResourceId(
+    String resourceId,
+    FunctionScope scope,
+  ) {
+    switch (scope) {
+      case _CurrentFunctionScope():
+        final kitInstanceId = Environment.getKitInstanceId();
+        if (kitInstanceId != null && kitInstanceId.isNotEmpty) {
+          return ('kit-$kitInstanceId-$resourceId', kitInstanceId);
+        }
+        return (resourceId, null);
+      case _GlobalFunctionScope():
+        return (resourceId, null);
+      case _ExtensionFunctionScope(:final extensionId):
+        return ('ext-$extensionId-$resourceId', extensionId);
+      case _KitFunctionScope(:final kit):
+        return ('kit-$kit-$resourceId', kit);
+      case _ExtensionOrKitFunctionScope(:final instance):
+        return ('ext-$instance-$resourceId', instance);
+    }
   }
 
   /// Parses a resource name into its components.
@@ -255,7 +272,7 @@ class FunctionsRequestHandler {
   Future<void> _updateTaskAuth(
     tasks2.Task task,
     googleapis_auth.AuthClient authClient,
-    String? extensionId,
+    String? extensionOrKitId,
   ) async {
     final httpRequest = task.httpRequest!;
 
@@ -271,7 +288,9 @@ class FunctionsRequestHandler {
     final isComputeEngine =
         _httpClient.app.options.credential?.serviceAccountCredentials == null;
 
-    if (extensionId != null && extensionId.isNotEmpty && isComputeEngine) {
+    if (extensionOrKitId != null &&
+        extensionOrKitId.isNotEmpty &&
+        isComputeEngine) {
       // Running as extension with ComputeEngine - use ID token with Authorization header.
       final idToken = authClient.credentials.idToken;
       if (idToken != null && idToken.isNotEmpty) {

@@ -132,7 +132,11 @@ interface class Query<T> {
       );
     }
 
-    final fieldOrders = _createImplicitOrderBy(snapshot);
+    // A DocumentSnapshot cursor takes its values from the snapshot for every
+    // field the backend orders by, including the implicit orderings.
+    final fieldOrders = snapshot == null
+        ? _queryOptions.fieldOrders
+        : _createImplicitOrderBy();
     final cursor = _createCursor(
       fieldOrders,
       fieldValues: fieldValues,
@@ -142,43 +146,52 @@ interface class Query<T> {
     return (cursor, fieldOrders);
   }
 
-  /// Computes the backend ordering semantics for DocumentSnapshot cursors.
-  List<_FieldOrder> _createImplicitOrderBy(
-    DocumentSnapshot<Object?>? snapshot,
-  ) {
-    // Add an implicit orderBy if the only cursor value is a DocumentSnapshot
-    // or a DocumentReference.
-    if (snapshot == null) return _queryOptions.fieldOrders;
-
+  /// The orderings the backend applies to this query: the explicit orderBy
+  /// clauses, then every other inequality field, then the document key.
+  ///
+  /// Mirrors the Node SDK's `createImplicitOrderBy`. The implicit orderings
+  /// take the direction of the last explicit orderBy, or ascending without
+  /// one. [ignoreInequalityFields] leaves out the inequality fields.
+  List<_FieldOrder> _createImplicitOrderBy({
+    bool ignoreInequalityFields = false,
+  }) {
     final fieldOrders = _queryOptions.fieldOrders.toList();
+    final seen = {for (final fieldOrder in fieldOrders) fieldOrder.fieldPath};
 
-    // If no explicit ordering is specified, use the first inequality to
-    // define an implicit order.
-    if (fieldOrders.isEmpty) {
-      for (final filter in _queryOptions.filters) {
-        final fieldReference = filter.firstInequalityField;
-        if (fieldReference != null) {
-          fieldOrders.add(_FieldOrder(fieldPath: fieldReference));
-          break;
+    final lastDirection = fieldOrders.isEmpty
+        ? _Direction.ascending
+        : fieldOrders.last.direction;
+
+    if (!ignoreInequalityFields) {
+      for (final inequalityField in _inequalityFilterFields()) {
+        // The document key is always ordered last, below.
+        if (inequalityField == FieldPath.documentId) continue;
+        if (seen.add(inequalityField)) {
+          fieldOrders.add(
+            _FieldOrder(fieldPath: inequalityField, direction: lastDirection),
+          );
         }
       }
     }
 
-    final hasDocumentId = fieldOrders.any(
-      (fieldOrder) => fieldOrder.fieldPath == FieldPath.documentId,
-    );
-    if (!hasDocumentId) {
-      // Add implicit sorting by name, using the last specified direction.
-      final lastDirection = fieldOrders.isEmpty
-          ? _Direction.ascending
-          : fieldOrders.last.direction;
-
+    if (!seen.contains(FieldPath.documentId)) {
       fieldOrders.add(
         _FieldOrder(fieldPath: FieldPath.documentId, direction: lastDirection),
       );
     }
 
     return fieldOrders;
+  }
+
+  /// The fields of this query's inequality filters (`<`, `<=`, `>`, `>=`,
+  /// `!=` and `not-in`), in field path order.
+  List<FieldPath> _inequalityFilterFields() {
+    final fields = <FieldPath>{
+      for (final filter in _queryOptions.filters)
+        for (final subFilter in filter.flattenedFilters)
+          if (subFilter.isInequalityFilter) subFilter.field,
+    };
+    return fields.toList()..sort(_compareFieldPaths);
   }
 
   /// Creates and returns a new [Query] that starts at the provided
@@ -412,14 +425,14 @@ interface class Query<T> {
       api,
       projectId,
     ) async {
-      final request = _toProto(transactionId: null, readTime: null);
-      request.explainOptions =
-          options?.toProto() ?? firestore_v1.ExplainOptions();
-
-      return api.projects.databases.documents.runQuery(
-        request,
-        _buildProtoParentPath(),
+      final request = _toProto(
+        parent: _buildProtoParentPath(),
+        transactionId: null,
+        readTime: null,
+        explainOptions: options?.toProto(),
       );
+
+      return api.runQuery(request);
     });
 
     ExplainMetrics? metrics;
@@ -428,7 +441,7 @@ interface class Query<T> {
 
     final docs = <QueryDocumentSnapshot<T>>[];
 
-    for (final element in response) {
+    await for (final element in response) {
       // Extract explain metrics if present
       if (element.explainMetrics != null) {
         metrics = ExplainMetrics._fromProto(element.explainMetrics!);
@@ -459,9 +472,11 @@ interface class Query<T> {
       }
 
       if (element.readTime != null) {
-        readTime = Timestamp._fromString(element.readTime!);
+        readTime = Timestamp._fromProto(element.readTime!);
       }
     }
+
+    _reverseIfLimitToLast(docs);
 
     // Create snapshot only if we have documents (analyze: true)
     if (docs.isNotEmpty || ((options?.analyze ?? false) && readTime != null)) {
@@ -480,23 +495,31 @@ interface class Query<T> {
   }
 
   Future<QuerySnapshot<T>> _get({required String? transactionId}) async {
-    final response = await firestore._firestoreClient.v1((
-      api,
-      projectId,
-    ) async {
-      return api.projects.databases.documents.runQuery(
-        _toProto(transactionId: transactionId, readTime: null),
-        _buildProtoParentPath(),
-      );
-    });
+    final request = _toProto(
+      parent: _buildProtoParentPath(),
+      transactionId: transactionId,
+      readTime: null,
+    );
 
-    Timestamp? readTime;
-    final snapshots = response
-        .map((e) {
+    final snapshots = <QueryDocumentSnapshot<T>>[];
+
+    return retryOnConnectionError(
+      () async {
+        snapshots.clear();
+        Timestamp? readTime;
+
+        final response = await firestore._firestoreClient.v1((
+          api,
+          projectId,
+        ) async {
+          return api.runQuery(request);
+        });
+
+        await for (final e in response) {
           final document = e.document;
           if (document == null) {
-            readTime = e.readTime.let(Timestamp._fromString);
-            return null;
+            readTime = e.readTime.let(Timestamp._fromProto);
+            continue;
           }
 
           final snapshot = DocumentSnapshot._fromDocument(
@@ -511,21 +534,34 @@ interface class Query<T> {
                     toFirestore: _queryOptions.converter.toFirestore,
                   ),
                 )
-                // Recreate the QueryDocumentSnapshot with the DocumentReference
-                // containing the original converter.
+                // Recreate the QueryDocumentSnapshot with the
+                // DocumentReference containing the original converter.
                 ..fieldsProto = firestore_v1.MapValue(fields: document.fields)
                 ..readTime = snapshot.readTime
                 ..createTime = snapshot.createTime
                 ..updateTime = snapshot.updateTime;
 
-          return finalDoc.build();
-        })
-        .nonNulls
-        // Specifying fieldsProto should cause the builder to create a query snapshot.
-        .cast<QueryDocumentSnapshot<T>>()
-        .toList();
+          snapshots.add(finalDoc.build() as QueryDocumentSnapshot<T>);
+        }
 
-    return QuerySnapshot<T>._(query: this, readTime: readTime, docs: snapshots);
+        _reverseIfLimitToLast(snapshots);
+
+        return QuerySnapshot<T>._(
+          query: this,
+          readTime: readTime,
+          docs: snapshots,
+        );
+      },
+      hasPartialProgress: () => snapshots.isNotEmpty,
+      allowRetry: transactionId == null,
+    );
+  }
+
+  /// limitToLast queries are sent with flipped orderBy directions, so the
+  /// backend returns results in reverse. Flip them back to the query's order.
+  void _reverseIfLimitToLast(List<QueryDocumentSnapshot<T>> docs) {
+    if (_queryOptions.limitType != LimitType.last) return;
+    docs.setAll(0, docs.reversed.toList());
   }
 
   String _buildProtoParentPath() {
@@ -535,9 +571,11 @@ interface class Query<T> {
   }
 
   firestore_v1.RunQueryRequest _toProto({
+    required String parent,
     required String? transactionId,
     required Timestamp? readTime,
     firestore_v1.TransactionOptions? transactionOptions,
+    firestore_v1.ExplainOptions? explainOptions,
   }) {
     // Validate mutual exclusivity of transaction parameters
     final providedParams = [
@@ -553,100 +591,98 @@ interface class Query<T> {
       );
     }
 
-    final structuredQuery = _toStructuredQuery();
-
-    // For limitToLast queries, the structured query has to be translated to a version with
-    // reversed ordered, and flipped startAt/endAt to work properly.
-    if (_queryOptions.limitType == LimitType.last) {
-      if (!_queryOptions.hasFieldOrders) {
-        throw ArgumentError(
-          'limitToLast() queries require specifying at least one orderBy() clause.',
-        );
-      }
-
-      structuredQuery.orderBy = _queryOptions.fieldOrders.map((order) {
-        // Flip the orderBy directions since we want the last results
-        final dir = order.direction == _Direction.descending
-            ? _Direction.ascending
-            : _Direction.descending;
-        return _FieldOrder(
-          fieldPath: order.fieldPath,
-          direction: dir,
-        )._toProto();
-      }).toList();
-
-      // Swap the cursors to match the now-flipped query ordering.
-      structuredQuery.startAt = _queryOptions.endAt != null
-          ? _toCursor(
-              _QueryCursor(
-                values: _queryOptions.endAt!.values,
-                before: !_queryOptions.endAt!.before,
-              ),
-            )
-          : null;
-      structuredQuery.endAt = _queryOptions.startAt != null
-          ? _toCursor(
-              _QueryCursor(
-                values: _queryOptions.startAt!.values,
-                before: !_queryOptions.startAt!.before,
-              ),
-            )
-          : null;
-    }
-
-    final runQueryRequest = firestore_v1.RunQueryRequest(
-      structuredQuery: structuredQuery,
+    return firestore_v1.RunQueryRequest(
+      parent: parent,
+      structuredQuery: _toRequestStructuredQuery(),
+      transaction: transactionId.let(base64Decode),
+      readTime: readTime?._toProto().timestampValue,
+      newTransaction: transactionOptions,
+      explainOptions: explainOptions,
     );
+  }
 
-    if (transactionId != null) {
-      runQueryRequest.transaction = transactionId;
-    } else if (readTime != null) {
-      runQueryRequest.readTime = readTime._toProto().timestampValue;
-    } else if (transactionOptions != null) {
-      runQueryRequest.newTransaction = transactionOptions;
+  /// The structured query to send to the backend.
+  ///
+  /// For limitToLast queries this flips every orderBy direction and swaps
+  /// startAt/endAt, so the backend returns the last results. Callers that read documents must reverse them back (see
+  /// [_reverseIfLimitToLast]).
+  firestore_v1.StructuredQuery _toRequestStructuredQuery() {
+    final structuredQuery = _toStructuredQuery();
+    if (_queryOptions.limitType != LimitType.last) return structuredQuery;
+
+    if (!_queryOptions.hasFieldOrders) {
+      throw ArgumentError(
+        'limitToLast() queries require specifying at least one orderBy() clause.',
+      );
     }
 
-    return runQueryRequest;
+    final reversedOrderBy = _queryOptions.fieldOrders.map((order) {
+      // Flip the orderBy directions since we want the last results
+      final dir = order.direction == _Direction.descending
+          ? _Direction.ascending
+          : _Direction.descending;
+      return _FieldOrder(fieldPath: order.fieldPath, direction: dir)._toProto();
+    }).toList();
+
+    // Swap the cursors to match the now-flipped query ordering.
+    final reversedStartAt = _queryOptions.endAt != null
+        ? _toCursor(
+            _QueryCursor(
+              values: _queryOptions.endAt!.values,
+              before: !_queryOptions.endAt!.before,
+            ),
+          )
+        : null;
+    final reversedEndAt = _queryOptions.startAt != null
+        ? _toCursor(
+            _QueryCursor(
+              values: _queryOptions.startAt!.values,
+              before: !_queryOptions.startAt!.before,
+            ),
+          )
+        : null;
+
+    return firestore_v1.StructuredQuery(
+      select: structuredQuery.select,
+      from: structuredQuery.from,
+      where: structuredQuery.where,
+      orderBy: reversedOrderBy,
+      startAt: reversedStartAt,
+      endAt: reversedEndAt,
+      offset: structuredQuery.offset,
+      limit: structuredQuery.limit,
+    );
   }
 
   firestore_v1.StructuredQuery _toStructuredQuery() {
-    final structuredQuery = firestore_v1.StructuredQuery(
-      from: [firestore_v1.CollectionSelector()],
+    final selectors = [
+      firestore_v1.StructuredQuery_CollectionSelector(
+        collectionId: _queryOptions.kindless ? '' : _queryOptions.collectionId,
+        allDescendants: _queryOptions.allDescendants,
+      ),
+    ];
+
+    final where = _queryOptions.filters.isNotEmpty
+        ? _CompositeFilterInternal(
+            filters: _queryOptions.filters,
+            op: _CompositeOperator.and,
+          ).toProto()
+        : null;
+
+    final orderBy = _queryOptions.hasFieldOrders
+        ? _queryOptions.fieldOrders.map((o) => o._toProto()).toList()
+        : const <firestore_v1.StructuredQuery_Order>[];
+
+    return firestore_v1.StructuredQuery(
+      select: _queryOptions.projection,
+      from: selectors,
+      where: where,
+      orderBy: orderBy,
+      startAt: _toCursor(_queryOptions.startAt),
+      endAt: _toCursor(_queryOptions.endAt),
+      offset: _queryOptions.offset ?? 0,
+      limit: _queryOptions.limit?.let((l) => protobuf_v1.Int32Value(value: l)),
     );
-
-    if (_queryOptions.allDescendants) {
-      structuredQuery.from![0].allDescendants = true;
-    }
-
-    // Kindless queries select all descendant documents, so we remove the
-    // collectionId field.
-    if (!_queryOptions.kindless) {
-      structuredQuery.from![0].collectionId = _queryOptions.collectionId;
-    }
-
-    if (_queryOptions.filters.isNotEmpty) {
-      structuredQuery.where = _CompositeFilterInternal(
-        filters: _queryOptions.filters,
-        op: _CompositeOperator.and,
-      ).toProto();
-    }
-
-    if (_queryOptions.hasFieldOrders) {
-      structuredQuery.orderBy = _queryOptions.fieldOrders
-          .map((o) => o._toProto())
-          .toList();
-    }
-
-    structuredQuery.startAt = _toCursor(_queryOptions.startAt);
-    structuredQuery.endAt = _toCursor(_queryOptions.endAt);
-
-    final limit = _queryOptions.limit;
-    if (limit != null) structuredQuery.limit = limit;
-
-    structuredQuery.offset = _queryOptions.offset;
-    structuredQuery.select = _queryOptions.projection;
-
-    return structuredQuery;
   }
 
   /// Converts a QueryCursor to its proto representation.
@@ -841,20 +877,24 @@ interface class Query<T> {
   /// });
   /// ```
   Query<DocumentData> select([List<FieldPath> fieldPaths = const []]) {
-    final fields = <firestore_v1.FieldReference>[
+    final fields = <firestore_v1.StructuredQuery_FieldReference>[
       if (fieldPaths.isEmpty)
-        firestore_v1.FieldReference(
+        firestore_v1.StructuredQuery_FieldReference(
           fieldPath: FieldPath.documentId._formattedName,
         )
       else
         for (final fieldPath in fieldPaths)
-          firestore_v1.FieldReference(fieldPath: fieldPath._formattedName),
+          firestore_v1.StructuredQuery_FieldReference(
+            fieldPath: fieldPath._formattedName,
+          ),
     ];
 
     return Query<DocumentData>._(
       firestore: firestore,
       queryOptions: _queryOptions
-          .copyWith(projection: firestore_v1.Projection(fields: fields))
+          .copyWith(
+            projection: firestore_v1.StructuredQuery_Projection(fields: fields),
+          )
           .withConverter(
             // By specifying a field mask, the query result no longer conforms to type
             // `T`. We there return `Query<DocumentData>`.
@@ -1201,4 +1241,17 @@ interface class Query<T> {
 
     return VectorQuery<T>._(query: this, options: options);
   }
+}
+
+/// Orders field paths segment by segment, comparing segments by their UTF-8
+/// encoding, as the Node SDK's `FieldPath.compareTo` does.
+///
+/// This differs from comparing formatted paths: `a.c` sorts before `` `a-b` ``.
+int _compareFieldPaths(FieldPath left, FieldPath right) {
+  final length = math.min(left.segments.length, right.segments.length);
+  for (var i = 0; i < length; i++) {
+    final comparison = _compareUtf8Strings(left.segments[i], right.segments[i]);
+    if (comparison != 0) return comparison;
+  }
+  return left.segments.length.compareTo(right.segments.length);
 }

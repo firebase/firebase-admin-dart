@@ -13,14 +13,17 @@
 // limitations under the License.
 
 import 'dart:async';
-import 'dart:convert' show jsonEncode, utf8;
+import 'dart:convert' show base64Decode, base64Encode, jsonEncode, utf8;
 import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
-import 'package:googleapis/firestore/v1.dart' as firestore_v1;
+import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
+import 'package:google_cloud_protobuf/protobuf.dart' as protobuf_v1;
+import 'package:google_cloud_type/type.dart' as type_v1;
 import 'package:intl/intl.dart';
 import 'package:meta/meta.dart';
+import 'package:retry/retry.dart';
 
 import 'backoff.dart';
 import 'credential.dart';
@@ -43,6 +46,7 @@ part 'filter.dart';
 part 'geo_point.dart';
 part 'order.dart';
 part 'path.dart';
+part 'pipeline.dart';
 part 'query_partition.dart';
 part 'query_profile.dart';
 part 'rate_limiter.dart';
@@ -53,6 +57,7 @@ part 'reference/collection_reference.dart';
 part 'reference/composite_filter_internal.dart';
 part 'reference/constants.dart';
 part 'reference/document_reference.dart';
+part 'reference/document_reference_page.dart';
 part 'reference/field_filter_internal.dart';
 part 'reference/field_order.dart';
 part 'reference/filter_internal.dart';
@@ -113,6 +118,7 @@ class Settings {
     this.ignoreUndefinedProperties = false,
     this.useBigInt = false,
     this.environmentOverride,
+    this.headers,
   });
 
   /// The project ID from the Google Developer's Console, e.g. 'grape-spaceship-123'.
@@ -133,9 +139,12 @@ class Settings {
   /// set this to 'localhost:8080' (or your emulator's host:port).
   final String? host;
 
-  /// Whether to use SSL when connecting.
+  /// Whether to connect over HTTPS.
   ///
-  /// Defaults to true. Set to false when using the emulator.
+  /// Defaults to `true`. Set it to `false` alongside [host] to reach a plain
+  /// HTTP endpoint, such as a locally running emulator.
+  ///
+  /// Ignored when `FIRESTORE_EMULATOR_HOST` is set, which always uses HTTP.
   final bool ssl;
 
   /// The credential to use for authentication.
@@ -170,8 +179,10 @@ class Settings {
 
   /// Environment variable overrides for testing.
   ///
-  /// This allows tests to inject environment variables (like FIRESTORE_EMULATOR_HOST)
-  /// without modifying the actual process environment.
+  /// Allows cross-package tests to inject environment variables (such as
+  /// `FIRESTORE_EMULATOR_HOST`) without modifying the actual process
+  /// environment. Within `google_cloud_firestore` itself, prefer using
+  /// `runZoned` with `envSymbol` instead.
   ///
   /// Example:
   /// ```dart
@@ -180,6 +191,13 @@ class Settings {
   /// );
   /// ```
   final Map<String, String>? environmentOverride;
+
+  /// Additional HTTP headers to send with every Firestore request.
+  ///
+  /// Useful for attaching usage-tracking or tracing headers (e.g.
+  /// `X-Firebase-Client`, `X-Goog-Api-Client`) without needing to supply a
+  /// custom HTTP client.
+  final Map<String, String>? headers;
 
   /// Creates a copy of this Settings with the given fields replaced.
   Settings copyWith({
@@ -191,6 +209,7 @@ class Settings {
     bool? ignoreUndefinedProperties,
     bool? useBigInt,
     Map<String, String>? environmentOverride,
+    Map<String, String>? headers,
   }) {
     return Settings(
       projectId: projectId ?? this.projectId,
@@ -202,6 +221,7 @@ class Settings {
           ignoreUndefinedProperties ?? this.ignoreUndefinedProperties,
       useBigInt: useBigInt ?? this.useBigInt,
       environmentOverride: environmentOverride ?? this.environmentOverride,
+      headers: headers ?? this.headers,
     );
   }
 
@@ -216,7 +236,8 @@ class Settings {
           ssl == other.ssl &&
           credential == other.credential &&
           ignoreUndefinedProperties == other.ignoreUndefinedProperties &&
-          useBigInt == other.useBigInt;
+          useBigInt == other.useBigInt &&
+          const MapEquality<String, String>().equals(headers, other.headers);
 
   @override
   int get hashCode => Object.hash(
@@ -225,6 +246,7 @@ class Settings {
     host,
     ssl,
     credential,
+    const MapEquality<String, String>().hash(headers),
     ignoreUndefinedProperties,
     useBigInt,
   );
@@ -334,18 +356,26 @@ class Firestore {
   ///
   /// Throws if the project ID has not been discovered yet.
   String get projectId {
-    final cached = _firestoreClient.cachedProjectId;
-    if (cached != null) return cached;
-
-    // Fall back to explicitly set project ID
-    final explicit = _settings.projectId;
-    if (explicit != null) return explicit;
+    final known = _knownProjectId;
+    if (known != null) return known;
 
     throw StateError(
       'Project ID has not been discovered yet. '
       'Initialize the SDK with credentials that include a project ID, '
       'set project ID in Settings, or set the GOOGLE_CLOUD_PROJECT environment variable.',
     );
+  }
+
+  /// The project ID if it is already known, without throwing when it is not.
+  ///
+  /// Checks the cache, then an explicitly configured ID, then the synchronous
+  /// discovery strategies. The async strategies (gcloud CLI, metadata server)
+  /// are handled by `_run()` and cached after the first API call, so this is
+  /// null on a fresh instance that relies on them.
+  String? get _knownProjectId {
+    return _firestoreClient.cachedProjectId ??
+        _settings.projectId ??
+        _firestoreClient.getProjectId();
   }
 
   /// Returns the Database ID for this Firestore instance.
@@ -457,6 +487,26 @@ class Firestore {
     );
   }
 
+  /// Creates a [PipelineSource], which defines a Firestore Pipeline operation.
+  ///
+  /// Pipeline operations support server-side projections, expressions,
+  /// aggregates, and vector search.
+  ///
+  /// Pipelines require a Firestore **Enterprise edition** database; see
+  /// [Pipeline.execute] for the failure behavior elsewhere. An existing [Query]
+  /// or [VectorQuery] can be converted with [PipelineSource.createFrom].
+  ///
+  /// ```dart
+  /// final snapshot = await firestore
+  ///     .pipeline()
+  ///     .collection('books')
+  ///     .where(field('rating').greaterThan(4.0))
+  ///     .select(['title', field('rating')])
+  ///     .limit(10)
+  ///     .execute();
+  /// ```
+  PipelineSource pipeline() => PipelineSource._(this);
+
   /// Fetches the root collections that are associated with this Firestore
   /// database.
   ///
@@ -540,17 +590,14 @@ class Firestore {
     Object documentOrName,
     Timestamp readTime,
   ) {
-    final readTimeString = _toGoogleDateTime(
-      seconds: readTime.seconds,
-      nanoseconds: readTime.nanoseconds,
-    );
+    final readTimeProto = readTime._toProto().timestampValue;
 
     if (documentOrName is String) {
-      return DocumentSnapshot._missing(documentOrName, readTimeString, this);
+      return DocumentSnapshot._missing(documentOrName, readTimeProto, this);
     } else if (documentOrName is firestore_v1.Document) {
       return DocumentSnapshot._fromDocument(
         documentOrName,
-        readTimeString,
+        readTimeProto,
         this,
       );
     } else {
@@ -558,6 +605,15 @@ class Firestore {
         'documentOrName must be either a String or firestore_v1.Document',
       );
     }
+  }
+
+  @internal
+  QuerySnapshot<T> querySnapshot_<T>(
+    Query<T> query,
+    Timestamp readTime,
+    List<QueryDocumentSnapshot<T>> docs,
+  ) {
+    return QuerySnapshot<T>._(query: query, readTime: readTime, docs: docs);
   }
 
   /// Creates a QuerySnapshot for testing purposes.

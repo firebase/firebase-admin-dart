@@ -21,6 +21,9 @@ on:
         required: false
         default: 'stable'
 
+permissions:
+  contents: read
+
 jobs:
   # Check license headers on all source files
   check-license-header:
@@ -29,7 +32,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Download addlicense
         run: |
@@ -67,14 +70,14 @@ jobs:
         working-directory: packages/firebase_admin_sdk
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: dart-lang/setup-dart@v1
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d
         with:
           sdk: ${{ matrix.dart-version }}
 
       - name: Cache pub dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.pub-cache
           key: pub-${{ matrix.dart-version }}-${{ hashFiles('**/pubspec.lock') }}
@@ -114,23 +117,23 @@ jobs:
         working-directory: packages/firebase_admin_sdk
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 2
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
         with:
           java-version: '21'
           distribution: 'temurin'
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
 
-      - uses: dart-lang/setup-dart@v1
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d
         with:
           sdk: ${{ matrix.dart-version }}
 
       - name: Cache pub dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.pub-cache
           key: pub-${{ matrix.dart-version }}-${{ hashFiles('**/pubspec.lock') }}
@@ -139,7 +142,7 @@ jobs:
             pub-
 
       - name: Cache Firebase CLI
-        uses: actions/cache@v5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.cache/firebase/emulators
           key: firebase-emulators
@@ -165,6 +168,14 @@ jobs:
       - name: Run google_cloud_firestore tests with coverage
         run: ${{ github.workspace }}/scripts/firestore-coverage.sh
 
+      - name: Run firebase_admin_sdk example tests
+        working-directory: packages/firebase_admin_sdk/example
+        run: dart test
+
+      - name: Run firebase_admin_sdk example_server_app tests
+        working-directory: packages/firebase_admin_sdk/example_server_app
+        run: dart test
+
       - name: Process coverage and check threshold
         if: matrix.dart-version == 'stable'
         id: coverage
@@ -172,14 +183,20 @@ jobs:
 
       - name: Comment coverage on PR
         if: matrix.dart-version == 'stable' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        env:
+          COVERAGE: ${{ steps.coverage.outputs.coverage }}
+          STATUS: ${{ steps.coverage.outputs.status }}
+          HIT_LINES: ${{ steps.coverage.outputs.hit_lines }}
+          TOTAL_LINES: ${{ steps.coverage.outputs.total_lines }}
+          COVERAGE_TABLE: ${{ steps.coverage.outputs.coverage_table }}
         with:
           script: |
-            const coverage = '${{ steps.coverage.outputs.coverage }}';
-            const status = '${{ steps.coverage.outputs.status }}';
-            const hitLines = '${{ steps.coverage.outputs.hit_lines }}';
-            const totalLines = '${{ steps.coverage.outputs.total_lines }}';
-            const coverageTable = `${{ steps.coverage.outputs.coverage_table }}`;
+            const coverage = process.env.COVERAGE;
+            const status = process.env.STATUS;
+            const hitLines = process.env.HIT_LINES;
+            const totalLines = process.env.TOTAL_LINES;
+            const coverageTable = process.env.COVERAGE_TABLE;
 
             const body = `## Coverage Report
 
@@ -225,7 +242,7 @@ jobs:
       - name: Upload coverage to codecov
         if: matrix.dart-version == 'stable'
         continue-on-error: true
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         with:
           files: coverage.lcov
           flags: unittests
@@ -234,8 +251,10 @@ jobs:
   test-wif:
     name: Test - WIF Auth (Dart ${{ matrix.dart-version }})
     runs-on: ubuntu-latest
-    # Skip for fork PRs — secrets are not available
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    # Skip for fork and Dependabot PRs — repository secrets are not available
+    if: |
+      github.actor != 'dependabot[bot]' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -250,22 +269,22 @@ jobs:
         working-directory: packages/firebase_admin_sdk
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 2
 
-      - uses: dart-lang/setup-dart@v1
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d
         with:
           sdk: ${{ matrix.dart-version }}
 
       - name: Authenticate to Google Cloud/Firebase
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
         with:
           workload_identity_provider: '${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}'
           service_account: '${{ secrets.SERVICE_ACCOUNT }}'
 
       - name: Cache pub dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.pub-cache
           key: pub-${{ matrix.dart-version }}-${{ hashFiles('**/pubspec.lock') }}
@@ -285,7 +304,7 @@ jobs:
         working-directory: .
 
       - name: Run WIF auth test
-        run: dart test test/integration/app/firebase_app_prod_test.dart --concurrency=1 --tags wif
+        run: dart test test/integration/app/firebase_app_prod_test.dart --concurrency=1 -P wif
 
       - name: Run Remote Config integration tests
         env:
@@ -300,7 +319,7 @@ jobs:
     name: Publish verification
     runs-on: ubuntu-latest
     needs: [check-license-header, lint, test, test-wif]
-    # Run even if test-wif was skipped (fork PRs), but not if other jobs failed
+    # Run even if test-wif was skipped (fork and Dependabot PRs), but not if other jobs failed
     if: |
       always() &&
       needs.check-license-header.result == 'success' &&
@@ -313,14 +332,14 @@ jobs:
         working-directory: packages/firebase_admin_sdk
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: dart-lang/setup-dart@v1
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d
         with:
           sdk: stable
 
       - name: Cache pub dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.pub-cache
           key: pub-stable-${{ hashFiles('**/pubspec.lock') }}
@@ -335,3 +354,7 @@ jobs:
         working-directory: .
 
       - run: dart pub publish --dry-run
+        working-directory: packages/google_cloud_firestore
+
+      - run: dart pub publish --dry-run
+        working-directory: packages/firebase_admin_sdk

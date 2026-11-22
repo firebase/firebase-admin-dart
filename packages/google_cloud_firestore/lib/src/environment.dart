@@ -39,7 +39,7 @@ abstract class Environment {
   ///
   /// Priority order:
   /// 1. Zone.current[envSymbol] (for package tests using runZoned)
-  /// 2. [environmentOverride] parameter (for client code tests)
+  /// 2. [environmentOverride] parameter (for cross-package tests)
   /// 3. Platform.environment (actual system environment)
   ///
   /// Example:
@@ -58,8 +58,7 @@ abstract class Environment {
       return zoneEnv[firestoreEmulatorHost];
     }
 
-    // Then check environmentOverride (for client code)
-    // This allows tests to explicitly remove environment variables
+    // Then check environmentOverride (for cross-package tests)
     if (environmentOverride != null) {
       return environmentOverride[firestoreEmulatorHost];
     }
@@ -71,11 +70,6 @@ abstract class Environment {
   /// Checks if the Firestore emulator is enabled via environment variable.
   ///
   /// Returns `true` if [firestoreEmulatorHost] is set in the environment.
-  ///
-  /// Priority order (same as [getFirestoreEmulatorHost]):
-  /// 1. Zone.current[envSymbol] (for package tests using runZoned)
-  /// 2. [environmentOverride] parameter (for client code tests)
-  /// 3. Platform.environment (actual system environment)
   ///
   /// Example:
   /// ```dart

@@ -1,0 +1,1680 @@
+{
+  "generator": "tool/pipeline_golden (npm run generate)",
+  "sdk": "@google-cloud/firestore@9.3.1",
+  "cases": {
+    "values/constant/array": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "arrayValue": {
+                          "values": [
+                            {"integerValue": "1"},
+                            {"stringValue": "a"},
+                            {"booleanValue": true},
+                            {"nullValue": null}
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/bytes": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {"mapValue": {"fields": {"result": {"bytesValue": "AQID/w=="}}}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/date": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {"timestampValue": "2024-01-02T03:04:05.678Z"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/document-reference": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "referenceValue": "projects/test-project/databases/(default)/documents/books/book1"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/double": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {"mapValue": {"fields": {"result": {"doubleValue": 3.14}}}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/empty-string": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {"mapValue": {"fields": {"result": {"stringValue": ""}}}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/false": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {"mapValue": {"fields": {"result": {"booleanValue": false}}}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/geo-point": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "geoPointValue": {
+                          "latitude": 37.7749,
+                          "longitude": -122.4194
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/infinity": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"doubleValue": "Infinity"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/integer": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {"mapValue": {"fields": {"result": {"integerValue": "42"}}}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/map": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "mapValue": {
+                          "fields": {
+                            "a": {"integerValue": "1"},
+                            "b": {"stringValue": "x"},
+                            "nested": {
+                              "mapValue": {
+                                "fields": {
+                                  "c": {
+                                    "arrayValue": {
+                                      "values": [
+                                        {"integerValue": "1"},
+                                        {"integerValue": "2"}
+                                      ]
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/nan": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {"mapValue": {"fields": {"result": {"doubleValue": "NaN"}}}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/negative-infinity": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"doubleValue": "-Infinity"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/negative-integer": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {"mapValue": {"fields": {"result": {"integerValue": "-7"}}}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/null": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {"mapValue": {"fields": {"result": {"nullValue": null}}}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/string": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {"mapValue": {"fields": {"result": {"stringValue": "Fantasy"}}}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/timestamp": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "timestampValue": "2023-11-14T22:13:20.123456789Z"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/timestamp-millis": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {"timestampValue": "2023-11-14T22:13:20.123Z"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/true": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {"mapValue": {"fields": {"result": {"booleanValue": true}}}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/vector": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {
+                        "mapValue": {
+                          "fields": {
+                            "__type__": {"stringValue": "__vector__"},
+                            "value": {
+                              "arrayValue": {
+                                "values": [
+                                  {"doubleValue": 0.1},
+                                  {"doubleValue": 0.2},
+                                  {"doubleValue": 0.3}
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/constant/zero": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {"mapValue": {"fields": {"result": {"integerValue": "0"}}}}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/data-types/all-constants": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {"name": "limit", "args": [{"integerValue": "1"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "array": {
+                        "functionValue": {
+                          "name": "array",
+                          "args": [
+                            {"integerValue": "1"},
+                            {"stringValue": "a string"},
+                            {"booleanValue": true},
+                            {"nullValue": null},
+                            {
+                              "geoPointValue": {
+                                "latitude": 37.7749,
+                                "longitude": -122.4194
+                              }
+                            },
+                            {"timestampValue": "2023-11-14T22:13:20.123456789Z"},
+                            {"timestampValue": "2024-01-02T03:04:05.678Z"},
+                            {"bytesValue": "AQID/w=="},
+                            {
+                              "referenceValue": "projects/test-project/databases/(default)/documents/books/book1"
+                            },
+                            {
+                              "mapValue": {
+                                "fields": {
+                                  "__type__": {"stringValue": "__vector__"},
+                                  "value": {
+                                    "arrayValue": {
+                                      "values": [
+                                        {"doubleValue": 0.1},
+                                        {"doubleValue": 0.2},
+                                        {"doubleValue": 0.3}
+                                      ]
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "functionValue": {
+                                "name": "map",
+                                "args": [
+                                  {"stringValue": "number"},
+                                  {"integerValue": "2"},
+                                  {"stringValue": "string"},
+                                  {"stringValue": "b string"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "boolean": {"booleanValue": true},
+                      "bytes": {"bytesValue": "AQID/w=="},
+                      "date": {"timestampValue": "2024-01-02T03:04:05.678Z"},
+                      "documentReference": {
+                        "referenceValue": "projects/test-project/databases/(default)/documents/books/book1"
+                      },
+                      "geoPoint": {
+                        "geoPointValue": {
+                          "latitude": 37.7749,
+                          "longitude": -122.4194
+                        }
+                      },
+                      "map": {
+                        "functionValue": {
+                          "name": "map",
+                          "args": [
+                            {"stringValue": "number"},
+                            {"integerValue": "1"},
+                            {"stringValue": "string"},
+                            {"stringValue": "a string"},
+                            {"stringValue": "boolean"},
+                            {"booleanValue": true},
+                            {"stringValue": "null"},
+                            {"nullValue": null},
+                            {"stringValue": "geoPoint"},
+                            {
+                              "geoPointValue": {
+                                "latitude": 37.7749,
+                                "longitude": -122.4194
+                              }
+                            },
+                            {"stringValue": "timestamp"},
+                            {"timestampValue": "2023-11-14T22:13:20.123456789Z"},
+                            {"stringValue": "date"},
+                            {"timestampValue": "2024-01-02T03:04:05.678Z"},
+                            {"stringValue": "uint8Array"},
+                            {"bytesValue": "AQID/w=="},
+                            {"stringValue": "documentReference"},
+                            {
+                              "referenceValue": "projects/test-project/databases/(default)/documents/books/book1"
+                            },
+                            {"stringValue": "vectorValue"},
+                            {
+                              "mapValue": {
+                                "fields": {
+                                  "__type__": {"stringValue": "__vector__"},
+                                  "value": {
+                                    "arrayValue": {
+                                      "values": [
+                                        {"doubleValue": 0.1},
+                                        {"doubleValue": 0.2},
+                                        {"doubleValue": 0.3}
+                                      ]
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {"stringValue": "map"},
+                            {
+                              "functionValue": {
+                                "name": "map",
+                                "args": [
+                                  {"stringValue": "number"},
+                                  {"integerValue": "2"},
+                                  {"stringValue": "string"},
+                                  {"stringValue": "b string"}
+                                ]
+                              }
+                            },
+                            {"stringValue": "array"},
+                            {
+                              "functionValue": {
+                                "name": "array",
+                                "args": [
+                                  {"integerValue": "1"},
+                                  {"stringValue": "c string"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "null": {"nullValue": null},
+                      "number": {"integerValue": "1"},
+                      "string": {"stringValue": "a string"},
+                      "timestamp": {
+                        "timestampValue": "2023-11-14T22:13:20.123456789Z"
+                      },
+                      "vectorValue": {
+                        "mapValue": {
+                          "fields": {
+                            "__type__": {"stringValue": "__vector__"},
+                            "value": {
+                              "arrayValue": {
+                                "values": [
+                                  {"doubleValue": 0.1},
+                                  {"doubleValue": 0.2},
+                                  {"doubleValue": 0.3}
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/data-types/array-and-map-functions": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "sort",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "direction": {"stringValue": "descending"},
+                      "expression": {"fieldReferenceValue": "rating"}
+                    }
+                  }
+                }
+              ]
+            },
+            {"name": "limit", "args": [{"integerValue": "1"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "author": {"fieldReferenceValue": "author"},
+                      "genre": {"fieldReferenceValue": "genre"},
+                      "published": {"fieldReferenceValue": "published"},
+                      "rating": {"fieldReferenceValue": "rating"},
+                      "tags": {"fieldReferenceValue": "tags"},
+                      "title": {"fieldReferenceValue": "title"}
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "add_fields",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "metadata": {
+                        "functionValue": {
+                          "name": "map",
+                          "args": [
+                            {"stringValue": "genre"},
+                            {"fieldReferenceValue": "genre"},
+                            {"stringValue": "rating"},
+                            {
+                              "functionValue": {
+                                "name": "multiply",
+                                "args": [
+                                  {"fieldReferenceValue": "rating"},
+                                  {"integerValue": "10"}
+                                ]
+                              }
+                            },
+                            {"stringValue": "nestedArray"},
+                            {
+                              "functionValue": {
+                                "name": "array",
+                                "args": [{"fieldReferenceValue": "title"}]
+                              }
+                            },
+                            {"stringValue": "nestedMap"},
+                            {
+                              "functionValue": {
+                                "name": "map",
+                                "args": [
+                                  {"stringValue": "published"},
+                                  {"fieldReferenceValue": "published"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "metadataArray": {
+                        "functionValue": {
+                          "name": "array",
+                          "args": [
+                            {"integerValue": "1"},
+                            {"integerValue": "2"},
+                            {"fieldReferenceValue": "genre"},
+                            {
+                              "functionValue": {
+                                "name": "multiply",
+                                "args": [
+                                  {"fieldReferenceValue": "rating"},
+                                  {"integerValue": "10"}
+                                ]
+                              }
+                            },
+                            {
+                              "functionValue": {
+                                "name": "array",
+                                "args": [{"fieldReferenceValue": "title"}]
+                              }
+                            },
+                            {
+                              "functionValue": {
+                                "name": "map",
+                                "args": [
+                                  {"stringValue": "published"},
+                                  {"fieldReferenceValue": "published"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "and",
+                    "args": [
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "metadataArray"},
+                            {
+                              "functionValue": {
+                                "name": "array",
+                                "args": [
+                                  {"integerValue": "1"},
+                                  {"integerValue": "2"},
+                                  {"fieldReferenceValue": "genre"},
+                                  {
+                                    "functionValue": {
+                                      "name": "multiply",
+                                      "args": [
+                                        {"fieldReferenceValue": "rating"},
+                                        {"integerValue": "10"}
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "functionValue": {
+                                      "name": "array",
+                                      "args": [{"fieldReferenceValue": "title"}]
+                                    }
+                                  },
+                                  {
+                                    "functionValue": {
+                                      "name": "map",
+                                      "args": [
+                                        {"stringValue": "published"},
+                                        {"fieldReferenceValue": "published"}
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "functionValue": {
+                          "name": "equal",
+                          "args": [
+                            {"fieldReferenceValue": "metadata"},
+                            {
+                              "functionValue": {
+                                "name": "map",
+                                "args": [
+                                  {"stringValue": "genre"},
+                                  {"fieldReferenceValue": "genre"},
+                                  {"stringValue": "rating"},
+                                  {
+                                    "functionValue": {
+                                      "name": "multiply",
+                                      "args": [
+                                        {"fieldReferenceValue": "rating"},
+                                        {"integerValue": "10"}
+                                      ]
+                                    }
+                                  },
+                                  {"stringValue": "nestedArray"},
+                                  {
+                                    "functionValue": {
+                                      "name": "array",
+                                      "args": [{"fieldReferenceValue": "title"}]
+                                    }
+                                  },
+                                  {"stringValue": "nestedMap"},
+                                  {
+                                    "functionValue": {
+                                      "name": "map",
+                                      "args": [
+                                        {"stringValue": "published"},
+                                        {"fieldReferenceValue": "published"}
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/field/backslash": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"fieldReferenceValue": "`a\\\\b`"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/field/backtick": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"fieldReferenceValue": "`a\\`b`"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/field/document-id": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"fieldReferenceValue": "__name__"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/field/field-name-argument": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "`first-name`"},
+                      {"stringValue": "Ada"}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/field/field-path-object": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"fieldReferenceValue": "`a.b`.c"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/field/nested": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {"fieldReferenceValue": "metadata.lang"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/field/non-ascii": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"fieldReferenceValue": "`naïve`"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/field/reserved-characters": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"fieldReferenceValue": "`a/b`"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/field/simple": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"fieldReferenceValue": "title"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/field/space": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"fieldReferenceValue": "`last name`"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/field/special-characters": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {
+                      "result": {"fieldReferenceValue": "`first-name`"}
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/boolean": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {"booleanValue": true}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/bytes": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {"bytesValue": "AQID/w=="}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/constant-list": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {
+                        "arrayValue": {
+                          "values": [{"stringValue": "a"}, {"stringValue": "b"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/date": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {"timestampValue": "2024-01-02T03:04:05.678Z"}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/document-reference": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {
+                        "referenceValue": "projects/test-project/databases/(default)/documents/books/book1"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/double": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {"doubleValue": 1.5}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/geo-point": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {
+                        "geoPointValue": {
+                          "latitude": 37.7749,
+                          "longitude": -122.4194
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/integer": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {"integerValue": "1"}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/list-empty": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {"functionValue": {"name": "array"}}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/list-nested": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {
+                        "functionValue": {
+                          "name": "array",
+                          "args": [
+                            {
+                              "functionValue": {
+                                "name": "array",
+                                "args": [{"stringValue": "a"}]
+                              }
+                            },
+                            {
+                              "functionValue": {
+                                "name": "map",
+                                "args": [
+                                  {"stringValue": "k"},
+                                  {"stringValue": "v"}
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/list-plain": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {
+                        "functionValue": {
+                          "name": "array",
+                          "args": [{"stringValue": "a"}, {"stringValue": "b"}]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/list-with-expression": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {
+                        "functionValue": {
+                          "name": "array",
+                          "args": [
+                            {"stringValue": "a"},
+                            {"fieldReferenceValue": "b"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/map-empty": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {"functionValue": {"name": "map"}}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/map-nested": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {
+                        "functionValue": {
+                          "name": "map",
+                          "args": [
+                            {"stringValue": "inner"},
+                            {
+                              "functionValue": {
+                                "name": "map",
+                                "args": [
+                                  {"stringValue": "k"},
+                                  {"fieldReferenceValue": "y"}
+                                ]
+                              }
+                            },
+                            {"stringValue": "list"},
+                            {
+                              "functionValue": {
+                                "name": "array",
+                                "args": [{"fieldReferenceValue": "z"}]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/map-plain": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {
+                        "functionValue": {
+                          "name": "map",
+                          "args": [
+                            {"stringValue": "a"},
+                            {"integerValue": "1"},
+                            {"stringValue": "b"},
+                            {"stringValue": "x"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/map-with-expression": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {
+                        "functionValue": {
+                          "name": "map",
+                          "args": [
+                            {"stringValue": "a"},
+                            {"fieldReferenceValue": "x"},
+                            {"stringValue": "b"},
+                            {"integerValue": "1"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/null": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {"nullValue": null}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/string": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {"stringValue": "a"}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/timestamp": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {"timestampValue": "2023-11-14T22:13:20.123456789Z"}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/value-position/vector": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "where",
+              "args": [
+                {
+                  "functionValue": {
+                    "name": "equal",
+                    "args": [
+                      {"fieldReferenceValue": "value"},
+                      {
+                        "mapValue": {
+                          "fields": {
+                            "__type__": {"stringValue": "__vector__"},
+                            "value": {
+                              "arrayValue": {
+                                "values": [
+                                  {"doubleValue": 0.1},
+                                  {"doubleValue": 0.2},
+                                  {"doubleValue": 0.3}
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "values/variable/plain": {
+      "database": "projects/test-project/databases/(default)",
+      "structuredPipeline": {
+        "pipeline": {
+          "stages": [
+            {"name": "collection", "args": [{"referenceValue": "/books"}]},
+            {
+              "name": "select",
+              "args": [
+                {
+                  "mapValue": {
+                    "fields": {"result": {"variableReferenceValue": "x"}}
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

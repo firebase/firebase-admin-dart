@@ -24,11 +24,11 @@ class FirebaseMessagingHttpClient {
 
   final FirebaseApp app;
 
-  /// Gets the IID (Instance ID) API host for topic management.
-  ///
-  /// Topic subscription management uses the IID API since the FCM v1 API
-  /// does not provide topic management endpoints.
+  /// Gets the IID (Instance ID) API host for legacy topic management.
   String get iidApiHost => 'iid.googleapis.com';
+
+  /// Gets the FCM API host for topic management.
+  String get fcmHost => 'fcm.googleapis.com';
 
   /// Builds the parent resource path for FCM operations.
   String buildParent(String projectId) {
@@ -42,6 +42,11 @@ class FirebaseMessagingHttpClient {
     final projectId = await app.getProjectId();
     return _fmcGuard(() => fn(client, projectId));
   }
+
+  /// Executes an operation directly with the AuthClient and projectId.
+  Future<R> withClient<R>(
+    Future<R> Function(googleapis_auth.AuthClient client, String projectId) fn,
+  ) => _run(fn);
 
   /// Executes a Messaging v1 API operation with automatic projectId injection.
   Future<R> v1<R>(

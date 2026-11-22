@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+@Tags(['firebase-emulator'])
+library;
+
 import 'package:firebase_admin_sdk/functions.dart';
 import 'package:test/test.dart';
 

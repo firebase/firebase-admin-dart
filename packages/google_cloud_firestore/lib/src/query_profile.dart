@@ -19,7 +19,10 @@ class PlanSummary {
   const PlanSummary._(this.indexesUsed);
 
   factory PlanSummary._fromProto(firestore_v1.PlanSummary proto) {
-    return PlanSummary._(proto.indexesUsed ?? <Map<String, Object?>>[]);
+    return PlanSummary._([
+      for (final index in proto.indexesUsed)
+        index.toJson() as Map<String, Object?>,
+    ]);
   }
 
   /// Information about the indexes that were used to serve the query.
@@ -41,10 +44,18 @@ class ExecutionStats {
 
   factory ExecutionStats._fromProto(firestore_v1.ExecutionStats proto) {
     return ExecutionStats._(
-      resultsReturned: int.tryParse(proto.resultsReturned ?? '0') ?? 0,
-      executionDuration: proto.executionDuration ?? '0s',
-      readOperations: int.tryParse(proto.readOperations ?? '0') ?? 0,
-      debugStats: proto.debugStats ?? <String, Object?>{},
+      resultsReturned: proto.resultsReturned,
+      executionDuration:
+          proto.executionDuration?.let((d) {
+            final seconds = d.seconds;
+            final nanos = d.nanos;
+            if (nanos == 0) return '${seconds}s';
+            return '$seconds.${nanos.toString().padLeft(9, '0').replaceAll(RegExp(r'0+$'), '')}s';
+          }) ??
+          '0s',
+      readOperations: proto.readOperations,
+      debugStats:
+          proto.debugStats?.toJson() as Map<String, Object?>? ?? const {},
     );
   }
 
@@ -87,6 +98,49 @@ class ExplainMetrics {
   final ExecutionStats? executionStats;
 }
 
+/// Statistics about how the backend planned and executed a Pipeline.
+///
+/// The `output_format` Pipeline option chooses the payload format.
+class ExplainStats {
+  const ExplainStats._({
+    required this.typeName,
+    required this.text,
+    required this.raw,
+  });
+
+  factory ExplainStats._fromProto(firestore_v1.ExplainStats proto) {
+    final data = proto.data;
+    if (data == null) {
+      return const ExplainStats._(typeName: null, text: null, raw: null);
+    }
+
+    final isText = data.isType(protobuf_v1.StringValue.fullyQualifiedName);
+    return ExplainStats._(
+      typeName: data.typeName,
+      text: isText
+          ? data.unpackFrom(protobuf_v1.StringValue.fromJson).value
+          : null,
+      raw: Map.unmodifiable(data.json),
+    );
+  }
+
+  /// The fully qualified name of the payload type.
+  ///
+  /// For example `google.protobuf.StringValue`.
+  final String? typeName;
+
+  /// The payload as a string, for the `TEXT` and `JSON` output formats.
+  ///
+  /// Null for any other format, in which case [raw] still carries it.
+  final String? text;
+
+  /// The payload exactly as the backend encoded it, keyed by field name.
+  ///
+  /// Populated whenever stats were returned, so a format this SDK cannot
+  /// decode into [text] is never lost.
+  final Map<String, Object?>? raw;
+}
+
 /// ExplainResults contains information about planning, execution, and results
 /// of a query.
 class ExplainResults<T> {
@@ -122,6 +176,6 @@ class ExplainOptions {
   final bool? analyze;
 
   firestore_v1.ExplainOptions toProto() {
-    return firestore_v1.ExplainOptions(analyze: analyze);
+    return firestore_v1.ExplainOptions(analyze: analyze ?? false);
   }
 }

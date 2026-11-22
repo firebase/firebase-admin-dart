@@ -226,7 +226,7 @@ abstract class _BaseAuth {
     );
   }
 
-  /// Returns a promise that resolves with the newly created `AuthProviderConfig`
+  /// Returns a [Future] that completes with the newly created [AuthProviderConfig]
   /// when the new provider configuration is created.
   ///
   /// SAML and OIDC provider support requires Google Cloud's Identity Platform
@@ -250,7 +250,7 @@ abstract class _BaseAuth {
     throw FirebaseAuthAdminException(AuthClientErrorCode.invalidProviderId);
   }
 
-  /// Returns a promise that resolves with the updated `AuthProviderConfig`
+  /// Returns a [Future] that completes with the updated [AuthProviderConfig]
   /// corresponding to the provider ID specified.
   /// If the specified ID does not exist, an `auth/configuration-not-found` error
   /// is thrown.
@@ -280,7 +280,7 @@ abstract class _BaseAuth {
   }
 
   /// Looks up an Auth provider configuration by the provided ID.
-  /// Returns a promise that resolves with the provider configuration
+  /// Returns a [Future] that completes with the provider configuration
   /// corresponding to the provider ID specified. If the specified ID does not
   /// exist, an `auth/configuration-not-found` error is thrown.
   ///
@@ -362,9 +362,9 @@ abstract class _BaseAuth {
     await _authRequestHandler.setCustomUserClaims(uid, customUserClaims);
   }
 
-  /// Verifies a Firebase ID token (JWT). If the token is valid, the promise is
-  /// fulfilled with the token's decoded claims; otherwise, the promise is
-  /// rejected.
+  /// Verifies a Firebase ID token (JWT). If the token is valid, the returned
+  /// [Future] completes with the token's decoded claims; otherwise, it
+  /// throws.
   ///
   /// If `checkRevoked` is set to true, first verifies whether the corresponding
   /// user is disabled. If yes, an `auth/user-disabled` error is thrown. If no,
@@ -508,7 +508,7 @@ abstract class _BaseAuth {
   /// - pageToken - The next page token. If not specified, returns
   ///   users starting without any offset.
   ///
-  /// Returns a promise that resolves with
+  /// Returns a [Future] that completes with
   /// the current batch of downloaded users and the next page token.
   Future<ListUsersResult> listUsers({
     int? maxResults,
@@ -530,7 +530,7 @@ abstract class _BaseAuth {
   /// See https://firebase.google.com/docs/auth/admin/manage-users#delete_a_user
   /// for code samples and detailed documentation.
   ///
-  /// Returns an empty promise fulfilled once the user has been
+  /// Returns a [Future] that completes once the user has been
   /// deleted.
   Future<void> deleteUser(String uid) async {
     await _authRequestHandler.deleteAccount(uid);
@@ -633,7 +633,7 @@ abstract class _BaseAuth {
   ///
   /// Receives the email corresponding to the user whose data to fetch.
   ///
-  /// Returns a promise fulfilled with the user
+  /// Returns a [Future] that completes with the user
   /// data corresponding to the provided email.
   Future<UserRecord> getUserByEmail(String email) async {
     final response = await _authRequestHandler.getAccountInfoByEmail(email);
@@ -762,10 +762,12 @@ abstract class _BaseAuth {
     // conflict could arise, e.g. if the user provides a phoneNumber property,
     // but also provides a providerToLink with a 'phone' provider id. In that
     // case, we'll throw an error.
+    // A provider without a uid is left for updateExistingAccount to reject:
+    // moving it would send phoneNumber: null, which deletes the phone number.
     var request = properties;
     final providerToLink = properties.providerToLink;
     switch (providerToLink) {
-      case UserProvider(providerId: 'email'):
+      case UserProvider(providerId: 'email', :final uid?) when uid.isNotEmpty:
         if (properties.email != null) {
           throw FirebaseAuthAdminException(
             AuthClientErrorCode.invalidArgument,
@@ -773,8 +775,8 @@ abstract class _BaseAuth {
             'link to the email/password provider, only specify the UpdateRequest.email field.',
           );
         }
-        request = properties.copyWith(email: providerToLink.uid);
-      case UserProvider(providerId: 'phone'):
+        request = properties._copyWith(email: uid, keepProviderToLink: false);
+      case UserProvider(providerId: 'phone', :final uid?) when uid.isNotEmpty:
         if (properties.phoneNumber != null) {
           throw FirebaseAuthAdminException(
             AuthClientErrorCode.invalidArgument,
@@ -782,7 +784,10 @@ abstract class _BaseAuth {
             'link to a phone provider, only specify the UpdateRequest.phoneNumber field.',
           );
         }
-        request = properties.copyWith(phoneNumber: providerToLink.uid);
+        request = properties._copyWith(
+          phoneNumber: uid,
+          keepProviderToLink: false,
+        );
     }
     final providersToUnlink = properties.providersToUnlink;
     if (providersToUnlink != null && providersToUnlink.contains('phone')) {
@@ -790,7 +795,7 @@ abstract class _BaseAuth {
       // phoneNumber to null *and* by setting providersToUnlink to include
       // 'phone', then we'll reject that. Though it might also be reasonable
       // to relax this restriction and just unlink it.
-      if (properties.phoneNumber == null) {
+      if (properties.phoneNumber case _Box(value: null)) {
         throw FirebaseAuthAdminException(
           AuthClientErrorCode.invalidArgument,
           "Both UpdateRequest.phoneNumber and UpdateRequest.providersToUnlink=['phone'] were set. To "

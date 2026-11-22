@@ -13,6 +13,8 @@
 // limitations under the License.
 
 import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:firebase_admin_sdk/firebase_admin_sdk.dart';
 import 'package:google_cloud_firestore/google_cloud_firestore.dart';
 
@@ -21,6 +23,7 @@ Future<void> firestoreExample(FirebaseApp admin) async {
   print('\n### Firestore Examples ###\n');
 
   await basicFirestoreExample(admin);
+  await blobExample(admin);
   await multiDatabaseExample(admin);
   await batchExample(admin);
   await transactionExample(admin);
@@ -51,7 +54,30 @@ Future<void> basicFirestoreExample(FirebaseApp admin) async {
   print('');
 }
 
-/// Example 2: Multi-database support
+/// Example 2: Binary data (blob) stored as Uint8List
+Future<void> blobExample(FirebaseApp admin) async {
+  print('### Blob Example ###\n');
+
+  final firestore = admin.firestore();
+  final doc = firestore.doc('blob-demo/binary');
+
+  try {
+    await doc.set({
+      'thumbnail': Uint8List.fromList([0x89, 0x50, 0x4e, 0x47]),
+      'empty': Uint8List(0),
+    });
+
+    final snapshot = await doc.get();
+    final data = snapshot.data()!;
+
+    print('> thumbnail bytes: ${data['thumbnail']}');
+    print('> empty bytes:     ${data['empty']}\n');
+  } catch (e) {
+    print('> Error: $e');
+  }
+}
+
+/// Example 3: Multi-database support
 Future<void> multiDatabaseExample(FirebaseApp admin) async {
   print('### Multi-Database Examples ###\n');
 

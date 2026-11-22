@@ -18,6 +18,10 @@ void main() async {
   // By default, the `Firestore` class will use the currently configured project
   // and automatically attempt to authenticate using Application Default
   // Credentials.
+  //
+  // When running locally with `gcloud auth application-default login`, the
+  // project ID is not included in the credentials. Set the GOOGLE_CLOUD_PROJECT
+  // environment variable or pass it via Settings(projectId: 'your-project-id').
   final firestore = Firestore();
 
   final users = firestore.collection('users');

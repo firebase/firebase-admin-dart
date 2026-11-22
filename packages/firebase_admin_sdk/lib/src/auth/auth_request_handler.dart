@@ -54,13 +54,25 @@ abstract class _AbstractAuthRequestHandler {
   AuthHttpClient get httpClient => _httpClient;
 
   /// Generates the out of band email action link for the email specified using the action code settings provided.
-  /// Returns a promise that resolves with the generated link.
+  /// Returns a [Future] that completes with the generated link.
   Future<String> getEmailActionLink(
     String requestType,
     String email,
     ActionCodeSettings? actionCodeSettings, [
     String? newEmail,
   ]) async {
+    assertIsEmail(email);
+
+    if (requestType == 'VERIFY_AND_CHANGE_EMAIL') {
+      if (newEmail == null || newEmail.isEmpty) {
+        throw FirebaseAuthAdminException(
+          AuthClientErrorCode.invalidArgument,
+          "`newEmail` is required when `requestType` === 'VERIFY_AND_CHANGE_EMAIL'",
+        );
+      }
+      assertIsEmail(newEmail);
+    }
+
     final request = auth1.GoogleCloudIdentitytoolkitV1GetOobCodeRequest(
       requestType: requestType,
       email: email,
@@ -82,13 +94,6 @@ abstract class _AbstractAuthRequestHandler {
     if (actionCodeSettings != null || requestType == 'EMAIL_SIGNIN') {
       final builder = _ActionCodeSettingsBuilder(actionCodeSettings!);
       builder.buildRequest(request);
-    }
-
-    if (requestType == 'VERIFY_AND_CHANGE_EMAIL' && newEmail == null) {
-      throw FirebaseAuthAdminException(
-        AuthClientErrorCode.invalidArgument,
-        "`newEmail` is required when `requestType` === 'VERIFY_AND_CHANGE_EMAIL'",
-      );
     }
 
     final response = await _httpClient.getOobCode(request);
@@ -325,8 +330,20 @@ abstract class _AbstractAuthRequestHandler {
   /// session management (set as a server side session cookie with custom cookie policy).
   /// The session cookie JWT will have the same payload claims as the provided ID token.
   Future<String> createSessionCookie(String idToken, {required int expiresIn}) {
+    if (idToken.isEmpty) {
+      throw FirebaseAuthAdminException(AuthClientErrorCode.invalidIdToken);
+    }
+
     // Convert to seconds (use integer division to avoid decimal).
     final validDuration = expiresIn ~/ 1000;
+
+    if (validDuration < _minSessionCookieDurationSecs ||
+        validDuration > _maxSessionCookieDurationSecs) {
+      throw FirebaseAuthAdminException(
+        AuthClientErrorCode.invalidSessionCookieDuration,
+      );
+    }
+
     final request =
         auth1.GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest(
           idToken: idToken,
@@ -334,19 +351,6 @@ abstract class _AbstractAuthRequestHandler {
         );
 
     return _httpClient.v1((api, projectId) async {
-      // Validate the ID token is a non-empty string.
-      if (idToken.isEmpty) {
-        throw FirebaseAuthAdminException(AuthClientErrorCode.invalidIdToken);
-      }
-
-      // Validate the custom session cookie duration.
-      if (validDuration < _minSessionCookieDurationSecs ||
-          validDuration > _maxSessionCookieDurationSecs) {
-        throw FirebaseAuthAdminException(
-          AuthClientErrorCode.invalidSessionCookieDuration,
-        );
-      }
-
       final response = await api.projects.createSessionCookie(
         request,
         projectId,
@@ -684,13 +688,13 @@ abstract class _AbstractAuthRequestHandler {
 
     final providerToLink = properties.providerToLink;
     if (providerToLink != null) {
-      if (providerToLink.providerId?.isNotEmpty ?? false) {
+      if (providerToLink.providerId?.isEmpty ?? true) {
         throw FirebaseAuthAdminException(
           AuthClientErrorCode.invalidArgument,
           'providerToLink.providerId of properties argument must be a non-empty string.',
         );
       }
-      if (providerToLink.uid?.isNotEmpty ?? false) {
+      if (providerToLink.uid?.isEmpty ?? true) {
         throw FirebaseAuthAdminException(
           AuthClientErrorCode.invalidArgument,
           'providerToLink.uid of properties argument must be a non-empty string.',
@@ -793,12 +797,7 @@ class AuthRequestHandler extends _AbstractAuthRequestHandler {
 
   /// Looks up a tenant by tenant ID.
   Future<Map<String, dynamic>> getTenant(String tenantId) async {
-    if (tenantId.isEmpty) {
-      throw FirebaseAuthAdminException(
-        AuthClientErrorCode.invalidTenantId,
-        'Tenant ID must be a non-empty string.',
-      );
-    }
+    assertIsTenantId(tenantId);
 
     final response = await _httpClient.getTenant(tenantId);
     return _tenantResponseToJson(response);
@@ -838,12 +837,7 @@ class AuthRequestHandler extends _AbstractAuthRequestHandler {
 
   /// Deletes a tenant identified by a tenantId.
   Future<void> deleteTenant(String tenantId) async {
-    if (tenantId.isEmpty) {
-      throw FirebaseAuthAdminException(
-        AuthClientErrorCode.invalidTenantId,
-        'Tenant ID must be a non-empty string.',
-      );
-    }
+    assertIsTenantId(tenantId);
 
     await _httpClient.deleteTenant(tenantId);
   }
@@ -865,12 +859,7 @@ class AuthRequestHandler extends _AbstractAuthRequestHandler {
     String tenantId,
     UpdateTenantRequest tenantOptions,
   ) async {
-    if (tenantId.isEmpty) {
-      throw FirebaseAuthAdminException(
-        AuthClientErrorCode.invalidTenantId,
-        'Tenant ID must be a non-empty string.',
-      );
-    }
+    assertIsTenantId(tenantId);
 
     final requestMap = Tenant._buildServerRequest(tenantOptions, false);
     final request = auth2.GoogleCloudIdentitytoolkitAdminV2Tenant.fromJson(

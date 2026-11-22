@@ -87,15 +87,15 @@ class AppCheck implements FirebaseService {
     return _requestHandler.exchangeToken(customToken, appId);
   }
 
-  /// Verifies a Firebase App Check token (JWT). If the token is valid, the promise is
-  /// fulfilled with the token's decoded claims; otherwise, the promise is
-  /// rejected.
+  /// Verifies a Firebase App Check token (JWT). If the token is valid, the returned
+  /// [Future] completes with the token's decoded claims; otherwise, it
+  /// throws a [FirebaseAppCheckException].
   ///
-  /// @param appCheckToken - The App Check token to verify.
-  /// @param options - Optional {@link VerifyAppCheckTokenOptions} object when verifying an App Check Token.
+  /// [appCheckToken] - The App Check token to verify.
+  /// [options] - Optional [VerifyAppCheckTokenOptions] when verifying an App Check Token.
   ///
-  /// @returns A promise fulfilled with the token's decoded claims
-  ///   if the App Check token is valid; otherwise, a rejected promise.
+  /// Returns a [Future] that completes with the token's decoded claims
+  ///   if the App Check token is valid; otherwise, throws.
   Future<VerifyAppCheckTokenResponse> verifyToken(
     String appCheckToken, [
     VerifyAppCheckTokenOptions? options,

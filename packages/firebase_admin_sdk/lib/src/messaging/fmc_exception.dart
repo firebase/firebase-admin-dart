@@ -310,7 +310,7 @@ Future<T> _fmcGuard<T>(FutureOr<T> Function() fn) async {
 
     if (value is T) return value;
 
-    return value.catchError(_handleException);
+    return await value.catchError(_handleException);
   } catch (error, stackTrace) {
     _handleException(error, stackTrace);
   }

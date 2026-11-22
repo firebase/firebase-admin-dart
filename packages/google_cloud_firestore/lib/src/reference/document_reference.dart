@@ -70,25 +70,33 @@ interface class DocumentReference<T> implements _Serializable {
   ///   }
   /// });
   /// ```
-  Future<List<CollectionReference<DocumentData>>> listCollections() {
-    return firestore._firestoreClient.v1((a, projectId) async {
-      final request = firestore_v1.ListCollectionIdsRequest(
-        // Setting `pageSize` to an arbitrarily large value lets the backend cap
-        // the page size (currently to 300). Note that the backend rejects
-        // MAX_INT32 (b/146883794).
-        pageSize: (math.pow(2, 16) - 1).toInt(),
-      );
+  Future<List<CollectionReference<DocumentData>>> listCollections() async {
+    final ids = <String>[];
 
-      final result = await a.projects.databases.documents.listCollectionIds(
-        request,
-        _formattedName,
-      );
+    // The backend caps each page, so follow `nextPageToken` until every
+    // collection ID has been returned.
+    var pageToken = '';
+    do {
+      final response = await firestore._firestoreClient.v1((a, projectId) {
+        final request = firestore_v1.ListCollectionIdsRequest(
+          parent: _formattedName,
+          // Setting `pageSize` to an arbitrarily large value lets the backend
+          // cap the page size (currently to 300). Note that the backend
+          // rejects MAX_INT32 (b/146883794).
+          pageSize: (math.pow(2, 16) - 1).toInt(),
+          pageToken: pageToken,
+        );
 
-      final ids = result.collectionIds ?? [];
-      ids.sort((a, b) => a.compareTo(b));
+        return a.listCollectionIds(request);
+      });
 
-      return [for (final id in ids) collection(id)];
-    });
+      ids.addAll(response.collectionIds);
+      pageToken = response.nextPageToken;
+    } while (pageToken.isNotEmpty);
+
+    ids.sort((a, b) => a.compareTo(b));
+
+    return [for (final id in ids) collection(id)];
   }
 
   /// Changes the de/serializing mechanism for this [DocumentReference].
@@ -169,7 +177,7 @@ interface class DocumentReference<T> implements _Serializable {
 
   /// Updates fields in the document referred to by this DocumentReference.
   /// If the document doesn't yet exist, the update fails and the returned
-  /// Promise will be rejected.
+  /// the returned [Future] will complete with an error.
   ///
   /// The update() method accepts either an object with field paths encoded as
   /// keys and field values encoded as values, or a variable number of arguments

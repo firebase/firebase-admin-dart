@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// ignore_for_file: deprecated_member_use
+
 import 'dart:convert';
 
 import 'package:firebase_admin_sdk/src/messaging/messaging.dart';
@@ -73,6 +75,8 @@ void main() {
 
     // Mock iidApiHost for topic management
     when(() => httpClient.iidApiHost).thenReturn('iid.googleapis.com');
+    // Mock fcmHost for topic management
+    when(() => httpClient.fcmHost).thenReturn('fcm.googleapis.com');
 
     // Use unique app name for each test to avoid interference
     final appName = 'messaging-test-${DateTime.now().microsecondsSinceEpoch}';
@@ -218,6 +222,66 @@ void main() {
       expect(request.message?.token, token);
       expect(request.message?.topic, isNull);
       expect(request.message?.condition, isNull);
+    });
+
+    test('sends a FidMessage using the generated FID field', () async {
+      when(
+        () => messages.send(any(), any()),
+      ).thenAnswer((_) async => fmc1.Message(name: 'test'));
+
+      expect(await messaging.send(FidMessage(fid: 'installation-id')), 'test');
+
+      final request =
+          verify(() => messages.send(captureAny(), any())).captured.single
+              as fmc1.SendMessageRequest;
+      expect(request.message.runtimeType, fmc1.Message);
+      expect(request.message?.fid, 'installation-id');
+      expect(request.message?.token, isNull);
+      expect(request.message?.topic, isNull);
+      expect(request.message?.condition, isNull);
+    });
+
+    test('sends a FidMessage in the HTTP v1 request body', () async {
+      final client = MockAuthClient();
+      late String body;
+      when(() => client.send(any())).thenAnswer((invocation) async {
+        final request = invocation.positionalArguments.single as BaseRequest;
+        body = await request.finalize().bytesToString();
+        return StreamedResponse(
+          Stream.value(utf8.encode('{"name":"messages/test"}')),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+      final app = createApp(client: client);
+      final handler = Messaging.internal(app);
+
+      final result = await handler.send(
+        FidMessage(
+          fid: 'installation-id',
+          data: {'key': 'value'},
+          notification: Notification(title: 'Hello'),
+        ),
+        dryRun: true,
+      );
+
+      expect(result, 'messages/test');
+      final request =
+          verify(() => client.send(captureAny())).captured.single
+              as BaseRequest;
+      expect(request.method, 'POST');
+      expect(
+        request.url.toString(),
+        'https://fcm.googleapis.com/v1/projects/$projectId/messages:send?alt=json',
+      );
+      expect(jsonDecode(body), {
+        'message': {
+          'fid': 'installation-id',
+          'data': {'key': 'value'},
+          'notification': {'title': 'Hello'},
+        },
+        'validateOnly': true,
+      });
     });
 
     test(
@@ -397,6 +461,24 @@ void main() {
 
   group('sendEach', () {
     setUp(() => mockV1<BatchResponse>());
+
+    test('sends FidMessage targets', () async {
+      when(
+        () => messages.send(any(), any()),
+      ).thenAnswer((_) async => fmc1.Message(name: 'test'));
+
+      final response = await messaging.sendEach([
+        FidMessage(fid: 'installation-id'),
+      ]);
+
+      expect(response.successCount, 1);
+      final request =
+          verify(() => messages.send(captureAny(), any())).captured.single
+              as fmc1.SendMessageRequest;
+      expect(jsonDecode(jsonEncode(request)), {
+        'message': {'fid': 'installation-id'},
+      });
+    });
 
     test('asserts list length >=1 <500', () {
       expect(
@@ -647,6 +729,26 @@ void main() {
   });
 
   group('Topic Management', () {
+    late MockAuthClient mockAuthClient;
+
+    void mockWithClient<T>() {
+      when(() => httpClient.withClient<T>(any())).thenAnswer((
+        invocation,
+      ) async {
+        final callback = invocation.positionalArguments.first as Function;
+        final result = await Function.apply(callback, [
+          mockAuthClient,
+          projectId,
+        ]);
+        return result as T;
+      });
+    }
+
+    setUp(() {
+      mockAuthClient = MockAuthClient();
+      mockWithClient<MessagingTopicManagementResponse>();
+    });
+
     group('subscribeToTopic', () {
       test('should validate empty registration tokens list', () async {
         expect(
@@ -690,6 +792,26 @@ void main() {
         );
       });
 
+      test('should validate > 1000 registration tokens', () async {
+        final tokens = List.generate(1001, (i) => 'token$i');
+        expect(
+          () => messaging.subscribeToTopic(tokens, 'test-topic'),
+          throwsA(
+            isA<FirebaseMessagingAdminException>()
+                .having(
+                  (e) => e.errorCode,
+                  'errorCode',
+                  MessagingClientErrorCode.invalidArgument,
+                )
+                .having(
+                  (e) => e.message,
+                  'message',
+                  contains('must not contain more than 1000 tokens'),
+                ),
+          ),
+        );
+      });
+
       test('should validate empty topic', () async {
         expect(
           () => messaging.subscribeToTopic(['token1'], ''),
@@ -711,12 +833,12 @@ void main() {
 
       test('should validate topic format', () async {
         when(
-          () => httpClient.invokeRequestHandler(
-            host: any(named: 'host'),
-            path: any(named: 'path'),
-            requestData: any(named: 'requestData'),
+          () => mockAuthClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
           ),
-        ).thenAnswer((_) async => <String, dynamic>{});
+        ).thenAnswer((_) async => Response('{}', 200));
 
         // Valid topics should not throw
         for (final topic in [
@@ -735,7 +857,8 @@ void main() {
           'test topic', // space not allowed
           'test@topic', // @ not allowed
           'test#topic', // # not allowed
-          '/topics/', // empty after /topics/
+          'private/test-topic', // nested path / private not allowed
+          'test/topic', // slashes not allowed
         ]) {
           expect(
             () => messaging.subscribeToTopic(['token1'], topic),
@@ -756,165 +879,161 @@ void main() {
         }
       });
 
-      test('should normalize topic by prepending /topics/', () async {
+      test(
+        'should make request to FCM v1 REST API with correct parameters',
+        () async {
+          when(
+            () => mockAuthClient.post(
+              any(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          ).thenAnswer((_) async => Response('{}', 200));
+
+          final response = await messaging.subscribeToTopic([
+            'token1',
+            'token2',
+          ], 'test-topic');
+
+          expect(response.successCount, 2);
+          expect(response.failureCount, 0);
+          expect(response.errors, isEmpty);
+
+          final captured = verify(
+            () => mockAuthClient.post(
+              captureAny(),
+              headers: captureAny(named: 'headers'),
+              body: captureAny(named: 'body'),
+            ),
+          )..called(2);
+
+          final uri1 = captured.captured[0] as Uri;
+          expect(
+            uri1.toString(),
+            'https://fcm.googleapis.com/v1/projects/$projectId/registrations/token1/topicSubscriptions?topic_name=test-topic',
+          );
+          final headers1 = captured.captured[1] as Map<String, String>;
+          expect(headers1['x-goog-api-format-version'], '2');
+          expect(headers1['content-type'], 'application/json; charset=UTF-8');
+          final body1 = captured.captured[2] as String;
+          expect(body1, '{}');
+        },
+      );
+
+      test(
+        'should normalize topic by stripping /topics/ prefix in URL',
+        () async {
+          when(
+            () => mockAuthClient.post(
+              any(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          ).thenAnswer((_) async => Response('{}', 200));
+
+          await messaging.subscribeToTopic(['token1'], '/topics/test-topic');
+
+          final captured = verify(
+            () => mockAuthClient.post(
+              captureAny(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          )..called(1);
+
+          final uri = captured.captured.first as Uri;
+          expect(
+            uri.toString(),
+            'https://fcm.googleapis.com/v1/projects/$projectId/registrations/token1/topicSubscriptions?topic_name=test-topic',
+          );
+        },
+      );
+
+      test('should treat 409 Conflict / ALREADY_EXISTS as success', () async {
         when(
-          () => httpClient.invokeRequestHandler(
-            host: any(named: 'host'),
-            path: any(named: 'path'),
-            requestData: any(named: 'requestData'),
+          () => mockAuthClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
           ),
         ).thenAnswer(
-          (_) async => <String, dynamic>{
-            'results': [<String, dynamic>{}],
-          },
-        );
-
-        await messaging.subscribeToTopic(['token1'], 'test-topic');
-
-        final capture = verify(
-          () => httpClient.invokeRequestHandler(
-            host: captureAny(named: 'host'),
-            path: captureAny(named: 'path'),
-            requestData: captureAny(named: 'requestData'),
+          (_) async => Response(
+            jsonEncode({
+              'error': {
+                'status': 'ALREADY_EXISTS',
+                'message': 'Already subscribed.',
+              },
+            }),
+            409,
+            headers: {'content-type': 'application/json'},
           ),
-        )..called(1);
-
-        final requestData = capture.captured.last as Map<String, Object?>;
-        expect(requestData['to'], '/topics/test-topic');
-      });
-
-      test('should not modify topic already starting with /topics/', () async {
-        when(
-          () => httpClient.invokeRequestHandler(
-            host: any(named: 'host'),
-            path: any(named: 'path'),
-            requestData: any(named: 'requestData'),
-          ),
-        ).thenAnswer(
-          (_) async => <String, dynamic>{
-            'results': [<String, dynamic>{}],
-          },
-        );
-
-        await messaging.subscribeToTopic(['token1'], '/topics/test-topic');
-
-        final capture = verify(
-          () => httpClient.invokeRequestHandler(
-            host: captureAny(named: 'host'),
-            path: captureAny(named: 'path'),
-            requestData: captureAny(named: 'requestData'),
-          ),
-        )..called(1);
-
-        final requestData = capture.captured.last as Map<String, Object?>;
-        expect(requestData['to'], '/topics/test-topic');
-      });
-
-      test('should make request to IID API with correct parameters', () async {
-        when(
-          () => httpClient.invokeRequestHandler(
-            host: any(named: 'host'),
-            path: any(named: 'path'),
-            requestData: any(named: 'requestData'),
-          ),
-        ).thenAnswer(
-          (_) async => <String, dynamic>{
-            'results': [<String, dynamic>{}, <String, dynamic>{}],
-          },
-        );
-
-        await messaging.subscribeToTopic(['token1', 'token2'], 'test-topic');
-
-        final capture = verify(
-          () => httpClient.invokeRequestHandler(
-            host: captureAny(named: 'host'),
-            path: captureAny(named: 'path'),
-            requestData: captureAny(named: 'requestData'),
-          ),
-        )..called(1);
-
-        expect(capture.captured[0], 'iid.googleapis.com');
-        expect(capture.captured[1], '/iid/v1:batchAdd');
-        final requestData = capture.captured[2] as Map<String, Object?>;
-        expect(requestData['to'], '/topics/test-topic');
-        expect(requestData['registration_tokens'], ['token1', 'token2']);
-      });
-
-      test('should return success response with all successes', () async {
-        when(
-          () => httpClient.invokeRequestHandler(
-            host: any(named: 'host'),
-            path: any(named: 'path'),
-            requestData: any(named: 'requestData'),
-          ),
-        ).thenAnswer(
-          (_) async => <String, dynamic>{
-            'results': [
-              <String, dynamic>{},
-              <String, dynamic>{},
-              <String, dynamic>{},
-            ],
-          },
         );
 
         final response = await messaging.subscribeToTopic([
           'token1',
-          'token2',
-          'token3',
         ], 'test-topic');
 
-        expect(response.successCount, 3);
+        expect(response.successCount, 1);
         expect(response.failureCount, 0);
         expect(response.errors, isEmpty);
       });
 
-      test('should return response with partial failures', () async {
-        when(
-          () => httpClient.invokeRequestHandler(
-            host: any(named: 'host'),
-            path: any(named: 'path'),
-            requestData: any(named: 'requestData'),
-          ),
-        ).thenAnswer(
-          (_) async => <String, dynamic>{
-            'results': [
-              <String, dynamic>{},
-              <String, dynamic>{'error': 'INVALID_ARGUMENT'},
-              <String, dynamic>{},
-              <String, dynamic>{'error': 'NOT_FOUND'},
-            ],
-          },
-        );
+      test(
+        'should return response with partial failures and FcmError details',
+        () async {
+          when(
+            () => mockAuthClient.post(
+              any(that: predicate<Uri>((u) => u.toString().contains('token1'))),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          ).thenAnswer((_) async => Response('{}', 200));
 
-        final response = await messaging.subscribeToTopic([
-          'token1',
-          'token2',
-          'token3',
-          'token4',
-        ], 'test-topic');
+          when(
+            () => mockAuthClient.post(
+              any(that: predicate<Uri>((u) => u.toString().contains('token2'))),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          ).thenAnswer(
+            (_) async => Response(
+              jsonEncode({
+                'error': {
+                  'status': 'NOT_FOUND',
+                  'message': 'Requested entity was not found.',
+                  'details': [
+                    {
+                      '@type':
+                          'type.googleapis.com/google.firebase.fcm.v1.FcmError',
+                      'errorCode': 'UNREGISTERED',
+                    },
+                  ],
+                },
+              }),
+              404,
+              headers: {'content-type': 'application/json'},
+            ),
+          );
 
-        expect(response.successCount, 2);
-        expect(response.failureCount, 2);
-        expect(response.errors.length, 2);
-        expect(response.errors[0].index, 1);
-        expect(
-          response.errors[0].error,
-          isA<FirebaseMessagingAdminException>().having(
-            (e) => e.message,
-            'message',
-            'INVALID_ARGUMENT',
-          ),
-        );
-        expect(response.errors[1].index, 3);
-        expect(
-          response.errors[1].error,
-          isA<FirebaseMessagingAdminException>().having(
-            (e) => e.message,
-            'message',
-            'NOT_FOUND',
-          ),
-        );
-      });
+          final response = await messaging.subscribeToTopic([
+            'token1',
+            'token2',
+          ], 'test-topic');
+
+          expect(response.successCount, 1);
+          expect(response.failureCount, 1);
+          expect(response.errors.length, 1);
+          expect(response.errors[0].index, 1);
+          expect(
+            response.errors[0].error,
+            isA<FirebaseMessagingAdminException>().having(
+              (e) => e.errorCode,
+              'errorCode',
+              MessagingClientErrorCode.registrationTokenNotRegistered,
+            ),
+          );
+        },
+      );
     });
 
     group('unsubscribeFromTopic', () {
@@ -937,61 +1056,151 @@ void main() {
         );
       });
 
-      test('should make request to IID API with correct parameters', () async {
+      test(
+        'should make DELETE request to FCM v1 REST API with correct parameters',
+        () async {
+          when(
+            () => mockAuthClient.delete(any(), headers: any(named: 'headers')),
+          ).thenAnswer((_) async => Response('{}', 200));
+
+          final response = await messaging.unsubscribeFromTopic([
+            'token1',
+            'token2',
+          ], 'test-topic');
+
+          expect(response.successCount, 2);
+          expect(response.failureCount, 0);
+          expect(response.errors, isEmpty);
+
+          final captured = verify(
+            () => mockAuthClient.delete(
+              captureAny(),
+              headers: captureAny(named: 'headers'),
+            ),
+          )..called(2);
+
+          final uri1 = captured.captured[0] as Uri;
+          expect(
+            uri1.toString(),
+            'https://fcm.googleapis.com/v1/projects/$projectId/registrations/token1/topicSubscriptions/test-topic?allow_missing=true',
+          );
+          final headers1 = captured.captured[1] as Map<String, String>;
+          expect(headers1['x-goog-api-format-version'], '2');
+        },
+      );
+
+      test('should handle 404 Not Found as error on unsubscribe', () async {
         when(
-          () => httpClient.invokeRequestHandler(
-            host: any(named: 'host'),
-            path: any(named: 'path'),
-            requestData: any(named: 'requestData'),
-          ),
+          () => mockAuthClient.delete(any(), headers: any(named: 'headers')),
         ).thenAnswer(
-          (_) async => <String, dynamic>{
-            'results': [<String, dynamic>{}, <String, dynamic>{}],
-          },
-        );
-
-        await messaging.unsubscribeFromTopic([
-          'token1',
-          'token2',
-        ], 'test-topic');
-
-        final capture = verify(
-          () => httpClient.invokeRequestHandler(
-            host: captureAny(named: 'host'),
-            path: captureAny(named: 'path'),
-            requestData: captureAny(named: 'requestData'),
+          (_) async => Response(
+            jsonEncode({
+              'error': {'status': 'NOT_FOUND', 'message': 'Not found.'},
+            }),
+            404,
+            headers: {'content-type': 'application/json'},
           ),
-        )..called(1);
-
-        expect(capture.captured[0], 'iid.googleapis.com');
-        expect(capture.captured[1], '/iid/v1:batchRemove');
-        final requestData = capture.captured[2] as Map<String, Object?>;
-        expect(requestData['to'], '/topics/test-topic');
-        expect(requestData['registration_tokens'], ['token1', 'token2']);
-      });
-
-      test('should return success response', () async {
-        when(
-          () => httpClient.invokeRequestHandler(
-            host: any(named: 'host'),
-            path: any(named: 'path'),
-            requestData: any(named: 'requestData'),
-          ),
-        ).thenAnswer(
-          (_) async => <String, dynamic>{
-            'results': [<String, dynamic>{}, <String, dynamic>{}],
-          },
         );
 
         final response = await messaging.unsubscribeFromTopic([
           'token1',
-          'token2',
         ], 'test-topic');
 
-        expect(response.successCount, 2);
-        expect(response.failureCount, 0);
-        expect(response.errors, isEmpty);
+        expect(response.successCount, 0);
+        expect(response.failureCount, 1);
+        expect(response.errors.length, 1);
+        expect(response.errors[0].index, 0);
+        expect(
+          response.errors[0].error,
+          isA<FirebaseMessagingAdminException>().having(
+            (e) => e.errorCode,
+            'errorCode',
+            MessagingClientErrorCode.registrationTokenNotRegistered,
+          ),
+        );
       });
+    });
+
+    group('Legacy topic management', () {
+      test(
+        'subscribeToTopicLegacy should make request to IID API with correct parameters',
+        () async {
+          when(
+            () => httpClient.invokeRequestHandler(
+              host: any(named: 'host'),
+              path: any(named: 'path'),
+              requestData: any(named: 'requestData'),
+            ),
+          ).thenAnswer(
+            (_) async => <String, dynamic>{
+              'results': [<String, dynamic>{}, <String, dynamic>{}],
+            },
+          );
+
+          final response = await messaging.subscribeToTopicLegacy([
+            'token1',
+            'token2',
+          ], 'test-topic');
+
+          expect(response.successCount, 2);
+          expect(response.failureCount, 0);
+          expect(response.errors, isEmpty);
+
+          final capture = verify(
+            () => httpClient.invokeRequestHandler(
+              host: captureAny(named: 'host'),
+              path: captureAny(named: 'path'),
+              requestData: captureAny(named: 'requestData'),
+            ),
+          )..called(1);
+
+          expect(capture.captured[0], 'iid.googleapis.com');
+          expect(capture.captured[1], '/iid/v1:batchAdd');
+          final requestData = capture.captured[2] as Map<String, Object?>;
+          expect(requestData['to'], '/topics/test-topic');
+          expect(requestData['registration_tokens'], ['token1', 'token2']);
+        },
+      );
+
+      test(
+        'unsubscribeFromTopicLegacy should make request to IID API with correct parameters',
+        () async {
+          when(
+            () => httpClient.invokeRequestHandler(
+              host: any(named: 'host'),
+              path: any(named: 'path'),
+              requestData: any(named: 'requestData'),
+            ),
+          ).thenAnswer(
+            (_) async => <String, dynamic>{
+              'results': [<String, dynamic>{}, <String, dynamic>{}],
+            },
+          );
+
+          final response = await messaging.unsubscribeFromTopicLegacy([
+            'token1',
+            'token2',
+          ], 'test-topic');
+
+          expect(response.successCount, 2);
+          expect(response.failureCount, 0);
+          expect(response.errors, isEmpty);
+
+          final capture = verify(
+            () => httpClient.invokeRequestHandler(
+              host: captureAny(named: 'host'),
+              path: captureAny(named: 'path'),
+              requestData: captureAny(named: 'requestData'),
+            ),
+          )..called(1);
+
+          expect(capture.captured[0], 'iid.googleapis.com');
+          expect(capture.captured[1], '/iid/v1:batchRemove');
+          final requestData = capture.captured[2] as Map<String, Object?>;
+          expect(requestData['to'], '/topics/test-topic');
+          expect(requestData['registration_tokens'], ['token1', 'token2']);
+        },
+      );
     });
   });
 }

@@ -16,6 +16,7 @@ import 'dart:io';
 
 import 'package:firebase_admin_sdk/firebase_admin_sdk.dart';
 import 'package:firebase_admin_sdk/src/firestore/firestore.dart';
+import 'package:firebase_admin_sdk/src/utils/utils.dart';
 import 'package:google_cloud_firestore/google_cloud_firestore.dart' as gfs;
 import 'package:googleapis_auth/auth_io.dart' as auth;
 import 'package:mocktail/mocktail.dart';
@@ -62,6 +63,28 @@ void main() {
     group('app', () {
       test('returns the app from the constructor', () {
         expect(firestoreService.app, same(app));
+      });
+    });
+
+    group('project id', () {
+      test('falls back to the app credential', () {
+        final credentialApp = FirebaseApp.initializeApp(
+          name: 'firestore-credential-${DateTime.now().microsecondsSinceEpoch}',
+          options: AppOptions(
+            credential: Credential.fromServiceAccountParams(
+              clientId: 'client-id',
+              privateKey: mockPrivateKey,
+              email: mockClientEmail,
+              projectId: 'sa-project',
+            ),
+          ),
+        );
+        addTearDown(() => credentialApp.close().catchError((Object _) {}));
+
+        expect(
+          Firestore.internal(credentialApp).getDatabase().projectId,
+          'sa-project',
+        );
       });
     });
 
@@ -251,6 +274,39 @@ void main() {
         final db4 = firestoreService.initializeDatabase('db-null-1', null);
 
         expect(db3, same(db4));
+      });
+    });
+
+    group('usage-tracking headers', () {
+      test('are attached when no user headers are provided', () {
+        final settings = firestoreService.buildSettingsForTesting('db', null);
+
+        expect(settings.headers, firestoreUsageTrackingHeaders);
+      });
+
+      test('are merged with, not replaced by, user-provided headers', () {
+        final settings = firestoreService.buildSettingsForTesting(
+          'db',
+          const gfs.Settings(headers: {'X-Trace-Id': 'abc123'}),
+        );
+
+        expect(settings.headers, {
+          ...firestoreUsageTrackingHeaders,
+          'X-Trace-Id': 'abc123',
+        });
+      });
+
+      test('can be overridden by a user-provided header of the same name', () {
+        final settings = firestoreService.buildSettingsForTesting(
+          'db',
+          const gfs.Settings(headers: {'X-Firebase-Client': 'custom-value'}),
+        );
+
+        expect(settings.headers!['X-Firebase-Client'], 'custom-value');
+        expect(
+          settings.headers!['X-Goog-Api-Client'],
+          firestoreUsageTrackingHeaders['X-Goog-Api-Client'],
+        );
       });
     });
 

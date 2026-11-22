@@ -418,6 +418,125 @@ void main() {
           expect(resolved, 'configured-project');
         },
       );
+
+      test('ignores empty environment values', () async {
+        final appWithProject = FirebaseApp.initializeApp(
+          name: 'empty-env-${DateTime.now().microsecondsSinceEpoch}',
+          options: const AppOptions(projectId: 'configured-project'),
+        );
+        addTearDown(() async {
+          if (!appWithProject.isDeleted) await appWithProject.close();
+        });
+
+        final resolved = await appWithProject.getProjectId(
+          environment: {'GOOGLE_CLOUD_PROJECT': ''},
+        );
+        expect(resolved, 'configured-project');
+      });
+
+      test('falls back to the service account credential', () async {
+        final appWithCredential = FirebaseApp.initializeApp(
+          name: 'credential-project-${DateTime.now().microsecondsSinceEpoch}',
+          options: AppOptions(
+            credential: Credential.fromServiceAccountParams(
+              clientId: 'client-id',
+              privateKey: mockPrivateKey,
+              email: mockClientEmail,
+              projectId: 'from-credential',
+            ),
+          ),
+        );
+        addTearDown(() async {
+          if (!appWithCredential.isDeleted) await appWithCredential.close();
+        });
+
+        final resolved = await appWithCredential.getProjectId(
+          environment: <String, String>{},
+        );
+        expect(resolved, 'from-credential');
+      });
+
+      test('prefers options.projectId over the credential', () async {
+        final appWithBoth = FirebaseApp.initializeApp(
+          name:
+              'options-over-credential-${DateTime.now().microsecondsSinceEpoch}',
+          options: AppOptions(
+            projectId: 'options-project',
+            credential: Credential.fromServiceAccountParams(
+              clientId: 'client-id',
+              privateKey: mockPrivateKey,
+              email: mockClientEmail,
+              projectId: 'from-credential',
+            ),
+          ),
+        );
+        addTearDown(() async {
+          if (!appWithBoth.isDeleted) await appWithBoth.close();
+        });
+
+        final resolved = await appWithBoth.getProjectId(
+          environment: <String, String>{},
+        );
+        expect(resolved, 'options-project');
+      });
+    });
+
+    group('resolveProjectIdSync', () {
+      test('prefers the credential over ambient project variables', () {
+        final appWithCredential = FirebaseApp.initializeApp(
+          name: 'credential-over-env-${DateTime.now().microsecondsSinceEpoch}',
+          options: AppOptions(
+            credential: Credential.fromServiceAccountParams(
+              clientId: 'client-id',
+              privateKey: mockPrivateKey,
+              email: mockClientEmail,
+              projectId: 'sa-project',
+            ),
+          ),
+        );
+        addTearDown(() async {
+          if (!appWithCredential.isDeleted) await appWithCredential.close();
+        });
+
+        expect(
+          appWithCredential.resolveProjectIdSync(
+            processEnvironment: const {
+              'GOOGLE_CLOUD_PROJECT': 'ambient-host-project',
+            },
+          ),
+          'sa-project',
+        );
+      });
+
+      test('resolves without any asynchronous work', () {
+        final appWithProject = FirebaseApp.initializeApp(
+          name: 'sync-options-${DateTime.now().microsecondsSinceEpoch}',
+          options: const AppOptions(projectId: 'sync-project'),
+        );
+        addTearDown(() async {
+          if (!appWithProject.isDeleted) await appWithProject.close();
+        });
+
+        expect(
+          appWithProject.resolveProjectIdSync(environment: <String, String>{}),
+          'sync-project',
+        );
+      });
+
+      test('returns null when only async discovery could resolve it', () {
+        final bareApp = FirebaseApp.initializeApp(
+          name: 'sync-unresolvable-${DateTime.now().microsecondsSinceEpoch}',
+          options: const AppOptions(),
+        );
+        addTearDown(() async {
+          if (!bareApp.isDeleted) await bareApp.close();
+        });
+
+        expect(
+          bareApp.resolveProjectIdSync(environment: <String, String>{}),
+          isNull,
+        );
+      });
     });
 
     group('client', () {
@@ -769,6 +888,78 @@ void main() {
         verifyNever(mockClient.close);
       });
 
+      test(
+        'cleans up transport and marks app as deleted even if default client creation fails',
+        () async {
+          final credential = Credential.fromRefreshTokenParams(
+            clientId: 'client-id',
+            clientSecret: 'client-secret',
+            refreshToken: 'dummy-refresh-token',
+          );
+          final app = FirebaseApp.initializeApp(
+            options: AppOptions(
+              projectId: mockProjectId,
+              credential: credential,
+            ),
+          );
+
+          // Access app.client to trigger _createDefaultClient(), which fails.
+          await expectLater(app.client, throwsA(anything));
+
+          // Closing the app must not rethrow and must mark app as deleted.
+          await expectLater(app.close(), completes);
+          expect(app.isDeleted, isTrue);
+        },
+      );
+
+      test(
+        'finishes cleanup and rethrows when a service fails to delete',
+        () async {
+          final app = FirebaseApp.initializeApp(
+            options: const AppOptions(projectId: mockProjectId),
+          );
+          final failing = app.getOrInitService(
+            'failing',
+            (app) => _FakeService(app, error: StateError('delete failed')),
+          );
+          final healthy = app.getOrInitService('healthy', _FakeService.new);
+
+          await expectLater(app.close(), throwsA(isA<StateError>()));
+
+          expect(failing.deleted, isTrue);
+          expect(healthy.deleted, isTrue);
+          expect(app.isDeleted, isTrue);
+          expect(FirebaseApp.apps, isEmpty);
+        },
+      );
+
+      test(
+        'closes an unused firestore without creating its auth client',
+        () async {
+          final app = FirebaseApp.initializeApp(
+            options: AppOptions(
+              credential: Credential.fromServiceAccountParams(
+                clientId: 'client-id',
+                privateKey: mockPrivateKey,
+                email: mockClientEmail,
+                projectId: mockProjectId,
+              ),
+            ),
+          );
+          // Hide FIRESTORE_EMULATOR_HOST (set when unit tests run under the
+          // emulators) so Firestore uses the service account. The key is not
+          // registered with Google, so creating the auth client would fail.
+          app.firestore(
+            settings: const google_cloud_firestore.Settings(
+              environmentOverride: {},
+            ),
+          );
+
+          await expectLater(app.close(), completes);
+          expect(app.isDeleted, isTrue);
+        },
+      );
+
       test('throws when called twice', () async {
         final app = FirebaseApp.initializeApp(
           options: const AppOptions(projectId: mockProjectId),
@@ -876,4 +1067,17 @@ void main() {
       );
     });
   });
+}
+
+class _FakeService extends FirebaseService {
+  _FakeService(super.app, {this.error});
+
+  final Error? error;
+  bool deleted = false;
+
+  @override
+  Future<void> delete() async {
+    deleted = true;
+    if (error case final error?) throw error;
+  }
 }

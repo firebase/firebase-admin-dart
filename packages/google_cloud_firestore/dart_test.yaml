@@ -1,6 +1,21 @@
+exclude_tags: firebase-emulator || prod
+
+presets:
+  ci:
+    exclude_tags: prod
+  firebase-emulator:
+    include_tags: firebase-emulator
+  prod:
+    include_tags: prod
+
 tags:
+  firebase-emulator:
+    description: >
+      Tests that require the Firestore emulator.
+      Run with: FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 dart test -P firebase-emulator
   prod:
     description: >
       Tests that hit real Firestore production APIs.
       Requires GOOGLE_APPLICATION_CREDENTIALS pointing to a service account
       with access to the dart-firebase-admin project.
+      Run with: GOOGLE_APPLICATION_CREDENTIALS=<path> dart test -P prod

@@ -17,44 +17,8 @@ part of 'firestore.dart';
 @internal
 typedef ApiMapValue = Map<String, firestore_v1.Value>;
 
-// Sentinel string values used to round-trip special IEEE 754 doubles through
-// the googleapis JSON deserialiser, which cannot handle non-finite doubles.
-//
-// [_SpecialDoubleClient] in firestore_http_client.dart rewrites incoming
-// Firestore REST API responses:
-//   "doubleValue":"Infinity"   →  "stringValue":"<kInfinitySentinel>"
-//   "doubleValue":"-Infinity"  →  "stringValue":"<kNegInfinitySentinel>"
-//   "doubleValue":"NaN"        →  "stringValue":"<kNaNSentinel>"
-//
-// [Serializer.decodeValue] then maps each sentinel back to the corresponding
-// Dart double constant.  The names are package-internal (no `_` prefix) so
-// that firestore_http_client.dart can reference them via its barrel import.
-@internal
-const kInfinitySentinel = '__fs_double_infinity__';
-@internal
-const kNegInfinitySentinel = '__fs_double_neg_infinity__';
-@internal
-const kNaNSentinel = '__fs_double_nan__';
-
 abstract class _Serializable {
   firestore_v1.Value _toProto();
-}
-
-/// A [firestore_v1.Value] subclass that overrides [toJson] to emit the
-/// Firestore REST API string representations of special IEEE 754 doubles
-/// (`"Infinity"`, `"-Infinity"`, `"NaN"`).
-///
-/// Dart's [jsonEncode] (and therefore the googleapis serialiser) throws on
-/// [double.infinity] and [double.nan] because they are not valid JSON.
-/// The Firestore REST API expects them as the strings above, so we bypass
-/// standard serialisation by overriding [toJson] here.
-class _SpecialDoubleValue extends firestore_v1.Value {
-  _SpecialDoubleValue._(this._doubleString) : super();
-
-  final String _doubleString;
-
-  @override
-  Map<String, dynamic> toJson() => {'doubleValue': _doubleString};
 }
 
 class Serializer {
@@ -65,11 +29,11 @@ class Serializer {
 
   final Firestore firestore;
 
-  Object _createInteger(String n) {
+  Object _createInteger(int n) {
     if (firestore._settings.useBigInt) {
-      return BigInt.parse(n);
+      return BigInt.from(n);
     } else {
-      return int.parse(n);
+      return n;
     }
   }
 
@@ -116,14 +80,9 @@ class Serializer {
         return firestore_v1.Value(booleanValue: value);
 
       case int():
+        return firestore_v1.Value(integerValue: value);
       case BigInt():
-        return firestore_v1.Value(integerValue: value.toString());
-
-      case double() when value.isInfinite:
-        return _SpecialDoubleValue._(value > 0 ? 'Infinity' : '-Infinity');
-
-      case double() when value.isNaN:
-        return _SpecialDoubleValue._('NaN');
+        return firestore_v1.Value(integerValue: value.toInt());
 
       case double():
         return firestore_v1.Value(doubleValue: value);
@@ -133,13 +92,16 @@ class Serializer {
         return timestamp._toProto();
 
       case null:
-        return firestore_v1.Value(nullValue: 'NULL_VALUE');
+        return firestore_v1.Value(nullValue: protobuf_v1.NullValue.nullValue);
 
       case VectorValue():
         return value._toProto(this);
 
       case _Serializable():
         return value._toProto();
+
+      case Uint8List():
+        return firestore_v1.Value(bytesValue: value);
 
       case List():
         return firestore_v1.Value(
@@ -156,10 +118,9 @@ class Serializer {
         }
 
         final fields = encodeFields(Map.from(value));
-        if (fields.fields!.isEmpty) return null;
+        if (fields.fields.isEmpty) return null;
 
         return firestore_v1.Value(mapValue: fields);
-
       default:
         throw ArgumentError.value(
           value,
@@ -170,7 +131,25 @@ class Serializer {
   }
 
   /// Decodes a single Firestore 'Value' Protobuf.
-  Object? decodeValue(Object? proto) {
+  ///
+  /// A reference value must name a document and decodes to a
+  /// [DocumentReference]; any other reference throws an [ArgumentError].
+  Object? decodeValue(Object? proto) => _decodeValue(proto, _decodeReference);
+
+  /// Decodes a document reference value, as [decodeValue] does.
+  DocumentReference<DocumentData> _decodeReference(String referenceValue) {
+    final resourcePath = _QualifiedResourcePath.fromSlashSeparatedString(
+      referenceValue,
+    );
+    return firestore.doc(resourcePath.relativeName);
+  }
+
+  /// Decodes [proto] like [decodeValue], but hands every reference value, at
+  /// any depth, to [decodeReference].
+  Object? _decodeValue(
+    Object? proto,
+    Object? Function(String referenceValue) decodeReference,
+  ) {
     if (proto is! firestore_v1.Value) {
       throw ArgumentError.value(
         proto,
@@ -182,15 +161,7 @@ class Serializer {
 
     switch (proto) {
       case firestore_v1.Value(:final stringValue?):
-        // The HTTP response interceptor rewrites special double strings
-        // ("Infinity", "-Infinity", "NaN") as sentinel stringValues so that
-        // googleapis can parse the response without casting a String to num.
-        return switch (stringValue) {
-          kInfinitySentinel => double.infinity,
-          kNegInfinitySentinel => double.negativeInfinity,
-          kNaNSentinel => double.nan,
-          _ => stringValue,
-        };
+        return stringValue;
       case firestore_v1.Value(:final booleanValue?):
         return booleanValue;
       case firestore_v1.Value(:final integerValue?):
@@ -198,48 +169,40 @@ class Serializer {
       case firestore_v1.Value(:final doubleValue?):
         return doubleValue;
       case firestore_v1.Value(:final timestampValue?):
-        return Timestamp._fromString(timestampValue);
+        return Timestamp._fromProto(timestampValue);
       case firestore_v1.Value(:final referenceValue?):
-        final resourcePath = _QualifiedResourcePath.fromSlashSeparatedString(
-          referenceValue,
-        );
-        return firestore.doc(resourcePath.relativeName);
+        return decodeReference(referenceValue);
       case firestore_v1.Value(:final arrayValue?):
         final values = arrayValue.values;
         return <Object?>[
-          if (values != null)
-            for (final value in values) decodeValue(value),
+          for (final value in values) _decodeValue(value, decodeReference),
         ];
       case firestore_v1.Value(nullValue: != null):
         return null;
       case firestore_v1.Value(:final mapValue?):
         final fields = mapValue.fields;
         // Check if this is a vector value (special map with __type__: __vector__)
-        if (fields != null &&
+        if (fields.isNotEmpty &&
             fields['__type__']?.stringValue == '__vector__' &&
             fields['value']?.arrayValue != null) {
           final vectorValues = fields['value']!.arrayValue!.values;
-          if (vectorValues != null) {
-            final doubles = vectorValues
-                .map((v) => v.doubleValue ?? 0.0)
-                .toList();
-            return VectorValue(doubles);
-          }
+          final doubles = vectorValues
+              .map((v) => v.doubleValue ?? 0.0)
+              .toList();
+          return VectorValue(doubles);
         }
         return <String, Object?>{
-          if (fields != null)
-            for (final entry in fields.entries)
-              entry.key: decodeValue(entry.value),
+          for (final entry in fields.entries)
+            entry.key: _decodeValue(entry.value, decodeReference),
         };
       case firestore_v1.Value(:final geoPointValue?):
         return GeoPoint._fromProto(geoPointValue);
+      case firestore_v1.Value(:final bytesValue?):
+        return bytesValue;
 
       default:
-        throw ArgumentError.value(
-          proto,
-          'proto',
-          'Cannot decode type from Firestore Value: ${proto.runtimeType}',
-        );
+        // An empty Value or any other unknown type is treated as null.
+        return null;
     }
   }
 }

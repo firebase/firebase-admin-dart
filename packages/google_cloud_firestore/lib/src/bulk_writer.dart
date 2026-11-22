@@ -246,37 +246,34 @@ class _BulkCommitBatch extends WriteBatch {
         projectId,
       ) async {
         final request = firestore_v1.BatchWriteRequest(
+          database: firestore._formattedDatabaseName,
           writes: _operations.map((op) => op.op()).toList(),
         );
 
-        return api.projects.databases.documents.batchWrite(
-          request,
-          firestore._formattedDatabaseName,
-        );
+        return api.batchWrite(request);
       });
 
       // Process each operation individually based on its status
       for (var i = 0; i < pendingOps.length; i++) {
-        final status = (response.status != null && i < response.status!.length)
-            ? response.status![i]
-            : null;
+        final status = (i < response.status.length) ? response.status[i] : null;
 
         // Status code 0 means OK/success
-        if (status?.code == null || status!.code == 0) {
+        if (status == null || status.code == 0) {
           // Operation succeeded
           final updateTime =
-              (response.writeResults != null &&
-                  i < response.writeResults!.length &&
-                  response.writeResults![i].updateTime != null)
-              ? Timestamp._fromString(response.writeResults![i].updateTime!)
+              (i < response.writeResults.length &&
+                  response.writeResults[i].updateTime != null)
+              ? Timestamp._fromProto(response.writeResults[i].updateTime!)
               : Timestamp.now();
 
           pendingOps[i].onSuccess(WriteResult._(updateTime));
         } else {
           // Operation failed - create exception with status details
-          final errorMessage = status.message ?? 'Operation failed';
+          final errorMessage = status.message.isEmpty
+              ? 'Operation failed'
+              : status.message;
           final errorCode = FirestoreClientErrorCode.fromStatusCode(
-            status.code!,
+            status.code,
           );
           final exception = FirestoreException(errorCode, errorMessage);
 
@@ -719,7 +716,7 @@ class BulkWriter {
     final userFuture = completer.future;
 
     // Advance the `_lastOperation` pointer. This ensures that `_lastOperation`
-    // only resolves when both the previous and the current write resolve.
+    // only completes when both the previous and the current write complete.
     // We use a helper to silently handle the future without propagating errors.
     _lastOperation = _lastOperation.then((_) {
       // Silently handle the user future (don't propagate errors to _lastOperation)

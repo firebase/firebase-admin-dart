@@ -174,3 +174,59 @@ class TaskOptions {
   /// Contains experimental features that may change in future releases.
   final TaskOptionsExperimental? experimental;
 }
+
+/// Represents the scope of a function in a task queue.
+sealed class FunctionScope {
+  const FunctionScope._();
+
+  /// Targets a function co-deployed in the same codebase/deployment context.
+  const factory FunctionScope.current() = _CurrentFunctionScope;
+
+  /// Targets a global function (e.g. without kit or extension namespacing).
+  const factory FunctionScope.global() = _GlobalFunctionScope;
+
+  /// Targets a function deployed within a specific Firebase Extension.
+  const factory FunctionScope.extension(String extensionId) =
+      _ExtensionFunctionScope;
+}
+
+class _GlobalFunctionScope extends FunctionScope {
+  const _GlobalFunctionScope() : super._();
+
+  @override
+  String toString() => 'FunctionScope.global()';
+}
+
+class _ExtensionFunctionScope extends FunctionScope {
+  const _ExtensionFunctionScope(this.extensionId) : super._();
+
+  final String extensionId;
+
+  @override
+  String toString() => 'FunctionScope.extension($extensionId)';
+}
+
+class _KitFunctionScope extends FunctionScope {
+  const _KitFunctionScope(this.kit) : super._();
+
+  final String kit;
+
+  @override
+  String toString() => 'FunctionScope.kit($kit)';
+}
+
+class _CurrentFunctionScope extends FunctionScope {
+  const _CurrentFunctionScope() : super._();
+
+  @override
+  String toString() => 'FunctionScope.current()';
+}
+
+class _ExtensionOrKitFunctionScope extends FunctionScope {
+  const _ExtensionOrKitFunctionScope(this.instance) : super._();
+
+  final String instance;
+
+  @override
+  String toString() => 'FunctionScope.extensionOrKit($instance)';
+}

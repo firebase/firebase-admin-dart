@@ -58,9 +58,11 @@ abstract class KeyFetcher {
 }
 
 class UrlKeyFetcher implements KeyFetcher {
-  UrlKeyFetcher(this.clientCert);
+  UrlKeyFetcher(this.clientCert, {http.Client? httpClient})
+    : _httpClient = httpClient;
 
   final Uri clientCert;
+  final http.Client? _httpClient;
 
   Map<String, JWTKey>? _publicKeys;
   late DateTime _publicKeysExpireAt;
@@ -68,7 +70,7 @@ class UrlKeyFetcher implements KeyFetcher {
   @override
   Future<Map<String, JWTKey>> fetchPublicKeys() async {
     if (_shouldRefresh()) return refresh();
-    return _publicKeys!;
+    return _publicKeys ?? await refresh();
   }
 
   bool _shouldRefresh() {
@@ -77,7 +79,8 @@ class UrlKeyFetcher implements KeyFetcher {
   }
 
   Future<Map<String, JWTKey>> refresh() async {
-    final response = await http.get(clientCert);
+    final response =
+        await (_httpClient?.get(clientCert) ?? http.get(clientCert));
     final json = jsonDecode(response.body) as Map<String, Object?>;
     final error = json['error'];
     if (error != null) {
@@ -126,8 +129,7 @@ class JwksFetcher implements KeyFetcher {
   @override
   Future<Map<String, JWTKey>> fetchPublicKeys() async {
     if (_shouldRefresh) return refresh();
-
-    return _publicKeys!;
+    return _publicKeys ?? await refresh();
   }
 
   bool get _shouldRefresh {
@@ -171,8 +173,10 @@ class JwksFetcher implements KeyFetcher {
 class PublicKeySignatureVerifier implements SignatureVerifier {
   PublicKeySignatureVerifier(this.keyFetcher);
 
-  PublicKeySignatureVerifier.withCertificateUrl(Uri clientCert)
-    : this(UrlKeyFetcher(clientCert));
+  PublicKeySignatureVerifier.withCertificateUrl(
+    Uri clientCert, {
+    http.Client? httpClient,
+  }) : this(UrlKeyFetcher(clientCert, httpClient: httpClient));
 
   factory PublicKeySignatureVerifier.withJwksUrl(Uri jwksUrl) {
     return PublicKeySignatureVerifier(JwksFetcher(jwksUrl));

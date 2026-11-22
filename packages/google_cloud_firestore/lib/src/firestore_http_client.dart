@@ -12,100 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// `Http2Client` is `@experimental` upstream; the `^3.2.0` pin bounds the risk.
+// ignore_for_file: experimental_member_use
+
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:google_cloud/constants.dart' as google_cloud;
 import 'package:google_cloud/google_cloud.dart' as google_cloud;
-import 'package:googleapis/firestore/v1.dart' as firestore_v1;
+import 'package:google_cloud_firestore_v1/firestore.dart' as firestore_v1;
 import 'package:googleapis_auth/auth_io.dart' as googleapis_auth;
 import 'package:http/http.dart';
+import 'package:http2/client.dart';
 import 'package:meta/meta.dart';
 
 import '../google_cloud_firestore.dart';
 import 'environment.dart';
-import 'firestore.dart'
-    show Serializer, kInfinitySentinel, kNaNSentinel, kNegInfinitySentinel;
 import 'firestore_exception.dart';
-
-// Matches a complete Firestore Value JSON object whose doubleValue is one of
-// the three special IEEE 754 strings the REST API emits. Anchoring on the
-// surrounding braces prevents false-positive matches inside user string fields
-// that happen to contain the text `"doubleValue":"Infinity"`.
-final _specialDoublePattern = RegExp(
-  r'\{\s*"doubleValue"\s*:\s*"(Infinity|-Infinity|NaN)"\s*\}',
-);
-
-/// HTTP client wrapper that rewrites special IEEE 754 double values in
-/// Firestore REST API responses before the googleapis library parses them.
-///
-/// The Firestore REST API encodes [double.infinity], [double.negativeInfinity],
-/// and [double.nan] as the JSON strings `"Infinity"`, `"-Infinity"`, and
-/// `"NaN"` respectively (since those values are not representable in standard
-/// JSON). The googleapis-generated [firestore_v1.Value.fromJson] does a hard `as num` cast
-/// on the `doubleValue` field and therefore throws when it encounters a string.
-///
-/// This client intercepts every response body and replaces those patterns with
-/// a `stringValue` sentinel that [Serializer.decodeValue] understands.
-/// The sentinel strings are defined alongside [Serializer.decodeValue] in
-/// `serializer.dart`.
-class _SpecialDoubleClient extends BaseClient {
-  _SpecialDoubleClient(this._inner);
-
-  final Client _inner;
-
-  @override
-  Future<StreamedResponse> send(BaseRequest request) async {
-    final response = await _inner.send(request);
-
-    final contentType = response.headers['content-type'] ?? '';
-    if (!contentType.contains('application/json')) return response;
-
-    final body = await response.stream.bytesToString();
-    if (!body.contains('"doubleValue"')) return _rebuild(response, body);
-
-    final patched = body.replaceAllMapped(_specialDoublePattern, (m) {
-      final sentinel = switch (m.group(1)) {
-        'Infinity' => kInfinitySentinel,
-        '-Infinity' => kNegInfinitySentinel,
-        _ => kNaNSentinel, // 'NaN'
-      };
-      return '{"stringValue":"$sentinel"}';
-    });
-
-    return _rebuild(response, patched);
-  }
-
-  StreamedResponse _rebuild(StreamedResponse original, String body) {
-    final bytes = utf8.encode(body);
-    final headers = Map<String, String>.from(original.headers)
-      ..['content-length'] = bytes.length.toString();
-    return StreamedResponse(
-      Stream.value(bytes),
-      original.statusCode,
-      contentLength: bytes.length,
-      headers: headers,
-      request: original.request,
-      reasonPhrase: original.reasonPhrase,
-    );
-  }
-}
-
-/// An [googleapis_auth.AuthClient] wrapper that applies [_SpecialDoubleClient]
-/// response rewriting while preserving the [credentials] required by the
-/// googleapis request pipeline.
-class _SpecialDoubleAuthClient extends _SpecialDoubleClient
-    implements googleapis_auth.AuthClient {
-  _SpecialDoubleAuthClient(this._authInner) : super(_authInner);
-
-  final googleapis_auth.AuthClient _authInner;
-
-  @override
-  googleapis_auth.AccessCredentials get credentials => _authInner.credentials;
-
-  @override
-  void close() => _authInner.close();
-}
 
 /// Internal HTTP request implementation that wraps a stream.
 ///
@@ -122,6 +44,44 @@ class _RequestImpl extends BaseRequest {
     super.finalize();
     return ByteStream(_stream);
   }
+}
+
+/// HTTP client wrapper that adds custom headers to every outgoing Firestore
+/// request.
+///
+/// Used to attach [Settings.headers] (e.g. usage-tracking headers set by a
+/// caller like the Firebase Admin SDK) without altering how the underlying
+/// client authenticates requests.
+///
+/// Values are appended (space-joined) onto any existing header of the same
+/// name rather than replacing it, since the transport layer
+/// (`package:google_cloud_rpc`) already sets its own `X-Goog-Api-Client`
+/// value identifying this library — matching the multi-token convention
+/// that header uses (e.g. `gl-dart/3.9 gax/1.0 gccl/0.5 fire-admin/0.5`).
+@internal
+class FirestoreRequestClient extends BaseClient
+    implements googleapis_auth.AuthClient {
+  FirestoreRequestClient(this._client, this._headers);
+
+  final googleapis_auth.AuthClient _client;
+  final Map<String, String> _headers;
+
+  @override
+  googleapis_auth.AccessCredentials get credentials => _client.credentials;
+
+  @override
+  Future<StreamedResponse> send(BaseRequest request) {
+    for (final entry in _headers.entries) {
+      final existing = request.headers[entry.key];
+      request.headers[entry.key] = existing == null
+          ? entry.value
+          : '$existing ${entry.value}';
+    }
+    return _client.send(request);
+  }
+
+  @override
+  void close() => _client.close();
 }
 
 /// HTTP client wrapper that adds Firebase emulator authentication.
@@ -159,6 +119,40 @@ class EmulatorClient extends BaseClient implements googleapis_auth.AuthClient {
   void close() => client.close();
 }
 
+/// Routes `https` requests over a pooled HTTP/2 transport and everything
+/// else over plain HTTP/1.1.
+///
+/// googleapis_auth sends more than Firestore's own API calls through the
+/// `baseClient` it is handed. Credential negotiation can target plain
+/// `http` endpoints that speak no HTTP/2 at all: Application Default
+/// Credentials on GCE and Cloud Run fetch tokens from
+/// `http://metadata.google.internal`, and an external-account
+/// (WIF/OIDC) `credential_source` commonly points at a link-local
+/// metadata address. [Http2Client] rejects a non-`https` URL outright, so
+/// those requests need a transport of their own.
+@internal
+class Http2WithHttp1FallbackClient extends BaseClient {
+  Http2WithHttp1FallbackClient({Http2Client? http2, Client? http1})
+    : _http2 = http2 ?? Http2Client(),
+      _http1 = http1;
+
+  final Http2Client _http2;
+
+  Client? _http1;
+
+  @override
+  Future<StreamedResponse> send(BaseRequest request) =>
+      request.url.scheme == 'https'
+      ? _http2.send(request)
+      : (_http1 ??= Client()).send(request);
+
+  @override
+  void close() {
+    _http2.close();
+    _http1?.close();
+  }
+}
+
 /// HTTP client wrapper for Firestore API operations.
 ///
 /// Provides authenticated API access with automatic project ID discovery.
@@ -173,8 +167,66 @@ class FirestoreHttpClient {
 
   String? get cachedProjectId => _cachedProjectId;
 
-  /// Gets the Firestore API host URL based on emulator configuration.
-  Uri get _firestoreApiHost {
+  /// Synchronously resolves the project ID from settings, credentials,
+  /// environment variables, or the credentials file, without any network I/O.
+  ///
+  /// Checks (in order): [cachedProjectId], Zone env ([envSymbol]),
+  /// [Settings.environmentOverride], [Settings.projectId],
+  /// [Credential.serviceAccountCredentials], real environment variables, then
+  /// the credentials file at `GOOGLE_APPLICATION_CREDENTIALS`.
+  ///
+  /// Returns `null` when only async strategies (gcloud CLI, metadata server)
+  /// could succeed; those are handled by [_run] and cached in [cachedProjectId].
+  String? getProjectId() {
+    if (_cachedProjectId != null) return _cachedProjectId;
+
+    final zoneEnv = Zone.current[envSymbol] as Map<String, String>?;
+    String? discovered;
+
+    if (zoneEnv != null) {
+      for (final envKey in google_cloud.projectIdEnvironmentVariableOptions) {
+        final value = zoneEnv[envKey];
+        if (value != null && value.isNotEmpty) {
+          discovered = value;
+          break;
+        }
+      }
+    } else {
+      final envOverride = _settings.environmentOverride;
+      if (envOverride != null) {
+        for (final envKey in google_cloud.projectIdEnvironmentVariableOptions) {
+          final value = envOverride[envKey];
+          if (value != null && value.isNotEmpty) {
+            discovered = value;
+            break;
+          }
+        }
+      }
+    }
+
+    discovered ??=
+        _settings.projectId ?? credential.serviceAccountCredentials?.projectId;
+
+    if (discovered == null &&
+        zoneEnv == null &&
+        _settings.environmentOverride == null) {
+      discovered =
+          google_cloud.projectIdFromEnvironmentVariables() ??
+          google_cloud.projectIdFromCredentialsFile();
+    }
+
+    return discovered != null ? (_cachedProjectId = discovered) : null;
+  }
+
+  /// Gets the Firestore API host URL.
+  ///
+  /// `FIRESTORE_EMULATOR_HOST` takes precedence over [Settings.host], since it
+  /// is the documented way to redirect the SDK at an emulator. Otherwise the
+  /// scheme follows [Settings.ssl], which lets a custom [Settings.host] be
+  /// reached over plain HTTP.
+  @internal
+  @visibleForTesting
+  Uri get firestoreApiHost {
     final emulatorHost = Environment.getFirestoreEmulatorHost(
       _settings.environmentOverride,
     );
@@ -183,7 +235,8 @@ class FirestoreHttpClient {
       return Uri.http(emulatorHost, '/');
     }
 
-    return Uri.https(_settings.host ?? 'firestore.googleapis.com', '/');
+    final host = _settings.host ?? 'firestore.googleapis.com';
+    return _settings.ssl ? Uri.https(host, '/') : Uri.http(host, '/');
   }
 
   /// Checks if the Firestore emulator is enabled via environment variable.
@@ -191,33 +244,52 @@ class FirestoreHttpClient {
       Environment.isFirestoreEmulatorEnabled(_settings.environmentOverride);
 
   /// Lazy-initialized HTTP client that's cached for reuse.
-  late final Future<googleapis_auth.AuthClient> _client = _createClient();
+  ///
+  /// Nullable rather than `late final` so [close] can tell whether a client
+  /// was ever created, without creating one (and resolving credentials) just
+  /// to close it.
+  Future<googleapis_auth.AuthClient>? _clientFuture;
+
+  Future<googleapis_auth.AuthClient> get _client {
+    if (_closeFuture != null) {
+      throw StateError('FirestoreHttpClient has already been closed.');
+    }
+    return _clientFuture ??= _createClient();
+  }
+
+  // googleapis_auth never closes a caller-supplied baseClient.
+  Http2WithHttp1FallbackClient? _transport;
 
   /// Creates the appropriate HTTP client based on emulator configuration.
   Future<googleapis_auth.AuthClient> _createClient() async {
+    final client = await _createBaseClient();
+
+    final headers = _settings.headers;
+    if (headers == null || headers.isEmpty) return client;
+
+    return FirestoreRequestClient(client, Map.unmodifiable(headers));
+  }
+
+  Future<googleapis_auth.AuthClient> _createBaseClient() async {
     if (_isUsingEmulator) {
-      // Emulator: Create unauthenticated client, wrapped to rewrite special
-      // doubles before EmulatorClient adds auth headers.
-      return EmulatorClient(_SpecialDoubleClient(Client()));
+      // Plain HTTP/1.1, matching nodejs-firestore's REST mode for the emulator.
+      return EmulatorClient(Client());
     }
 
-    // Production: Create authenticated client, then wrap to rewrite special
-    // doubles in responses before googleapis parses them.
+    final transport = Http2WithHttp1FallbackClient();
+    _transport = transport;
+
     final serviceAccountCreds = credential.serviceAccountCredentials;
     if (serviceAccountCreds != null) {
-      final authClient = await googleapis_auth.clientViaServiceAccount(
-        serviceAccountCreds,
-        [firestore_v1.FirestoreApi.cloudPlatformScope],
-      );
-      return _SpecialDoubleAuthClient(authClient);
+      return googleapis_auth.clientViaServiceAccount(serviceAccountCreds, [
+        'https://www.googleapis.com/auth/cloud-platform',
+      ], baseClient: transport);
     }
 
-    // Fall back to Application Default Credentials
-    final authClient = await googleapis_auth
-        .clientViaApplicationDefaultCredentials(
-          scopes: [firestore_v1.FirestoreApi.cloudPlatformScope],
-        );
-    return _SpecialDoubleAuthClient(authClient);
+    return googleapis_auth.clientViaApplicationDefaultCredentials(
+      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+      baseClient: transport,
+    );
   }
 
   Future<R> _run<R>(
@@ -225,40 +297,43 @@ class FirestoreHttpClient {
   ) async {
     final client = await _client;
 
-    String? projectId;
-
-    final env = _settings.environmentOverride;
-    if (env != null) {
-      for (final envKey in google_cloud.projectIdEnvironmentVariableOptions) {
-        final value = env[envKey];
-        if (value != null) {
-          projectId = value;
-          break;
-        }
-      }
-    }
-
-    projectId ??= _settings.projectId;
-    projectId ??= await google_cloud.computeProjectId();
+    final projectId = getProjectId() ?? await google_cloud.computeProjectId();
 
     _cachedProjectId = projectId;
 
-    return firestoreGuard(() => fn(client, projectId!));
+    return firestoreGuard(() => fn(client, projectId));
   }
 
   /// Executes a Firestore v1 API operation with automatic projectId injection.
   Future<R> v1<R>(
-    Future<R> Function(firestore_v1.FirestoreApi api, String projectId) fn,
+    Future<R> Function(firestore_v1.Firestore api, String projectId) fn,
   ) => _run(
     (client, projectId) => fn(
-      firestore_v1.FirestoreApi(client, rootUrl: _firestoreApiHost.toString()),
+      firestore_v1.Firestore(client: client, endPoint: firestoreApiHost),
       projectId,
     ),
   );
 
   /// Closes the HTTP client and releases resources.
-  Future<void> close() async {
-    final client = await _client;
-    client.close();
+  ///
+  /// [Http2Client.close] rejects new requests immediately and drains the
+  /// in-flight ones in the background, so pooled connections may outlive
+  /// this call by as long as their last response takes to finish.
+  ///
+  /// Does nothing to a client that was never created, so closing an unused
+  /// Firestore performs no credential lookup or network I/O.
+  Future<void> close() => _closeFuture ??= _close();
+
+  Future<void>? _closeFuture;
+
+  Future<void> _close() async {
+    final clientFuture = _clientFuture;
+    try {
+      if (clientFuture != null) (await clientFuture).close();
+    } catch (_) {
+      // Client creation failed, so there is no client to close.
+    } finally {
+      _transport?.close();
+    }
   }
 }
