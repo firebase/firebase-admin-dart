@@ -74,13 +74,13 @@ Future<void> messagingExample(FirebaseApp admin) async {
     print('> Error sending batch: $e');
   }
 
-  // Example 3: Send multicast message to multiple tokens
+  // Example 3: Send multicast message to multiple Firebase Installation IDs
   try {
     print('> Sending multicast message...\n');
-    // Note: Using fake tokens for demonstration
+    // Note: Using fake FIDs for demonstration
     final response = await messaging.sendEachForMulticast(
-      MulticastMessage(
-        tokens: ['fake-token-1', 'fake-token-2'],
+      FidMulticastMessage(
+        fids: ['fake-fid-1', 'fake-fid-2'],
         notification: Notification(
           title: 'Multicast Message',
           body: 'This goes to multiple devices',
