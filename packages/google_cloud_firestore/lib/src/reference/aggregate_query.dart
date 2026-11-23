@@ -197,7 +197,7 @@ class AggregateQuery {
     return firestore_v1.RunAggregationQueryRequest(
       parent: parent,
       structuredAggregationQuery: firestore_v1.StructuredAggregationQuery(
-        structuredQuery: query._toStructuredQuery(),
+        structuredQuery: query._toRequestStructuredQuery(),
         aggregations: [
           for (final field in aggregations)
             firestore_v1.StructuredAggregationQuery_Aggregation(
