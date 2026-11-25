@@ -166,6 +166,7 @@ class RemoteConfigHttpClient {
 
     final etag = response.headers['etag'];
     final status = response.statusCode;
+    final bodyText = _decodeBody(response);
 
     if (status < 200 || status >= 300) {
       final isJson = (response.headers['content-type'] ?? '').contains(
@@ -173,15 +174,15 @@ class RemoteConfigHttpClient {
       );
       throw FirebaseRemoteConfigException.fromServerError(
         statusCode: status,
-        body: response.body,
+        body: bodyText,
         isJson: isJson,
       );
     }
 
-    if (response.body.isEmpty) {
+    if (bodyText.isEmpty) {
       return (body: const <String, Object?>{}, etag: etag);
     }
-    final decoded = jsonDecode(response.body);
+    final decoded = jsonDecode(bodyText);
     if (decoded is! Map<String, Object?>) {
       throw FirebaseRemoteConfigException(
         RemoteConfigErrorCode.unknownError,
@@ -189,5 +190,18 @@ class RemoteConfigHttpClient {
       );
     }
     return (body: decoded, etag: etag);
+  }
+
+  /// Returns the response body as text, inflating it when the server honoured
+  /// the `Accept-Encoding: gzip` request header.
+  ///
+  /// [FirebaseApp.client] pools HTTP/2 connections and does not decompress
+  /// transparently the way `dart:io`'s `HttpClient` does, and the `gzip`
+  /// header cannot be dropped because the backend only returns `ETag` when it
+  /// is sent.
+  String _decodeBody(Response response) {
+    final encoding = response.headers['content-encoding'] ?? '';
+    if (!encoding.contains('gzip')) return response.body;
+    return utf8.decode(gzip.decode(response.bodyBytes));
   }
 }

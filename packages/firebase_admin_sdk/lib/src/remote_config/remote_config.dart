@@ -14,6 +14,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show gzip;
 
 import 'package:crypto/crypto.dart';
 import 'package:googleapis_auth/auth_io.dart' as googleapis_auth;
