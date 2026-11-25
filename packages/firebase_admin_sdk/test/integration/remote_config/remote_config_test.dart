@@ -67,6 +67,13 @@ void main() {
       );
       rc = app.remoteConfig();
       baseline = await rc.getTemplate();
+      if (baseline.version?.versionNumber == null) {
+        throw StateError(
+          'The template on $projectId has no version history, so these tests '
+          'cannot restore it after publishing. Publish once from the console '
+          'or pick a project that already has a version.',
+        );
+      }
     });
 
     tearDownAll(() async {
@@ -75,13 +82,13 @@ void main() {
 
     // Registers a rollback to the baseline captured in `setUpAll`. Call it
     // before publishing, so the live project is restored even when a later
-    // assertion fails. The bound service account needs
+    // assertion fails. `setUpAll` has already asserted the baseline has a
+    // version, so there is always something to roll back to. The bound service account needs
     // `roles/firebaseanalytics.viewer` on the linked GA property in addition
     // to `roles/firebaseremoteconfig.admin`, since the rollback endpoint
     // validates against Google Analytics data.
     void restoreBaselineOnTearDown() {
-      final priorVersion = baseline.version?.versionNumber;
-      if (priorVersion == null) return;
+      final priorVersion = baseline.version!.versionNumber!;
       addTearDown(() => rc.rollback(priorVersion));
     }
 
@@ -174,16 +181,15 @@ void main() {
         expect((marker!.defaultValue! as ExplicitParameterValue).value, stamp);
 
         // 3. Roll back to the prior version; project state should match
-        //    the baseline we captured in setUpAll.
-        final priorVersion = baseline.version?.versionNumber;
-        if (priorVersion != null) {
-          final rolledBack = await rc.rollback(priorVersion);
-          expect(
-            rolledBack.parameters.containsKey('dart_admin_sdk_e2e_marker'),
-            isFalse,
-            reason: 'rollback should remove the e2e marker parameter',
-          );
-        }
+        //    the baseline we captured in setUpAll. Compare against the
+        //    baseline rather than asserting the marker is absent, so the test
+        //    does not assume the project started clean.
+        final rolledBack = await rc.rollback(baseline.version!.versionNumber!);
+        expect(
+          _markerValue(rolledBack),
+          _markerValue(baseline),
+          reason: 'rollback should restore the baseline marker value',
+        );
       },
       // Round-trip can take a bit; allow generous time.
       timeout: const Timeout(Duration(seconds: 60)),
@@ -305,4 +311,11 @@ void main() {
       );
     });
   }, tags: 'prod');
+}
+
+/// The value of the e2e marker parameter in [template], or null when the
+/// parameter is absent.
+String? _markerValue(RemoteConfigTemplate template) {
+  final value = template.parameters['dart_admin_sdk_e2e_marker']?.defaultValue;
+  return value is ExplicitParameterValue ? value.value : null;
 }
