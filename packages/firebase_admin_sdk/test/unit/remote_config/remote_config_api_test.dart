@@ -96,7 +96,11 @@ void main() {
 
       expect(template.version, isNotNull);
       expect(template.version!.versionNumber, '42');
-      expect(template.version!.updateOrigin, 'REST_API');
+      expect(template.version!.updateOrigin, RemoteConfigUpdateOrigin.restApi);
+      expect(
+        template.version!.updateType,
+        RemoteConfigUpdateType.incrementalUpdate,
+      );
       expect(template.version!.description, 'Initial publish');
     });
 
@@ -172,6 +176,54 @@ void main() {
           ),
         ),
       );
+    });
+  });
+
+  group('Version', () {
+    test('maps updateOrigin and updateType onto enums', () {
+      final version = Version.fromJson(const {
+        'versionNumber': '7',
+        'updateOrigin': 'ADMIN_SDK_NODE',
+        'updateType': 'ROLLBACK',
+      });
+
+      expect(version.updateOrigin, RemoteConfigUpdateOrigin.adminSdkNode);
+      expect(version.updateType, RemoteConfigUpdateType.rollback);
+      expect(version.toJson(), {
+        'versionNumber': '7',
+        'updateOrigin': 'ADMIN_SDK_NODE',
+        'updateType': 'ROLLBACK',
+      });
+    });
+
+    test('keeps the unspecified values the service defines', () {
+      final version = Version.fromJson(const {
+        'updateOrigin': 'REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED',
+        'updateType': 'REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED',
+      });
+
+      expect(version.updateOrigin, RemoteConfigUpdateOrigin.unspecified);
+      expect(version.updateType, RemoteConfigUpdateType.unspecified);
+    });
+
+    test('leaves updateOrigin and updateType null when absent', () {
+      final version = Version.fromJson(const {'versionNumber': '7'});
+
+      expect(version.updateOrigin, isNull);
+      expect(version.updateType, isNull);
+    });
+
+    test('reads a value it does not know as unknown, and does not send '
+        'it back', () {
+      final version = Version.fromJson(const {
+        'versionNumber': '7',
+        'updateOrigin': 'ADMIN_SDK_DART',
+        'updateType': 'SOMETHING_NEW',
+      });
+
+      expect(version.updateOrigin, RemoteConfigUpdateOrigin.unknown);
+      expect(version.updateType, RemoteConfigUpdateType.unknown);
+      expect(version.toJson(), {'versionNumber': '7'});
     });
   });
 
@@ -368,11 +420,13 @@ void main() {
       }''';
 
       final template = rc.initServerTemplate(
-        defaultConfig: const {
-          'skip_via_in_app': 'in-app-value',
-          'unrelated': 'kept',
-        },
-        template: json,
+        InitServerTemplateOptions(
+          defaultConfig: const {
+            'skip_via_in_app': 'in-app-value',
+            'unrelated': 'kept',
+          },
+          template: const ServerTemplateJson(json),
+        ),
       );
       final config = template.evaluate();
 
@@ -419,7 +473,7 @@ void main() {
     test('set() rejects malformed JSON', () {
       final template = rc.initServerTemplate();
       expect(
-        () => template.set('not-json'),
+        () => template.set(const ServerTemplateJson('not-json')),
         throwsA(
           isA<FirebaseRemoteConfigException>().having(
             (e) => e.errorCode,
@@ -430,10 +484,10 @@ void main() {
       );
     });
 
-    test('set() rejects unsupported types', () {
+    test('set() rejects JSON that is not an object', () {
       final template = rc.initServerTemplate();
       expect(
-        () => template.set(42),
+        () => template.set(const ServerTemplateJson('42')),
         throwsA(
           isA<FirebaseRemoteConfigException>().having(
             (e) => e.errorCode,
@@ -442,6 +496,30 @@ void main() {
           ),
         ),
       );
+    });
+
+    test('set() takes a ServerTemplateData as it is', () {
+      final data = ServerTemplateData(
+        etag: 'etag-1',
+        parameters: {
+          'flag': RemoteConfigParameter(
+            defaultValue: const ExplicitParameterValue(value: 'on'),
+          ),
+        },
+      );
+      final template = rc.initServerTemplate()..set(data);
+
+      expect(template.toJson(), same(data));
+      expect(template.evaluate().getString('flag'), 'on');
+    });
+
+    test('initServerTemplate keeps defaultConfig without a template', () {
+      final template = rc.initServerTemplate(
+        InitServerTemplateOptions(defaultConfig: const {'max_items': 50}),
+      );
+
+      expect(template.defaultConfig, {'max_items': 50});
+      expect(template.evaluate, throwsA(isA<FirebaseRemoteConfigException>()));
     });
 
     test('set() rejects JSON of the wrong shape', () {
@@ -452,7 +530,7 @@ void main() {
         '{"etag": "e", "conditions": [{"name": 3}]}',
       ]) {
         expect(
-          () => template.set(json),
+          () => template.set(ServerTemplateJson(json)),
           throwsA(
             isA<FirebaseRemoteConfigException>().having(
               (e) => e.errorCode,
@@ -512,12 +590,18 @@ void main() {
         },
         'version': {'versionNumber': '4'},
       };
-      final original = rc.initServerTemplate(template: jsonEncode(source));
+      final original = rc.initServerTemplate(
+        InitServerTemplateOptions(
+          template: ServerTemplateJson(jsonEncode(source)),
+        ),
+      );
 
       final encoded = jsonEncode(original.toJson().toJson());
       expect(jsonDecode(encoded), source);
 
-      final restored = rc.initServerTemplate(template: encoded);
+      final restored = rc.initServerTemplate(
+        InitServerTemplateOptions(template: ServerTemplateJson(encoded)),
+      );
       const context = EvaluationContext(
         randomizationId: 'user-1',
         customSignals: {'tier': 'gold'},
@@ -528,75 +612,79 @@ void main() {
 
     test('out-of-spec conditions in a template evaluate to false', () {
       final template = rc.initServerTemplate(
-        template: jsonEncode({
-          'etag': 'etag-1',
-          'conditions': [
-            {
-              'name': 'percent-too-large',
-              'condition': {
-                'percent': {
-                  'percentOperator': 'LESS_OR_EQUAL',
-                  'microPercent': 100000001,
+        InitServerTemplateOptions(
+          template: ServerTemplateJson(
+            jsonEncode({
+              'etag': 'etag-1',
+              'conditions': [
+                {
+                  'name': 'percent-too-large',
+                  'condition': {
+                    'percent': {
+                      'percentOperator': 'LESS_OR_EQUAL',
+                      'microPercent': 100000001,
+                    },
+                  },
                 },
-              },
-            },
-            {
-              'name': 'seed-too-long',
-              'condition': {
-                'percent': {
-                  'percentOperator': 'GREATER_THAN',
-                  'microPercent': 0,
-                  'seed': 'x' * 33,
+                {
+                  'name': 'seed-too-long',
+                  'condition': {
+                    'percent': {
+                      'percentOperator': 'GREATER_THAN',
+                      'microPercent': 0,
+                      'seed': 'x' * 33,
+                    },
+                  },
                 },
-              },
-            },
-            {
-              'name': 'no-targets',
-              'condition': {
-                'customSignal': {
-                  'customSignalOperator': 'STRING_DOES_NOT_CONTAIN',
-                  'customSignalKey': 'tier',
-                  'targetCustomSignalValues': <String>[],
+                {
+                  'name': 'no-targets',
+                  'condition': {
+                    'customSignal': {
+                      'customSignalOperator': 'STRING_DOES_NOT_CONTAIN',
+                      'customSignalKey': 'tier',
+                      'targetCustomSignalValues': <String>[],
+                    },
+                  },
                 },
-              },
-            },
-            {
-              'name': 'too-many-targets',
-              'condition': {
-                'customSignal': {
-                  'customSignalOperator': 'STRING_CONTAINS',
-                  'customSignalKey': 'tier',
-                  'targetCustomSignalValues': List.filled(101, 'gold'),
+                {
+                  'name': 'too-many-targets',
+                  'condition': {
+                    'customSignal': {
+                      'customSignalOperator': 'STRING_CONTAINS',
+                      'customSignalKey': 'tier',
+                      'targetCustomSignalValues': List.filled(101, 'gold'),
+                    },
+                  },
                 },
-              },
-            },
-            {
-              'name': 'in-spec',
-              'condition': {
-                'customSignal': {
-                  'customSignalOperator': 'STRING_CONTAINS',
-                  'customSignalKey': 'tier',
-                  'targetCustomSignalValues': ['gold'],
+                {
+                  'name': 'in-spec',
+                  'condition': {
+                    'customSignal': {
+                      'customSignalOperator': 'STRING_CONTAINS',
+                      'customSignalKey': 'tier',
+                      'targetCustomSignalValues': ['gold'],
+                    },
+                  },
                 },
+              ],
+              'parameters': {
+                for (final name in [
+                  'percent-too-large',
+                  'seed-too-long',
+                  'no-targets',
+                  'too-many-targets',
+                  'in-spec',
+                ])
+                  name: {
+                    'defaultValue': {'value': 'default'},
+                    'conditionalValues': {
+                      name: {'value': 'matched'},
+                    },
+                  },
               },
-            },
-          ],
-          'parameters': {
-            for (final name in [
-              'percent-too-large',
-              'seed-too-long',
-              'no-targets',
-              'too-many-targets',
-              'in-spec',
-            ])
-              name: {
-                'defaultValue': {'value': 'default'},
-                'conditionalValues': {
-                  name: {'value': 'matched'},
-                },
-              },
-          },
-        }),
+            }),
+          ),
+        ),
       );
 
       final config = template.evaluate(

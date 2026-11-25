@@ -90,10 +90,12 @@ Future<void> remoteConfigExample(FirebaseApp admin) async {
   try {
     print('> Fetching server template and evaluating...\n');
     final serverTemplate = await remoteConfig.getServerTemplate(
-      defaultConfig: const <String, Object>{
-        'enable_new_ui': false,
-        'max_items': 50,
-      },
+      GetServerTemplateOptions(
+        defaultConfig: const <String, Object>{
+          'enable_new_ui': false,
+          'max_items': 50,
+        },
+      ),
     );
     final config = serverTemplate.evaluate(
       const EvaluationContext(

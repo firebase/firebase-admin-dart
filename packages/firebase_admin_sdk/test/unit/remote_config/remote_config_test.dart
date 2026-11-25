@@ -101,20 +101,20 @@ void main() {
     });
   });
 
-  group('getTemplate(versionNumber)', () {
+  group('getTemplateAtVersion', () {
     test('passes versionNumber through to the HTTP client', () async {
       when(
         () => httpClient.getTemplate(versionNumber: '42'),
       ).thenAnswer((_) async => (body: _sampleTemplateBody, etag: 'etag-v'));
 
-      final template = await rc.getTemplate('42');
+      final template = await rc.getTemplateAtVersion('42');
       expect(template.etag, 'etag-v');
       verify(() => httpClient.getTemplate(versionNumber: '42')).called(1);
     });
 
     test('throws on non-integer versionNumber', () async {
       await expectLater(
-        rc.getTemplate('abc'),
+        rc.getTemplateAtVersion('abc'),
         throwsA(
           isA<FirebaseRemoteConfigException>().having(
             (e) => e.errorCode,
@@ -342,7 +342,11 @@ void main() {
       final result = await rc.listVersions();
       expect(result.versions, hasLength(2));
       expect(result.versions[0].versionNumber, '7');
-      expect(result.versions[0].updateOrigin, 'CONSOLE');
+      expect(result.versions[0].updateOrigin, RemoteConfigUpdateOrigin.console);
+      expect(
+        result.versions[0].updateType,
+        RemoteConfigUpdateType.incrementalUpdate,
+      );
       expect(result.versions[0].description, 'tweak');
       expect(result.versions[1].versionNumber, '6');
       expect(result.nextPageToken, 'tok-2');
@@ -391,6 +395,25 @@ void main() {
       // Re-evaluate against an empty context — confirms the template made it
       // into the cache and the parameter resolved via its default value.
       final config = template.evaluate();
+      expect(config.getString('flag'), 'on');
+    });
+
+    test('uses defaultConfig from the options for keys the template '
+        'lacks', () async {
+      when(() => httpClient.getServerTemplate()).thenAnswer(
+        (_) async => (body: _sampleServerTemplateBody, etag: 'srv-1'),
+      );
+
+      final template = await rc.getServerTemplate(
+        GetServerTemplateOptions(defaultConfig: const {'max_items': 50}),
+      );
+
+      final config = template.evaluate();
+      expect(config.getInt('max_items'), 50);
+      expect(
+        config.getValue('max_items').getSource(),
+        ValueSource.valueDefault,
+      );
       expect(config.getString('flag'), 'on');
     });
 

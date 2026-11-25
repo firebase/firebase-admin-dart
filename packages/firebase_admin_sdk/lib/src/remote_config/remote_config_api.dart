@@ -1046,10 +1046,26 @@ class RemoteConfigTemplate {
   }
 }
 
+/// A server template in one of the two forms [ServerTemplate.set] and
+/// [InitServerTemplateOptions.template] accept: a [ServerTemplateData], or a
+/// [ServerTemplateJson] wrapping a JSON string.
+sealed class ServerTemplateDataType {
+  const ServerTemplateDataType();
+}
+
+/// A server template as a JSON string in [ServerTemplateData] shape, such as
+/// one encoded from [ServerTemplateData.toJson] and stored by the caller.
+final class ServerTemplateJson extends ServerTemplateDataType {
+  const ServerTemplateJson(this.json);
+
+  /// The JSON string. It is parsed when the template is set.
+  final String json;
+}
+
 /// A server-style template used by [ServerTemplate.evaluate]. Distinct from
 /// [RemoteConfigTemplate] in that conditions are structured trees instead of
 /// expression strings.
-class ServerTemplateData {
+final class ServerTemplateData extends ServerTemplateDataType {
   ServerTemplateData({
     List<NamedCondition>? conditions,
     Map<String, RemoteConfigParameter>? parameters,
@@ -1107,7 +1123,8 @@ class ServerTemplateData {
   final Version? version;
 
   /// The JSON form of this template, which [ServerTemplate.set] and
-  /// [RemoteConfig.initServerTemplate] accept once encoded as a string.
+  /// [RemoteConfig.initServerTemplate] accept once encoded as a string and
+  /// wrapped in a [ServerTemplateJson].
   Map<String, Object?> toJson() {
     return <String, Object?>{
       'conditions': [for (final c in conditions) c.toJson()],
@@ -1118,15 +1135,80 @@ class ServerTemplateData {
   }
 }
 
+/// Options for [RemoteConfig.getServerTemplate].
+class GetServerTemplateOptions {
+  GetServerTemplateOptions({Map<String, Object>? defaultConfig})
+    : defaultConfig = defaultConfig == null
+          ? null
+          : Map<String, Object>.unmodifiable(defaultConfig);
+
+  /// In-app default parameter values, used by [ServerTemplate.evaluate] for
+  /// keys the template does not define. Values must be `String`, `num`, or
+  /// `bool`.
+  final Map<String, Object>? defaultConfig;
+}
+
+/// Options for [RemoteConfig.initServerTemplate].
+class InitServerTemplateOptions extends GetServerTemplateOptions {
+  InitServerTemplateOptions({super.defaultConfig, this.template});
+
+  /// A template loaded independently, for example one fetched earlier and
+  /// cached, so that the [ServerTemplate] can evaluate without a fetch.
+  final ServerTemplateDataType? template;
+}
+
 // ---------------------------------------------------------------------------
 // Versions and listing
 // ---------------------------------------------------------------------------
 
-/// Origin of a Remote Config template update (output only).
-const updateOriginUnspecified = 'REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED';
+/// What triggered a Remote Config template update, in [Version.updateOrigin].
+enum RemoteConfigUpdateOrigin {
+  /// A value this SDK does not know. The service defines the set of origins
+  /// and may add to it.
+  unknown('UNKNOWN'),
+  unspecified('REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED'),
+  console('CONSOLE'),
+  restApi('REST_API'),
+  adminSdkNode('ADMIN_SDK_NODE');
 
-/// Type of a Remote Config template update (output only).
-const updateTypeUnspecified = 'REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED';
+  const RemoteConfigUpdateOrigin(this.name);
+
+  final String name;
+
+  /// The origin for the wire string [value]: null for null, and [unknown] for
+  /// a string no other origin maps to.
+  static RemoteConfigUpdateOrigin? fromName(String? value) {
+    if (value == null) return null;
+    for (final origin in RemoteConfigUpdateOrigin.values) {
+      if (origin.name == value) return origin;
+    }
+    return RemoteConfigUpdateOrigin.unknown;
+  }
+}
+
+/// The kind of a Remote Config template update, in [Version.updateType].
+enum RemoteConfigUpdateType {
+  /// A value this SDK does not know.
+  unknown('UNKNOWN'),
+  unspecified('REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED'),
+  incrementalUpdate('INCREMENTAL_UPDATE'),
+  forcedUpdate('FORCED_UPDATE'),
+  rollback('ROLLBACK');
+
+  const RemoteConfigUpdateType(this.name);
+
+  final String name;
+
+  /// The type for the wire string [value]: null for null, and [unknown] for a
+  /// string no other type maps to.
+  static RemoteConfigUpdateType? fromName(String? value) {
+    if (value == null) return null;
+    for (final type in RemoteConfigUpdateType.values) {
+      if (type.name == value) return type;
+    }
+    return RemoteConfigUpdateType.unknown;
+  }
+}
 
 /// Metadata about a published Remote Config template version.
 class Version {
@@ -1151,8 +1233,12 @@ class Version {
     return Version(
       versionNumber: json['versionNumber'] as String?,
       updateTime: parsedTime,
-      updateOrigin: json['updateOrigin'] as String?,
-      updateType: json['updateType'] as String?,
+      updateOrigin: RemoteConfigUpdateOrigin.fromName(
+        json['updateOrigin'] as String?,
+      ),
+      updateType: RemoteConfigUpdateType.fromName(
+        json['updateType'] as String?,
+      ),
       updateUser: updateUserJson is Map<String, Object?>
           ? RemoteConfigUser.fromJson(updateUserJson)
           : null,
@@ -1168,16 +1254,12 @@ class Version {
   /// When this version was written to the backend. Output only.
   final DateTime? updateTime;
 
-  /// Source that triggered the update, as stamped by the Remote Config server
-  /// (e.g. `CONSOLE`, `REST_API`, an `ADMIN_SDK_*` variant, or
-  /// [updateOriginUnspecified]). The exact set of values is defined by the
-  /// Remote Config service; clients should treat this as an opaque string.
+  /// What triggered the update, as stamped by the Remote Config service.
   /// Output only.
-  final String? updateOrigin;
+  final RemoteConfigUpdateOrigin? updateOrigin;
 
-  /// Update type — e.g. `INCREMENTAL_UPDATE`, `FORCED_UPDATE`, `ROLLBACK`,
-  /// or [updateTypeUnspecified]. Output only.
-  final String? updateType;
+  /// The kind of update. Output only.
+  final RemoteConfigUpdateType? updateType;
 
   /// Account that performed the update. Output only.
   final RemoteConfigUser? updateUser;
@@ -1195,12 +1277,21 @@ class Version {
   /// Output only.
   final bool? isLegacy;
 
+  /// The JSON form of this version. An `unknown` [updateOrigin] or
+  /// [updateType] is left out, because the string the service sent is not
+  /// kept and `UNKNOWN` is not a value the service defines.
   Map<String, Object?> toJson() {
     return <String, Object?>{
       'versionNumber': ?versionNumber,
       'updateTime': ?updateTime?.toUtc().toIso8601String(),
-      'updateOrigin': ?updateOrigin,
-      'updateType': ?updateType,
+      'updateOrigin': ?switch (updateOrigin) {
+        null || RemoteConfigUpdateOrigin.unknown => null,
+        final origin => origin.name,
+      },
+      'updateType': ?switch (updateType) {
+        null || RemoteConfigUpdateType.unknown => null,
+        final type => type.name,
+      },
       'updateUser': ?updateUser?.toJson(),
       'description': ?description,
       'rollbackSource': ?rollbackSource,

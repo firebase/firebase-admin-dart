@@ -26,10 +26,15 @@ class RemoteConfigRequestHandler {
 
   final RemoteConfigHttpClient _httpClient;
 
-  Future<RemoteConfigTemplate> getTemplate([String? versionNumber]) async {
-    if (versionNumber != null) {
-      _validateVersionNumber(versionNumber);
-    }
+  Future<RemoteConfigTemplate> getTemplate() async {
+    final result = await _httpClient.getTemplate();
+    return _parseTemplate(result);
+  }
+
+  Future<RemoteConfigTemplate> getTemplateAtVersion(
+    String versionNumber,
+  ) async {
+    _validateVersionNumber(versionNumber);
     final result = await _httpClient.getTemplate(versionNumber: versionNumber);
     return _parseTemplate(result);
   }

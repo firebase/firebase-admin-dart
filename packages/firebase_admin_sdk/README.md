@@ -644,7 +644,9 @@ Use [`getServerTemplate`](https://firebase.google.com/docs/remote-config/server-
 
 ```dart
 final template = await remoteConfig.getServerTemplate(
-  defaultConfig: {'enable_new_ui': false, 'max_items': 50},
+  GetServerTemplateOptions(
+    defaultConfig: {'enable_new_ui': false, 'max_items': 50},
+  ),
 );
 
 // Evaluate against an EvaluationContext: randomizationId is used by percent

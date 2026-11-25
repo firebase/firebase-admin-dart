@@ -200,7 +200,7 @@ void main() {
     );
 
     test(
-      'getTemplate(versionNumber) returns a specific historical version',
+      'getTemplateAtVersion returns a specific historical version',
       () async {
         // Pick the latest known version from listVersions and re-fetch it
         // explicitly. The returned template must echo that version number
@@ -210,7 +210,7 @@ void main() {
         final versionNumber = list.versions.first.versionNumber;
         expect(versionNumber, isNotNull);
 
-        final atVersion = await rc.getTemplate(versionNumber);
+        final atVersion = await rc.getTemplateAtVersion(versionNumber!);
         expect(atVersion.etag, isNotEmpty);
         expect(atVersion.version, isNotNull);
         expect(atVersion.version!.versionNumber, versionNumber);
@@ -267,17 +267,23 @@ void main() {
       ServerTemplate serverTemplate;
       try {
         serverTemplate = await rc.getServerTemplate(
-          defaultConfig: const <String, Object>{
-            'dart_admin_sdk_e2e_in_app_only': 'fallback',
-          },
+          GetServerTemplateOptions(
+            defaultConfig: const <String, Object>{
+              'dart_admin_sdk_e2e_in_app_only': 'fallback',
+            },
+          ),
         );
       } on FirebaseRemoteConfigException catch (e) {
         if (e.errorCode != RemoteConfigErrorCode.notFound) rethrow;
         serverTemplate = rc.initServerTemplate(
-          defaultConfig: const <String, Object>{
-            'dart_admin_sdk_e2e_in_app_only': 'fallback',
-          },
-          template: '{"etag":"e2e-empty","conditions":[],"parameters":{}}',
+          InitServerTemplateOptions(
+            defaultConfig: const <String, Object>{
+              'dart_admin_sdk_e2e_in_app_only': 'fallback',
+            },
+            template: const ServerTemplateJson(
+              '{"etag":"e2e-empty","conditions":[],"parameters":{}}',
+            ),
+          ),
         );
       }
 

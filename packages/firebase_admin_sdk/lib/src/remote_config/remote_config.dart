@@ -53,13 +53,15 @@ class RemoteConfig implements FirebaseService {
 
   final RemoteConfigRequestHandler _requestHandler;
 
-  /// Returns a Remote Config template.
-  ///
-  /// With no argument, returns the current active version. Passing
-  /// [versionNumber] (an integer in int64 format) returns that specific
-  /// historical version.
-  Future<RemoteConfigTemplate> getTemplate([String? versionNumber]) {
-    return _requestHandler.getTemplate(versionNumber);
+  /// Returns the current active version of the Remote Config template.
+  Future<RemoteConfigTemplate> getTemplate() {
+    return _requestHandler.getTemplate();
+  }
+
+  /// Returns the Remote Config template at [versionNumber], an integer in
+  /// int64 format.
+  Future<RemoteConfigTemplate> getTemplateAtVersion(String versionNumber) {
+    return _requestHandler.getTemplateAtVersion(versionNumber);
   }
 
   /// Validates a Remote Config template against the server. Returns the
@@ -106,33 +108,32 @@ class RemoteConfig implements FirebaseService {
 
   /// Fetches and caches the current active server template, returning a
   /// [ServerTemplate] ready for [ServerTemplate.evaluate].
-  Future<ServerTemplate> getServerTemplate({
-    Map<String, Object>? defaultConfig,
-  }) async {
-    final template = initServerTemplate(defaultConfig: defaultConfig);
+  Future<ServerTemplate> getServerTemplate([
+    GetServerTemplateOptions? options,
+  ]) async {
+    final template = _newServerTemplate(options);
     await template.load();
     return template;
   }
 
   /// Synchronously builds a [ServerTemplate] without fetching. The caller can
-  /// pre-load the template via [ServerTemplate.set] or trigger a fetch via
-  /// [ServerTemplate.load].
-  ///
-  /// [template] may be a [ServerTemplateData] or a JSON string in
-  /// [ServerTemplateData] shape.
-  ServerTemplate initServerTemplate({
-    Map<String, Object>? defaultConfig,
-    Object? template,
-  }) {
-    final result = ServerTemplate._(
-      _requestHandler,
-      ConditionEvaluator(),
-      defaultConfig ?? const <String, Object>{},
-    );
+  /// pre-load the template via [InitServerTemplateOptions.template] or
+  /// [ServerTemplate.set], or trigger a fetch via [ServerTemplate.load].
+  ServerTemplate initServerTemplate([InitServerTemplateOptions? options]) {
+    final result = _newServerTemplate(options);
+    final template = options?.template;
     if (template != null) {
       result.set(template);
     }
     return result;
+  }
+
+  ServerTemplate _newServerTemplate(GetServerTemplateOptions? options) {
+    return ServerTemplate._(
+      _requestHandler,
+      ConditionEvaluator(),
+      options?.defaultConfig ?? const <String, Object>{},
+    );
   }
 
   @override
@@ -171,21 +172,20 @@ class ServerTemplate {
     _cache = await _requestHandler.getServerTemplate();
   }
 
-  /// Replaces the cached template. [data] may be a [ServerTemplateData] or a
-  /// JSON string in [ServerTemplateData] shape.
-  void set(Object data) {
-    if (data is ServerTemplateData) {
-      _cache = data;
-      return;
-    }
-    if (data is String) {
-      _cache = _decodeJsonObject(data, ServerTemplateData.fromJson);
-      return;
-    }
-    throw FirebaseRemoteConfigException(
-      RemoteConfigErrorCode.invalidArgument,
-      'Expected ServerTemplateData or String, got ${data.runtimeType}.',
-    );
+  /// Replaces the cached template with [template]: a [ServerTemplateData], or
+  /// a [ServerTemplateJson] holding a JSON string in [ServerTemplateData]
+  /// shape.
+  ///
+  /// Throws [FirebaseRemoteConfigException] with code `invalid-argument` when
+  /// a JSON string does not parse or is not a server template.
+  void set(ServerTemplateDataType template) {
+    _cache = switch (template) {
+      ServerTemplateData() => template,
+      ServerTemplateJson(:final json) => _decodeJsonObject(
+        json,
+        ServerTemplateData.fromJson,
+      ),
+    };
   }
 
   /// Evaluates the cached template against [context] and returns a
