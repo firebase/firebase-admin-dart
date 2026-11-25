@@ -126,6 +126,200 @@ void main() {
     });
   });
 
+  group('limitToLast() (unit)', () {
+    late MockFirestoreHttpClient mockClient;
+    late Firestore firestore;
+    late List<firestore_v1.RunQueryRequest> requests;
+
+    setUp(() {
+      mockClient = MockFirestoreHttpClient();
+      firestore = Firestore.internal(
+        settings: const Settings(projectId: mockProjectId),
+        client: mockClient,
+      );
+      requests = [];
+
+      when(() => mockClient.cachedProjectId).thenReturn(mockProjectId);
+      when(
+        () => mockClient.v1<Stream<firestore_v1.RunQueryResponse>>(any()),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.RunQueryResponse>> Function(
+                  firestore_v1.Firestore api,
+                  String projectId,
+                );
+        final api = FakeFirestore(
+          runQuery: (request) {
+            requests.add(request);
+            // The backend answers the flipped (descending) query.
+            return Stream.fromIterable([
+              for (final n in [4, 3])
+                _documentResponse(
+                  documentPath: 'col/d$n',
+                  fields: {'n': n},
+                  firestore: firestore,
+                ),
+              if (request.explainOptions != null)
+                firestore_v1.RunQueryResponse(
+                  explainMetrics: firestore_v1.ExplainMetrics(
+                    planSummary: firestore_v1.PlanSummary(),
+                  ),
+                ),
+            ]);
+          },
+        );
+        return callback(api, mockProjectId);
+      });
+    });
+
+    test('get() reverses results back into query order', () async {
+      final snapshot = await firestore
+          .collection('col')
+          .orderBy('n')
+          .limitToLast(2)
+          .get();
+
+      expect(
+        requests.single.structuredQuery!.orderBy.single.direction,
+        firestore_v1.StructuredQuery_Direction.descending,
+      );
+      expect(snapshot.docs.map((doc) => doc.id), ['d3', 'd4']);
+      expect(
+        snapshot.docChanges.map((c) => (c.doc.id, c.oldIndex, c.newIndex)),
+        [('d3', -1, 0), ('d4', -1, 1)],
+      );
+    });
+
+    test('get() keeps limit() results in backend order', () async {
+      final snapshot = await firestore
+          .collection('col')
+          .orderBy('n', descending: true)
+          .limit(2)
+          .get();
+
+      expect(snapshot.docs.map((doc) => doc.id), ['d4', 'd3']);
+    });
+
+    test('aggregate queries send the flipped query', () async {
+      firestore_v1.RunAggregationQueryRequest? captured;
+      when(
+        () => mockClient.v1<Stream<firestore_v1.RunAggregationQueryResponse>>(
+          any(),
+        ),
+      ).thenAnswer((invocation) async {
+        final callback =
+            invocation.positionalArguments.single
+                as Future<Stream<firestore_v1.RunAggregationQueryResponse>>
+                Function(firestore_v1.Firestore api, String projectId);
+        final api = FakeFirestore(
+          runAggregationQuery: (request) {
+            captured = request;
+            final alias =
+                request.structuredAggregationQuery!.aggregations.single.alias;
+            return Stream.value(
+              firestore_v1.RunAggregationQueryResponse(
+                result: firestore_v1.AggregationResult(
+                  aggregateFields: {alias: firestore_v1.Value(integerValue: 7)},
+                ),
+              ),
+            );
+          },
+        );
+        return callback(api, mockProjectId);
+      });
+
+      final snapshot = await firestore
+          .collection('col')
+          .orderBy('n')
+          .startAt([1])
+          .endBefore([5])
+          .limitToLast(2)
+          .aggregate(const sum('n'))
+          .get();
+
+      final query = captured!.structuredAggregationQuery!.structuredQuery!;
+      expect(
+        query.orderBy.single.direction,
+        firestore_v1.StructuredQuery_Direction.descending,
+      );
+      // Cursors are swapped and their `before` flags inverted.
+      expect(query.startAt!.values.single.integerValue, 5);
+      expect(query.startAt!.before, isFalse);
+      expect(query.endAt!.values.single.integerValue, 1);
+      expect(query.endAt!.before, isFalse);
+      expect(query.limit!.value, 2);
+      expect(snapshot.getSum('n'), 7);
+    });
+
+    test('vector queries send the flipped query and reverse results', () async {
+      final snapshot = await firestore
+          .collection('col')
+          .orderBy('n')
+          .limitToLast(2)
+          .findNearest(
+            vectorField: 'embedding',
+            queryVector: [1.0, 1.0],
+            limit: 2,
+            distanceMeasure: DistanceMeasure.euclidean,
+          )
+          .get();
+
+      final query = requests.single.structuredQuery!;
+      expect(
+        query.orderBy.single.direction,
+        firestore_v1.StructuredQuery_Direction.descending,
+      );
+      expect(query.findNearest, isNotNull);
+      expect(snapshot.docs.map((doc) => doc.id), ['d3', 'd4']);
+    });
+
+    test('vector explain() reverses results back into query order', () async {
+      final results = await firestore
+          .collection('col')
+          .orderBy('n')
+          .limitToLast(2)
+          .findNearest(
+            vectorField: 'embedding',
+            queryVector: [1.0, 1.0],
+            limit: 2,
+            distanceMeasure: DistanceMeasure.euclidean,
+          )
+          .explain(const ExplainOptions(analyze: true));
+
+      expect(results.snapshot!.docs.map((doc) => doc.id), ['d3', 'd4']);
+    });
+
+    test('aggregate and vector queries require an orderBy', () {
+      final query = firestore.collection('col').limitToLast(2);
+      expect(
+        () => query.aggregate(const sum('n')).get(),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => query
+            .findNearest(
+              vectorField: 'embedding',
+              queryVector: [1.0, 1.0],
+              limit: 2,
+              distanceMeasure: DistanceMeasure.euclidean,
+            )
+            .get(),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('explain() reverses results back into query order', () async {
+      final results = await firestore
+          .collection('col')
+          .orderBy('n')
+          .limitToLast(2)
+          .explain(const ExplainOptions(analyze: true));
+
+      expect(results.snapshot!.docs.map((doc) => doc.id), ['d3', 'd4']);
+    });
+  });
+
   group('field paths in the request (unit)', () {
     test('quotes and escapes segments that are not identifiers', () async {
       final mockClient = MockFirestoreHttpClient();
@@ -782,7 +976,61 @@ void main() {
           .limitToLast(1)
           .limitToLast(2)
           .get();
-      expect(snapshot.docs.map((doc) => doc.id), ['c', 'b']);
+      expect(snapshot.docs.map((doc) => doc.id), ['b', 'c']);
+    });
+
+    test('returns results and docChanges in query order', () async {
+      final collection = firestore.collection('limitToLastOrder');
+
+      await collection.doc('d1').set({'n': 1});
+      await collection.doc('d2').set({'n': 2});
+      await collection.doc('d3').set({'n': 3});
+      await collection.doc('d4').set({'n': 4});
+
+      final ascending = await collection.orderBy('n').limitToLast(2).get();
+      expect(ascending.docs.map((doc) => doc.id), ['d3', 'd4']);
+      expect(ascending.docChanges.map((c) => (c.doc.id, c.newIndex)), [
+        ('d3', 0),
+        ('d4', 1),
+      ]);
+
+      final descending = await collection
+          .orderBy('n', descending: true)
+          .limitToLast(2)
+          .get();
+      expect(descending.docs.map((doc) => doc.id), ['d2', 'd1']);
+    });
+
+    test('aggregates over the last documents', () async {
+      final collection = firestore.collection('limitToLastAggregate');
+
+      for (var n = 1; n <= 4; n++) {
+        await collection.doc('d$n').set({'n': n});
+      }
+
+      final snapshot = await collection
+          .orderBy('n')
+          .limitToLast(2)
+          .aggregate(const sum('n'), const average('n'))
+          .get();
+      expect(snapshot.getSum('n'), 7);
+      expect(snapshot.getAverage('n'), 3.5);
+    });
+
+    test('returns results in query order inside a transaction', () async {
+      final collection = firestore.collection('limitToLastTxn');
+
+      await collection.doc('d1').set({'n': 1});
+      await collection.doc('d2').set({'n': 2});
+      await collection.doc('d3').set({'n': 3});
+
+      final ids = await firestore.runTransaction((txn) async {
+        final snapshot = await txn.getQuery(
+          collection.orderBy('n').limitToLast(2),
+        );
+        return snapshot.docs.map((doc) => doc.id).toList();
+      });
+      expect(ids, ['d2', 'd3']);
     });
   }, tags: 'firebase-emulator');
 }

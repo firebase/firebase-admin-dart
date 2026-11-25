@@ -1,7 +1,7 @@
 ---
 type: Divergence
-title: "Messaging: FID multicast gap, topic management on FCM v1"
-description: "Dart supports single FID targets but not FID multicast or `enableLegacyHttpTransport`, and topic subscription takes only a `List<String>`; as in Node, topic management uses the FCM v1 API with per-token requests, while the old IID-based calls remain as `@Deprecated` `*Legacy` methods."
+title: "Messaging: transport and topic management differences"
+description: "Dart has no `enableLegacyHttpTransport`, and topic subscription takes only a `List<String>`; as in Node, topic management uses the FCM v1 API with per-token requests, while the old IID-based calls remain as `@Deprecated` `*Legacy` methods."
 tags: [messaging, fcm, node-parity]
 agents_md: when-touching
 governs:
@@ -11,6 +11,10 @@ sources:
     resource: ../../../packages/firebase_admin_sdk/lib/src/messaging/messaging_api.dart
     symbol: sealed class Message
     title: "Dart's sealed `Message` targets"
+  - id: dart-multicast
+    resource: ../../../packages/firebase_admin_sdk/lib/src/messaging/messaging_api.dart
+    symbol: sealed class MulticastMessagePayload
+    title: "Dart's typed multicast payload union"
   - id: node-fid-message
     resource: https://github.com/firebase/firebase-admin-node/blob/main/src/messaging/messaging-api.ts
     symbol: FidMessage
@@ -45,6 +49,7 @@ sources:
 
 - Enforced by: nothing; review only.
 - The message targets Dart has: `sealed class Message` in `messaging_api.dart`.[^dart-message]
+- The multicast payload types: `sealed class MulticastMessagePayload` in `messaging_api.dart`.[^dart-multicast]
 - The per-token requests, the worker pool, the token cap, `ALREADY_EXISTS` as success, `allow_missing` on unsubscribe (with its reason in a comment) and the not-registered mapping: the topic-management code in `messaging_request_handler.dart`.[^worker-pool][^allow-missing]
 - The public methods, and the `@Deprecated` IID-based `*Legacy` methods: `messaging.dart`.[^subscribe-to-topic][^subscribe-to-topic-legacy]
 
@@ -60,11 +65,11 @@ sources:
 
 ## Messaging targets and legacy transport
 
-- `Message` includes an FID target, but there is no FID multicast message type.
+- FID and token multicast payloads use a sealed superclass instead of Node's overloads.[^dart-multicast]
 - There is no `enableLegacyHttpTransport`.
 - `subscribeToTopic` and `unsubscribeFromTopic` take a `List<String>` only.
 
-Missing FID multicast support is a gap. Taking a `List<String>` instead of Node's `string | string[]` union is a Dart idiom.
+The sealed multicast payload union and taking a `List<String>` instead of Node's `string | string[]` union are Dart idioms.
 
 ## Topic management on FCM v1
 
@@ -101,6 +106,7 @@ When the `*Legacy` methods can be removed isn't recorded. Ask a maintainer.
 [^node-fid-message]: Node's `FidMessage`
 [^node-legacy-transport]: Node's `enableLegacyHttpTransport()`
 [^dart-message]: Dart's sealed `Message`
+[^dart-multicast]: Dart's multicast payload union
 [^subscribe-to-topic]: `subscribeToTopic`
 [^worker-pool]: The worker pool in the request handler
 [^allow-missing]: `allow_missing` in the request handler

@@ -73,18 +73,7 @@ class FirebaseMessagingRequestHandler {
   ///   (validation only) mode.
   Future<BatchResponse> sendEach(List<Message> messages, {bool? dryRun}) {
     return _httpClient.v1((api, projectId) async {
-      if (messages.isEmpty) {
-        throw FirebaseMessagingAdminException(
-          MessagingClientErrorCode.invalidArgument,
-          'messages must be a non-empty array',
-        );
-      }
-      if (messages.length > _fmcMaxBatchSize) {
-        throw FirebaseMessagingAdminException(
-          MessagingClientErrorCode.invalidArgument,
-          'messages list must not contain more than $_fmcMaxBatchSize items',
-        );
-      }
+      _validateMessageCount(messages.length);
 
       final parent = _httpClient.buildParent(projectId);
       final responses = await Future.wait<SendResponse>(
@@ -135,38 +124,112 @@ class FirebaseMessagingRequestHandler {
     });
   }
 
-  /// Sends the given multicast message to all the FCM registration tokens
-  /// specified in it.
+  void _validateMessageCount(int count) {
+    if (count == 0) {
+      throw FirebaseMessagingAdminException(
+        MessagingClientErrorCode.invalidArgument,
+        'messages must be a non-empty array',
+      );
+    }
+    if (count > _fmcMaxBatchSize) {
+      throw FirebaseMessagingAdminException(
+        MessagingClientErrorCode.invalidArgument,
+        'messages list must not contain more than $_fmcMaxBatchSize items',
+      );
+    }
+  }
+
+  /// Sends the given multicast message to its registration tokens and/or FIDs.
   ///
   /// This method uses the [sendEach] API under the hood to send the given
   /// message to all the target recipients. The responses list obtained from the
-  /// return value corresponds to the order of tokens in the `MulticastMessage`.
+  /// return value corresponds to the target order: tokens first, then FIDs.
   /// An error from this method or a `BatchResponse` with all failures indicates a total
   /// failure, meaning that the messages in the list could be sent. Partial failures or
   /// failures are only indicated by a `BatchResponse` return value.
   ///
-  /// - [message]: A multicast message containing up to 500 tokens.
+  /// - [message]: A multicast message containing 1 to 500 targets in total.
   /// - [dryRun]: Whether to send the message in the dry-run
   ///   (validation only) mode.
   Future<BatchResponse> sendEachForMulticast(
-    MulticastMessage message, {
+    MulticastMessagePayload message, {
     bool? dryRun,
-  }) {
-    return sendEach(
-      message.tokens
-          .map(
-            (token) => TokenMessage(
-              token: token,
-              data: message.data,
-              notification: message.notification,
-              android: message.android,
-              apns: message.apns,
-              fcmOptions: message.fcmOptions,
-              webpush: message.webpush,
+  }) async {
+    final (inputTokens, inputFids) = switch (message) {
+      MulticastMessage(:final tokens, :final fids) => (
+        tokens,
+        fids ?? const <String>[],
+      ),
+      FidMulticastMessage(:final fids) => (const <String>[], fids),
+    };
+
+    final count = inputTokens.length + inputFids.length;
+    if (count == 0) {
+      throw FirebaseMessagingAdminException(
+        MessagingClientErrorCode.invalidArgument,
+        'Either tokens or fids must be a non-empty array',
+      );
+    }
+    if (count > _fmcMaxBatchSize) {
+      throw FirebaseMessagingAdminException(
+        MessagingClientErrorCode.invalidArgument,
+        'The total number of tokens and fids must not exceed $_fmcMaxBatchSize.',
+      );
+    }
+
+    final tokens = List<String>.of(inputTokens);
+    final fids = List<String>.of(inputFids);
+    final validMessages = <Message>[
+      for (final token in tokens)
+        TokenMessage(
+          token: token,
+          data: message.data,
+          notification: message.notification,
+          android: message.android,
+          apns: message.apns,
+          fcmOptions: message.fcmOptions,
+          webpush: message.webpush,
+        ),
+      for (final fid in fids)
+        if (fid.isNotEmpty)
+          FidMessage(
+            fid: fid,
+            data: message.data,
+            notification: message.notification,
+            android: message.android,
+            apns: message.apns,
+            fcmOptions: message.fcmOptions,
+            webpush: message.webpush,
+          ),
+    ];
+
+    final result = validMessages.isEmpty
+        ? null
+        : await sendEach(validMessages, dryRun: dryRun);
+    if (validMessages.length == count) {
+      return result!;
+    }
+
+    var validIndex = 0;
+    final responses = <SendResponse>[
+      for (final _ in tokens) result!.responses[validIndex++],
+      for (final fid in fids)
+        if (fid.isNotEmpty)
+          result!.responses[validIndex++]
+        else
+          SendResponse._(
+            success: false,
+            error: FirebaseMessagingAdminException(
+              MessagingClientErrorCode.invalidPayload,
+              'Exactly one of fid, topic, token or condition is required',
             ),
-          )
-          .toList(),
-      dryRun: dryRun,
+          ),
+    ];
+    final successCount = result?.successCount ?? 0;
+    return BatchResponse._(
+      responses: responses,
+      successCount: successCount,
+      failureCount: count - successCount,
     );
   }
 

@@ -97,6 +97,8 @@ class VectorQuery<T> {
       snapshots.add(finalDoc.build() as QueryDocumentSnapshot<T>);
     }
 
+    _query._reverseIfLimitToLast(snapshots);
+
     return VectorQuerySnapshot<T>._(
       query: this,
       readTime: readTime ?? Timestamp.now(),
@@ -184,6 +186,8 @@ class VectorQuery<T> {
       }
     }
 
+    _query._reverseIfLimitToLast(docs);
+
     // Create snapshot only if we have documents (analyze: true)
     if (docs.isNotEmpty || ((options.analyze ?? false) && readTime != null)) {
       snapshot = VectorQuerySnapshot<T>._(
@@ -210,7 +214,7 @@ class VectorQuery<T> {
     }
 
     // Get the base structured query from the underlying query
-    final structuredQueryBase = _query._toStructuredQuery();
+    final structuredQueryBase = _query._toRequestStructuredQuery();
 
     // Convert query vector to VectorValue if it's a List<double>
     final queryVector = _options.queryVector is VectorValue

@@ -103,4 +103,13 @@ void main() {
   test('rejects an empty FID', () {
     expect(() => FidMessage(fid: ''), throwsArgumentError);
   });
+
+  test('exports both multicast payload types', () {
+    final messages = <MulticastMessagePayload>[
+      FidMulticastMessage(fids: ['fid']),
+      MulticastMessage(tokens: ['token'], fids: ['fid']),
+    ];
+
+    expect(messages, hasLength(2));
+  });
 }

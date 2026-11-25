@@ -112,6 +112,8 @@ class _QueryReader<T> {
           snapshots.add(finalDoc.build() as QueryDocumentSnapshot<T>);
         }
 
+        query._reverseIfLimitToLast(snapshots);
+
         // Return both query results and transaction ID
         return _QueryReaderResponse<T>(
           QuerySnapshot<T>._(
