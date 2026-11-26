@@ -179,6 +179,185 @@ void main() {
     });
   });
 
+  group('fields this SDK version does not model', () {
+    const templateJson = <String, Object?>{
+      'etag': 'etag-1',
+      'conditions': [
+        {
+          'name': 'ios',
+          'expression': "device.os == 'ios'",
+          'tagColor': 'MAGENTA',
+          'newConditionField': 1,
+        },
+      ],
+      'parameters': {
+        'known_kind': {
+          'defaultValue': {'value': 'on', 'newValueField': true},
+          'conditionalValues': {
+            'ios': {
+              'rolloutValue': {
+                'rolloutId': 'rollout_1',
+                'value': 'x',
+                'percent': 10.0,
+                'newRolloutField': 'kept',
+              },
+            },
+          },
+          'valueType': 'DATE',
+          'newParameterField': ['a', 'b'],
+        },
+        'new_kind': {
+          'defaultValue': {
+            'scheduledValue': {'value': 'later', 'at': '2030-01-01'},
+          },
+          'valueType': 'STRING',
+        },
+      },
+      'parameterGroups': {
+        'group': {
+          'description': 'a group',
+          'parameters': <String, Object?>{},
+          'newGroupField': 'kept',
+        },
+      },
+      'newTemplateField': {'nested': true},
+    };
+
+    RemoteConfigTemplate decode() =>
+        rc.createTemplateFromJson(jsonEncode(templateJson));
+
+    test('toJson writes back every field the template was decoded with', () {
+      expect(decode().toJson(), templateJson);
+    });
+
+    test('reads a value kind it does not know as UnknownParameterValue', () {
+      final value = decode().parameters['new_kind']!.defaultValue;
+
+      expect(
+        value,
+        isA<UnknownParameterValue>().having((v) => v.json, 'json', {
+          'scheduledValue': {'value': 'later', 'at': '2030-01-01'},
+        }),
+      );
+    });
+
+    test('leaves an enum value it does not know null', () {
+      final template = decode();
+
+      expect(template.conditions.single.tagColor, isNull);
+      expect(template.parameters['known_kind']!.valueType, isNull);
+      expect(
+        template.parameters['new_kind']!.valueType,
+        ParameterValueType.string,
+      );
+    });
+
+    test('a known enum value is not written twice', () {
+      final condition = RemoteConfigCondition.fromJson(const {
+        'name': 'ios',
+        'expression': 'true',
+        'tagColor': 'BLUE',
+      });
+
+      expect(condition.tagColor, TagColor.blue);
+      expect(condition.toJson(), {
+        'name': 'ios',
+        'expression': 'true',
+        'tagColor': 'BLUE',
+      });
+    });
+
+    test('objects built in code have no unknown fields', () {
+      const first = InAppDefaultValue(useInAppDefault: true);
+      // Decoding an in-app default with an extra field must not leak that
+      // field onto the constant.
+      RemoteConfigParameterValue.fromJson(const {
+        'useInAppDefault': true,
+        'newField': 1,
+      });
+
+      expect(first.toJson(), {'useInAppDefault': true});
+    });
+
+    test('copyWith replaces the given fields and keeps the rest', () {
+      final template = decode();
+      final marker = RemoteConfigParameter(
+        defaultValue: const ExplicitParameterValue(value: 'hello'),
+      );
+
+      final edited = template.copyWith(
+        parameters: {...template.parameters, 'marker': marker},
+      );
+
+      expect(edited.parameters.keys, ['known_kind', 'new_kind', 'marker']);
+      expect(edited.etag, template.etag);
+      expect(edited.conditions, template.conditions);
+      expect(edited.parameterGroups, template.parameterGroups);
+      expect(edited.toJson(), {
+        ...templateJson,
+        'parameters': {
+          ...templateJson['parameters']! as Map<String, Object?>,
+          'marker': {
+            'defaultValue': {'value': 'hello'},
+          },
+        },
+      });
+    });
+
+    test('copyWith replaces etag, conditions, groups and version', () {
+      final edited = decode().copyWith(
+        etag: 'etag-2',
+        conditions: const [],
+        parameterGroups: const {},
+        version: const Version(description: 'edited'),
+      );
+
+      expect(edited.etag, 'etag-2');
+      expect(edited.conditions, isEmpty);
+      expect(edited.parameterGroups, isEmpty);
+      expect(edited.version?.description, 'edited');
+      expect(edited.parameters.keys, ['known_kind', 'new_kind']);
+    });
+  });
+
+  group('RemoteConfigParameterValue.fromJson', () {
+    test('reads useInAppDefault false on its own as not in-app default', () {
+      final value = RemoteConfigParameterValue.fromJson(const {
+        'useInAppDefault': false,
+      });
+
+      expect(
+        value,
+        isA<InAppDefaultValue>().having(
+          (v) => v.useInAppDefault,
+          'useInAppDefault',
+          isFalse,
+        ),
+      );
+      expect(value.toJson(), {'useInAppDefault': false});
+    });
+
+    test('reads a value beside useInAppDefault false as the value', () {
+      final value = RemoteConfigParameterValue.fromJson(const {
+        'useInAppDefault': false,
+        'value': 'x',
+      });
+
+      expect(
+        value,
+        isA<ExplicitParameterValue>().having((v) => v.value, 'value', 'x'),
+      );
+      expect(value.toJson(), {'useInAppDefault': false, 'value': 'x'});
+    });
+
+    test('reads an empty object as an unknown kind', () {
+      final value = RemoteConfigParameterValue.fromJson(const {});
+
+      expect(value, isA<UnknownParameterValue>());
+      expect(value.toJson(), isEmpty);
+    });
+  });
+
   group('Version', () {
     test('maps updateOrigin and updateType onto enums', () {
       final version = Version.fromJson(const {
@@ -346,13 +525,28 @@ void main() {
       }
     });
 
-    test('asInt parses integer strings; non-integers return 0', () {
-      expect(Value.internal(ValueSource.valueRemote, '42').asInt(), 42);
-      expect(Value.internal(ValueSource.valueRemote, '-5').asInt(), -5);
-      // Float strings don't parse as int — caller should use asDouble.
-      expect(Value.internal(ValueSource.valueRemote, '3.14').asInt(), 0);
-      // Unparsable → 0.
-      expect(Value.internal(ValueSource.valueRemote, 'not-a-num').asInt(), 0);
+    test('asInt reads any finite number and truncates its fraction', () {
+      int asInt(String value) =>
+          Value.internal(ValueSource.valueRemote, value).asInt();
+
+      expect(asInt('42'), 42);
+      expect(asInt('-5'), -5);
+      // A NUMBER parameter saved as `3.0` in the console is still 3.
+      expect(asInt('3.0'), 3);
+      expect(asInt('1e3'), 1000);
+      expect(asInt('3.9'), 3);
+      expect(asInt('-3.9'), -3);
+    });
+
+    test('asInt returns 0 for a string that is not a finite number', () {
+      int asInt(String value) =>
+          Value.internal(ValueSource.valueRemote, value).asInt();
+
+      expect(asInt('not-a-num'), 0);
+      expect(asInt(''), 0);
+      expect(asInt('NaN'), 0);
+      expect(asInt('Infinity'), 0);
+      expect(asInt('-Infinity'), 0);
     });
 
     test('asDouble parses int and float strings; unparsable returns 0.0', () {
@@ -454,6 +648,112 @@ void main() {
         config.getValue('does-not-exist').getSource(),
         ValueSource.valueStatic,
       );
+    });
+
+    ServerConfig evaluate(
+      Map<String, Object?> parameters, {
+      Map<String, Object> defaultConfig = const {},
+    }) {
+      final template = rc.initServerTemplate(
+        InitServerTemplateOptions(
+          defaultConfig: defaultConfig,
+          template: ServerTemplateJson(
+            jsonEncode({
+              'etag': 'etag-1',
+              'conditions': [
+                {
+                  'name': 'always-true',
+                  'condition': {'true': <String, Object?>{}},
+                },
+              ],
+              'parameters': parameters,
+            }),
+          ),
+        ),
+      );
+      return template.evaluate();
+    }
+
+    test('serves useInAppDefault false as an empty remote value', () {
+      final config = evaluate(
+        {
+          'as_default': {
+            'defaultValue': {'useInAppDefault': false},
+          },
+          'as_conditional': {
+            'defaultValue': {'value': 'default'},
+            'conditionalValues': {
+              'always-true': {'useInAppDefault': false},
+            },
+          },
+        },
+        defaultConfig: const {'as_default': 'in-app', 'as_conditional': 'x'},
+      );
+
+      for (final key in ['as_default', 'as_conditional']) {
+        expect(config.getString(key), '', reason: key);
+        expect(
+          config.getValue(key).getSource(),
+          ValueSource.valueRemote,
+          reason: key,
+        );
+      }
+    });
+
+    test('a matched in-app default wins over the parameter default', () {
+      final config = evaluate(
+        {
+          'flag': {
+            'defaultValue': {'value': 'default'},
+            'conditionalValues': {
+              'always-true': {'useInAppDefault': true},
+            },
+          },
+        },
+        defaultConfig: const {'flag': 'in-app'},
+      );
+
+      expect(config.getString('flag'), 'in-app');
+      expect(config.getValue('flag').getSource(), ValueSource.valueDefault);
+    });
+
+    test('skips a value kind it does not evaluate', () {
+      final config = evaluate(
+        {
+          'new_kind': {
+            'defaultValue': {
+              'scheduledValue': {'value': 'later'},
+            },
+          },
+          'rollout': {
+            'defaultValue': {
+              'rolloutValue': {'rolloutId': 'r', 'value': 'x', 'percent': 5},
+            },
+          },
+        },
+        defaultConfig: const {'new_kind': 'in-app'},
+      );
+
+      expect(config.getString('new_kind'), 'in-app');
+      expect(config.getValue('new_kind').getSource(), ValueSource.valueDefault);
+      expect(config.getValue('rollout').getSource(), ValueSource.valueStatic);
+    });
+
+    test('renders a whole double in defaultConfig without a fraction', () {
+      final config = evaluate(
+        const {},
+        defaultConfig: const {
+          'whole': 1.0,
+          'fraction': 1.5,
+          'integer': 2,
+          'flag': true,
+        },
+      );
+
+      expect(config.getString('whole'), '1');
+      expect(config.getString('fraction'), '1.5');
+      expect(config.getString('integer'), '2');
+      expect(config.getString('flag'), 'true');
     });
 
     test('throws failed-precondition when no template loaded', () {

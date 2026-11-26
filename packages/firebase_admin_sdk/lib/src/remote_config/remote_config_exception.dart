@@ -66,25 +66,10 @@ class FirebaseRemoteConfigException extends FirebaseAdminException
     required String body,
     required bool isJson,
   }) {
-    if (isJson) {
-      try {
-        final json = jsonDecode(body);
-        final errorCode = _serverErrorCode(json);
-        final message = _serverErrorMessage(json) ?? 'Server error.';
-        final mapped = errorCode != null
-            ? remoteConfigErrorCodeMapping[errorCode]
-            : null;
-        if (mapped != null) {
-          return FirebaseRemoteConfigException(mapped, message);
-        }
-      } on FormatException {
-        // fall through
-      }
-    }
-
     final byStatus = switch (statusCode) {
       400 => RemoteConfigErrorCode.invalidArgument,
-      401 || 403 => RemoteConfigErrorCode.unauthenticated,
+      401 => RemoteConfigErrorCode.unauthenticated,
+      403 => RemoteConfigErrorCode.permissionDenied,
       404 => RemoteConfigErrorCode.notFound,
       409 => RemoteConfigErrorCode.alreadyExists,
       412 => RemoteConfigErrorCode.failedPrecondition,
@@ -92,6 +77,29 @@ class FirebaseRemoteConfigException extends FirebaseAdminException
       500 => RemoteConfigErrorCode.internalError,
       _ => RemoteConfigErrorCode.unknownError,
     };
+
+    if (isJson) {
+      try {
+        final json = jsonDecode(body);
+        if (json is Map<String, Object?>) {
+          // The server's own status decides the code. One this SDK does not
+          // map is `unknown-error`, and the HTTP status is used only when the
+          // body has no status at all. The server's message is kept either
+          // way.
+          final status = _serverErrorStatus(json);
+          return FirebaseRemoteConfigException(
+            status == null
+                ? byStatus
+                : remoteConfigErrorCodeMapping[status] ??
+                      RemoteConfigErrorCode.unknownError,
+            _serverErrorMessage(json) ?? 'Unknown server error: $body',
+          );
+        }
+      } on FormatException {
+        // fall through
+      }
+    }
+
     return FirebaseRemoteConfigException(
       byStatus,
       'Unexpected response with status: $statusCode and body: $body',
@@ -105,10 +113,9 @@ class FirebaseRemoteConfigException extends FirebaseAdminException
   String toString() => 'FirebaseRemoteConfigException: $code: $message';
 }
 
-String? _serverErrorCode(Object? response) => switch (response) {
-  {'error': final String code} => code,
+String? _serverErrorStatus(Object? response) => switch (response) {
+  {'error': final String status} => status,
   {'error': {'status': final String status}} => status,
-  {'error': {'code': final String code}} => code,
   _ => null,
 };
 

@@ -155,7 +155,8 @@ class ServerTemplate {
     Map<String, Object> defaultConfig,
   ) : defaultConfig = Map<String, Object>.unmodifiable(defaultConfig),
       _stringifiedDefaultConfig = <String, String>{
-        for (final entry in defaultConfig.entries) entry.key: '${entry.value}',
+        for (final entry in defaultConfig.entries)
+          entry.key: _jsString(entry.value),
       };
 
   final RemoteConfigRequestHandler _requestHandler;
@@ -234,23 +235,24 @@ class ServerTemplate {
         }
       }
 
-      if (selected is InAppDefaultValue) {
-        // Use whatever was already in defaultConfig; do not override.
-        continue;
-      }
-      if (selected is ExplicitParameterValue) {
-        configValues[key] = Value._(ValueSource.valueRemote, selected.value);
-        continue;
-      }
-
-      // No matching conditional value — fall back to the parameter default.
-      final defaultValue = parameter.defaultValue;
-      if (defaultValue is InAppDefaultValue) continue;
-      if (defaultValue is ExplicitParameterValue) {
-        configValues[key] = Value._(
-          ValueSource.valueRemote,
-          defaultValue.value,
-        );
+      // No matching conditional value: fall back to the parameter default.
+      switch (selected ?? parameter.defaultValue) {
+        case InAppDefaultValue(useInAppDefault: true):
+          // Use whatever was already in defaultConfig; do not override.
+          break;
+        case InAppDefaultValue(useInAppDefault: false):
+          // Not an in-app default and no value either. The Node.js SDK
+          // serves this as an empty remote value.
+          configValues[key] = const Value._(ValueSource.valueRemote);
+        case ExplicitParameterValue(:final value):
+          configValues[key] = Value._(ValueSource.valueRemote, value);
+        case RolloutParameterValue() ||
+            PersonalizationParameterValue() ||
+            ExperimentParameterValue() ||
+            UnknownParameterValue() ||
+            null:
+          // Not evaluated in process.
+          break;
       }
     }
 

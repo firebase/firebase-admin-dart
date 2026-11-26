@@ -599,9 +599,7 @@ final remoteConfig = app.remoteConfig();
 ```dart
 // Read the active template, edit one parameter, and publish.
 final template = await remoteConfig.getTemplate();
-final updated = RemoteConfigTemplate(
-  etag: template.etag,
-  conditions: template.conditions,
+final updated = template.copyWith(
   parameters: {
     ...template.parameters,
     'welcome_message': RemoteConfigParameter(
@@ -609,8 +607,6 @@ final updated = RemoteConfigTemplate(
       description: 'Updated greeting',
     ),
   },
-  parameterGroups: template.parameterGroups,
-  version: template.version,
 );
 final published = await remoteConfig.publishTemplate(updated);
 print('Published version: ${published.version?.versionNumber}');

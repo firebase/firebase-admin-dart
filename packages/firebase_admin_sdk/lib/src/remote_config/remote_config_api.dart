@@ -169,6 +169,40 @@ Map<String, Object?> _encodeMap<T>(
   };
 }
 
+/// The JSON fields of a decoded object that this SDK version does not model,
+/// keyed by that object.
+///
+/// The backend adds fields over time. Keeping the ones a `fromJson` did not
+/// recognise, and writing them back in `toJson`, stops a get, modify, publish
+/// cycle from deleting them from the live template.
+final _unknownFields = Expando<Map<String, Object?>>('unknownFields');
+
+/// Returns [object], remembering the fields of [json] that are not in
+/// [modelled] so that [_encoded] can write them back.
+///
+/// [object] must be newly created. A `const` instance is shared by everything
+/// that spells the same constant, and so would its unknown fields be.
+T _decoded<T extends Object>(
+  T object,
+  Map<String, Object?> json,
+  Set<String> modelled,
+) {
+  final unknown = <String, Object?>{
+    for (final entry in json.entries)
+      if (!modelled.contains(entry.key)) entry.key: entry.value,
+  };
+  if (unknown.isNotEmpty) {
+    _unknownFields[object] = Map<String, Object?>.unmodifiable(unknown);
+  }
+  return object;
+}
+
+/// The JSON form of [object]: the fields it was decoded with but does not
+/// model, overlaid with its [modelled] fields.
+Map<String, Object?> _encoded(Object object, Map<String, Object?> modelled) {
+  return <String, Object?>{...?_unknownFields[object], ...modelled};
+}
+
 List<T> _decodeList<T>(Object? raw, T Function(Map<String, Object?>) decode) {
   if (raw == null) return <T>[];
   if (raw is! List) {
@@ -257,10 +291,14 @@ class RolloutValue {
   });
 
   factory RolloutValue.fromJson(Map<String, Object?> json) {
-    return RolloutValue(
-      rolloutId: (json['rolloutId'] as String?) ?? '',
-      value: (json['value'] as String?) ?? '',
-      percent: (json['percent'] as num?)?.toDouble() ?? 0,
+    return _decoded(
+      RolloutValue(
+        rolloutId: (json['rolloutId'] as String?) ?? '',
+        value: (json['value'] as String?) ?? '',
+        percent: (json['percent'] as num?)?.toDouble() ?? 0,
+      ),
+      json,
+      const {'rolloutId', 'value', 'percent'},
     );
   }
 
@@ -276,11 +314,11 @@ class RolloutValue {
   final double percent;
 
   Map<String, Object?> toJson() {
-    return <String, Object?>{
+    return _encoded(this, <String, Object?>{
       'rolloutId': rolloutId,
       'value': value,
       'percent': percent,
-    };
+    });
   }
 }
 
@@ -289,8 +327,12 @@ class PersonalizationValue {
   const PersonalizationValue({required this.personalizationId});
 
   factory PersonalizationValue.fromJson(Map<String, Object?> json) {
-    return PersonalizationValue(
-      personalizationId: (json['personalizationId'] as String?) ?? '',
+    return _decoded(
+      PersonalizationValue(
+        personalizationId: (json['personalizationId'] as String?) ?? '',
+      ),
+      json,
+      const {'personalizationId'},
     );
   }
 
@@ -300,7 +342,9 @@ class PersonalizationValue {
   final String personalizationId;
 
   Map<String, Object?> toJson() {
-    return <String, Object?>{'personalizationId': personalizationId};
+    return _encoded(this, <String, Object?>{
+      'personalizationId': personalizationId,
+    });
   }
 }
 
@@ -310,13 +354,21 @@ sealed class ExperimentVariantValue {
 
   factory ExperimentVariantValue.fromJson(Map<String, Object?> json) {
     if (json['noChange'] == true) {
-      return ExperimentVariantNoChange(
-        variantId: (json['variantId'] as String?) ?? '',
+      return _decoded(
+        ExperimentVariantNoChange(
+          variantId: (json['variantId'] as String?) ?? '',
+        ),
+        json,
+        const {'variantId', 'noChange'},
       );
     }
-    return ExperimentVariantExplicitValue(
-      variantId: (json['variantId'] as String?) ?? '',
-      value: (json['value'] as String?) ?? '',
+    return _decoded(
+      ExperimentVariantExplicitValue(
+        variantId: (json['variantId'] as String?) ?? '',
+        value: (json['value'] as String?) ?? '',
+      ),
+      json,
+      const {'variantId', 'value'},
     );
   }
 
@@ -338,7 +390,10 @@ class ExperimentVariantExplicitValue extends ExperimentVariantValue {
 
   @override
   Map<String, Object?> toJson() {
-    return <String, Object?>{'variantId': variantId, 'value': value};
+    return _encoded(this, <String, Object?>{
+      'variantId': variantId,
+      'value': value,
+    });
   }
 }
 
@@ -349,7 +404,10 @@ class ExperimentVariantNoChange extends ExperimentVariantValue {
 
   @override
   Map<String, Object?> toJson() {
-    return <String, Object?>{'variantId': variantId, 'noChange': true};
+    return _encoded(this, <String, Object?>{
+      'variantId': variantId,
+      'noChange': true,
+    });
   }
 }
 
@@ -362,13 +420,17 @@ class ExperimentValue {
   });
 
   factory ExperimentValue.fromJson(Map<String, Object?> json) {
-    return ExperimentValue(
-      experimentId: (json['experimentId'] as String?) ?? '',
-      variantValue: _decodeList(
-        json['variantValue'],
-        ExperimentVariantValue.fromJson,
+    return _decoded(
+      ExperimentValue(
+        experimentId: (json['experimentId'] as String?) ?? '',
+        variantValue: _decodeList(
+          json['variantValue'],
+          ExperimentVariantValue.fromJson,
+        ),
+        exposurePercent: (json['exposurePercent'] as num?)?.toDouble(),
       ),
-      exposurePercent: (json['exposurePercent'] as num?)?.toDouble(),
+      json,
+      const {'experimentId', 'variantValue', 'exposurePercent'},
     );
   }
 
@@ -385,11 +447,11 @@ class ExperimentValue {
   final double? exposurePercent;
 
   Map<String, Object?> toJson() {
-    return <String, Object?>{
+    return _encoded(this, <String, Object?>{
       'experimentId': experimentId,
       'variantValue': [for (final v in variantValue) v.toJson()],
       'exposurePercent': ?exposurePercent,
-    };
+    });
   }
 }
 
@@ -401,46 +463,53 @@ class ExperimentValue {
 ///
 /// One of: [ExplicitParameterValue], [InAppDefaultValue],
 /// [RolloutParameterValue], [PersonalizationParameterValue],
-/// [ExperimentParameterValue].
+/// [ExperimentParameterValue], or [UnknownParameterValue] for a kind this SDK
+/// version does not model.
 sealed class RemoteConfigParameterValue {
   const RemoteConfigParameterValue._();
 
   Map<String, Object?> toJson();
 
+  /// Decodes a parameter value.
+  ///
+  /// A value of a kind this SDK version does not model decodes to an
+  /// [UnknownParameterValue] rather than failing the whole template.
   factory RemoteConfigParameterValue.fromJson(Map<String, Object?> json) {
-    if (json.containsKey('useInAppDefault')) {
-      return InAppDefaultValue(
-        useInAppDefault: (json['useInAppDefault'] as bool?) ?? true,
-      );
-    }
-    if (json.containsKey('rolloutValue')) {
-      return RolloutParameterValue(
-        rolloutValue: RolloutValue.fromJson(
-          json['rolloutValue']! as Map<String, Object?>,
+    final (RemoteConfigParameterValue value, String key) = switch (json) {
+      {'useInAppDefault': final bool useInAppDefault} when useInAppDefault => (
+        InAppDefaultValue(useInAppDefault: useInAppDefault),
+        'useInAppDefault',
+      ),
+      {'rolloutValue': final Map<String, Object?> rollout} => (
+        RolloutParameterValue(rolloutValue: RolloutValue.fromJson(rollout)),
+        'rolloutValue',
+      ),
+      {'personalizationValue': final Map<String, Object?> personalization} => (
+        PersonalizationParameterValue(
+          personalizationValue: PersonalizationValue.fromJson(personalization),
         ),
-      );
-    }
-    if (json.containsKey('personalizationValue')) {
-      return PersonalizationParameterValue(
-        personalizationValue: PersonalizationValue.fromJson(
-          json['personalizationValue']! as Map<String, Object?>,
+        'personalizationValue',
+      ),
+      {'experimentValue': final Map<String, Object?> experiment} => (
+        ExperimentParameterValue(
+          experimentValue: ExperimentValue.fromJson(experiment),
         ),
-      );
-    }
-    if (json.containsKey('experimentValue')) {
-      return ExperimentParameterValue(
-        experimentValue: ExperimentValue.fromJson(
-          json['experimentValue']! as Map<String, Object?>,
-        ),
-      );
-    }
-    if (json.containsKey('value')) {
-      return ExplicitParameterValue(value: (json['value'] as String?) ?? '');
-    }
-    throw FirebaseRemoteConfigException(
-      RemoteConfigErrorCode.invalidArgument,
-      'Unknown parameter value shape: ${json.keys.toList()}',
-    );
+        'experimentValue',
+      ),
+      {'value': final String? value} => (
+        ExplicitParameterValue(value: value ?? ''),
+        'value',
+      ),
+      // `{"useInAppDefault": false}` on its own. With another kind beside
+      // it, that kind wins above and the flag is kept as an unknown field.
+      {'useInAppDefault': final bool? useInAppDefault} => (
+        InAppDefaultValue(useInAppDefault: useInAppDefault ?? false),
+        'useInAppDefault',
+      ),
+      _ => (UnknownParameterValue(json), ''),
+    };
+    if (value is UnknownParameterValue) return value;
+    return _decoded(value, json, {key});
   }
 }
 
@@ -452,7 +521,9 @@ class ExplicitParameterValue extends RemoteConfigParameterValue {
   final String value;
 
   @override
-  Map<String, Object?> toJson() => <String, Object?>{'value': value};
+  Map<String, Object?> toJson() {
+    return _encoded(this, <String, Object?>{'value': value});
+  }
 }
 
 /// Parameter value indicating the client should use its in-app default.
@@ -464,7 +535,9 @@ class InAppDefaultValue extends RemoteConfigParameterValue {
 
   @override
   Map<String, Object?> toJson() {
-    return <String, Object?>{'useInAppDefault': useInAppDefault};
+    return _encoded(this, <String, Object?>{
+      'useInAppDefault': useInAppDefault,
+    });
   }
 }
 
@@ -477,7 +550,9 @@ class RolloutParameterValue extends RemoteConfigParameterValue {
 
   @override
   Map<String, Object?> toJson() {
-    return <String, Object?>{'rolloutValue': rolloutValue.toJson()};
+    return _encoded(this, <String, Object?>{
+      'rolloutValue': rolloutValue.toJson(),
+    });
   }
 }
 
@@ -491,9 +566,9 @@ class PersonalizationParameterValue extends RemoteConfigParameterValue {
 
   @override
   Map<String, Object?> toJson() {
-    return <String, Object?>{
+    return _encoded(this, <String, Object?>{
       'personalizationValue': personalizationValue.toJson(),
-    };
+    });
   }
 }
 
@@ -506,8 +581,28 @@ class ExperimentParameterValue extends RemoteConfigParameterValue {
 
   @override
   Map<String, Object?> toJson() {
-    return <String, Object?>{'experimentValue': experimentValue.toJson()};
+    return _encoded(this, <String, Object?>{
+      'experimentValue': experimentValue.toJson(),
+    });
   }
+}
+
+/// Parameter value of a kind this SDK version does not model.
+///
+/// The backend has added value kinds before (rollout, personalization and
+/// experiment values). One it adds later decodes to this type, so the rest of
+/// the template stays readable and publishing the template writes the value
+/// back unchanged. [ServerTemplate.evaluate] skips it.
+class UnknownParameterValue extends RemoteConfigParameterValue {
+  UnknownParameterValue(Map<String, Object?> json)
+    : json = Map<String, Object?>.unmodifiable(json),
+      super._();
+
+  /// The value as the backend sent it.
+  final Map<String, Object?> json;
+
+  @override
+  Map<String, Object?> toJson() => Map<String, Object?>.of(json);
 }
 
 // ---------------------------------------------------------------------------
@@ -533,20 +628,33 @@ class RemoteConfigParameter {
   factory RemoteConfigParameter.fromJson(Map<String, Object?> json) {
     final defaultValueJson = json['defaultValue'];
     final conditionalValuesJson = json['conditionalValues'];
-    return RemoteConfigParameter(
-      defaultValue: defaultValueJson == null
-          ? null
-          : RemoteConfigParameterValue.fromJson(
-              defaultValueJson as Map<String, Object?>,
-            ),
-      conditionalValues: conditionalValuesJson == null
-          ? null
-          : _decodeMap(
-              conditionalValuesJson,
-              RemoteConfigParameterValue.fromJson,
-            ),
-      description: json['description'] as String?,
-      valueType: ParameterValueType.fromName(json['valueType'] as String?),
+    final valueTypeName = json['valueType'] as String?;
+    final valueType = ParameterValueType.fromName(valueTypeName);
+    return _decoded(
+      RemoteConfigParameter(
+        defaultValue: defaultValueJson == null
+            ? null
+            : RemoteConfigParameterValue.fromJson(
+                defaultValueJson as Map<String, Object?>,
+              ),
+        conditionalValues: conditionalValuesJson == null
+            ? null
+            : _decodeMap(
+                conditionalValuesJson,
+                RemoteConfigParameterValue.fromJson,
+              ),
+        description: json['description'] as String?,
+        valueType: valueType,
+      ),
+      json,
+      {
+        'defaultValue',
+        'conditionalValues',
+        'description',
+        // A value type this SDK version does not know stays an unknown field,
+        // so that `toJson` writes it back.
+        if (valueType != null || valueTypeName == null) 'valueType',
+      },
     );
   }
 
@@ -566,13 +674,13 @@ class RemoteConfigParameter {
   final ParameterValueType? valueType;
 
   Map<String, Object?> toJson() {
-    return <String, Object?>{
+    return _encoded(this, <String, Object?>{
       'defaultValue': ?defaultValue?.toJson(),
       if (conditionalValues != null)
         'conditionalValues': _encodeMap(conditionalValues!, (v) => v.toJson()),
       'description': ?description,
       'valueType': ?valueType?.name,
-    };
+    });
   }
 }
 
@@ -587,12 +695,16 @@ class RemoteConfigParameterGroup {
        );
 
   factory RemoteConfigParameterGroup.fromJson(Map<String, Object?> json) {
-    return RemoteConfigParameterGroup(
-      description: json['description'] as String?,
-      parameters: _decodeMap(
-        json['parameters'],
-        RemoteConfigParameter.fromJson,
+    return _decoded(
+      RemoteConfigParameterGroup(
+        description: json['description'] as String?,
+        parameters: _decodeMap(
+          json['parameters'],
+          RemoteConfigParameter.fromJson,
+        ),
       ),
+      json,
+      const {'description', 'parameters'},
     );
   }
 
@@ -603,10 +715,10 @@ class RemoteConfigParameterGroup {
   final Map<String, RemoteConfigParameter> parameters;
 
   Map<String, Object?> toJson() {
-    return <String, Object?>{
+    return _encoded(this, <String, Object?>{
       'description': ?description,
       'parameters': _encodeMap(parameters, (p) => p.toJson()),
-    };
+    });
   }
 }
 
@@ -626,10 +738,22 @@ class RemoteConfigCondition {
   });
 
   factory RemoteConfigCondition.fromJson(Map<String, Object?> json) {
-    return RemoteConfigCondition(
-      name: (json['name'] as String?) ?? '',
-      expression: (json['expression'] as String?) ?? '',
-      tagColor: TagColor.fromName(json['tagColor'] as String?),
+    final tagColorName = json['tagColor'] as String?;
+    final tagColor = TagColor.fromName(tagColorName);
+    return _decoded(
+      RemoteConfigCondition(
+        name: (json['name'] as String?) ?? '',
+        expression: (json['expression'] as String?) ?? '',
+        tagColor: tagColor,
+      ),
+      json,
+      {
+        'name',
+        'expression',
+        // A color this SDK version does not know stays an unknown field, so
+        // that `toJson` writes it back.
+        if (tagColor != null || tagColorName == null) 'tagColor',
+      },
     );
   }
 
@@ -644,11 +768,11 @@ class RemoteConfigCondition {
   final TagColor? tagColor;
 
   Map<String, Object?> toJson() {
-    return <String, Object?>{
+    return _encoded(this, <String, Object?>{
       'name': name,
       'expression': expression,
       'tagColor': ?tagColor?.name,
-    };
+    });
   }
 }
 
@@ -993,7 +1117,7 @@ class RemoteConfigTemplate {
       );
     }
     final versionJson = json['version'];
-    return RemoteConfigTemplate(
+    final template = RemoteConfigTemplate(
       conditions: switch (json['conditions']) {
         null => const <RemoteConfigCondition>[],
         final List<Object?> list => [
@@ -1018,6 +1142,13 @@ class RemoteConfigTemplate {
           ? Version.fromJson(versionJson)
           : null,
     );
+    return _decoded(template, json, const {
+      'conditions',
+      'parameters',
+      'parameterGroups',
+      'etag',
+      'version',
+    });
   }
 
   /// Conditions in priority (descending) order.
@@ -1035,14 +1166,37 @@ class RemoteConfigTemplate {
   /// Optional version metadata.
   final Version? version;
 
+  /// A copy of this template with the given fields replaced.
+  ///
+  /// Use it to edit a template fetched with [RemoteConfig.getTemplate] before
+  /// publishing it: every field you leave out is carried over, so a
+  /// forgotten argument cannot publish an empty set of parameters or groups.
+  RemoteConfigTemplate copyWith({
+    List<RemoteConfigCondition>? conditions,
+    Map<String, RemoteConfigParameter>? parameters,
+    Map<String, RemoteConfigParameterGroup>? parameterGroups,
+    String? etag,
+    Version? version,
+  }) {
+    final copy = RemoteConfigTemplate(
+      conditions: conditions ?? this.conditions,
+      parameters: parameters ?? this.parameters,
+      parameterGroups: parameterGroups ?? this.parameterGroups,
+      etag: etag ?? this.etag,
+      version: version ?? this.version,
+    );
+    _unknownFields[copy] = _unknownFields[this];
+    return copy;
+  }
+
   Map<String, Object?> toJson() {
-    return <String, Object?>{
+    return _encoded(this, <String, Object?>{
       'conditions': [for (final c in conditions) c.toJson()],
       'parameters': _encodeMap(parameters, (p) => p.toJson()),
       'parameterGroups': _encodeMap(parameterGroups, (g) => g.toJson()),
       'etag': etag,
       'version': ?version?.toJson(),
-    };
+    });
   }
 }
 
@@ -1443,12 +1597,15 @@ class Value {
 
   /// Returns the value as an int.
   ///
-  /// Static-source values always return `0`. Strings that don't parse as an
-  /// integer (including float strings like `"3.14"`) return `0` — use
-  /// [asDouble] for those.
+  /// Static-source values always return `0`. A string that is a number but
+  /// not an integer is truncated towards zero, so `"3.0"` and `"3.9"` return
+  /// `3` and `"1e3"` returns `1000`; use [asDouble] to keep the fraction.
+  /// Strings that are not a finite number return `0`.
   int asInt() {
     if (_source == ValueSource.valueStatic) return 0;
-    return int.tryParse(_value) ?? 0;
+    final number = num.tryParse(_value);
+    if (number == null || !number.isFinite) return 0;
+    return number.toInt();
   }
 
   /// Returns the value as a double.

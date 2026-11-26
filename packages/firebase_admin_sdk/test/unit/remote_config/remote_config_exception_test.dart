@@ -70,7 +70,7 @@ void main() {
         final byStatus = <int, RemoteConfigErrorCode>{
           400: RemoteConfigErrorCode.invalidArgument,
           401: RemoteConfigErrorCode.unauthenticated,
-          403: RemoteConfigErrorCode.unauthenticated,
+          403: RemoteConfigErrorCode.permissionDenied,
           404: RemoteConfigErrorCode.notFound,
           409: RemoteConfigErrorCode.alreadyExists,
           412: RemoteConfigErrorCode.failedPrecondition,
@@ -92,6 +92,57 @@ void main() {
         }
       },
     );
+
+    test('fromServerError keeps the message of a status it does not map', () {
+      const body = '''{
+        "error": {
+          "code": 503,
+          "message": "The service is currently unavailable.",
+          "status": "UNAVAILABLE"
+        }
+      }''';
+      final ex = FirebaseRemoteConfigException.fromServerError(
+        statusCode: 503,
+        body: body,
+        isJson: true,
+      );
+      expect(ex.errorCode, RemoteConfigErrorCode.unknownError);
+      expect(ex.message, 'The service is currently unavailable.');
+    });
+
+    test('fromServerError uses the HTTP status for a JSON error with no '
+        'status, and keeps its message', () {
+      final ex = FirebaseRemoteConfigException.fromServerError(
+        statusCode: 403,
+        body: '{"error": {"code": 403, "message": "Not allowed."}}',
+        isJson: true,
+      );
+      expect(ex.errorCode, RemoteConfigErrorCode.permissionDenied);
+      expect(ex.message, 'Not allowed.');
+    });
+
+    test('fromServerError reports a JSON body with no message in full', () {
+      final ex = FirebaseRemoteConfigException.fromServerError(
+        statusCode: 404,
+        body: '{"error": {"status": "NOT_FOUND"}}',
+        isJson: true,
+      );
+      expect(ex.errorCode, RemoteConfigErrorCode.notFound);
+      expect(
+        ex.message,
+        'Unknown server error: {"error": {"status": "NOT_FOUND"}}',
+      );
+    });
+
+    test('fromServerError handles JSON that is not an object', () {
+      final ex = FirebaseRemoteConfigException.fromServerError(
+        statusCode: 500,
+        body: '[]',
+        isJson: true,
+      );
+      expect(ex.errorCode, RemoteConfigErrorCode.internalError);
+      expect(ex.message, contains('status: 500'));
+    });
 
     test('fromServerError handles JSON without an "error" key', () {
       final ex = FirebaseRemoteConfigException.fromServerError(

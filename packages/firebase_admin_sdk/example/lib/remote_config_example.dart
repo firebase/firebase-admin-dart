@@ -45,9 +45,7 @@ Future<void> remoteConfigExample(FirebaseApp admin) async {
   // Example 2: Validate a modified template without publishing.
   try {
     print('> Validating a modified template (no publish)...\n');
-    final modified = RemoteConfigTemplate(
-      etag: template.etag,
-      conditions: template.conditions,
+    final modified = template.copyWith(
       parameters: <String, RemoteConfigParameter>{
         ...template.parameters,
         'dart_admin_sdk_demo': RemoteConfigParameter(
@@ -56,8 +54,6 @@ Future<void> remoteConfigExample(FirebaseApp admin) async {
           valueType: ParameterValueType.string,
         ),
       },
-      parameterGroups: template.parameterGroups,
-      version: template.version,
     );
     final validated = await remoteConfig.validateTemplate(modified);
     print('Template validated!');

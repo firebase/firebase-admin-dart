@@ -101,6 +101,59 @@ void main() {
     });
   });
 
+  group('a response with a field of the wrong type', () {
+    final isUnknownError = throwsA(
+      isA<FirebaseRemoteConfigException>()
+          .having(
+            (e) => e.errorCode,
+            'errorCode',
+            RemoteConfigErrorCode.unknownError,
+          )
+          .having(
+            (e) => e.message,
+            'message',
+            contains('Unexpected Remote Config response'),
+          ),
+    );
+    const badTemplate = <String, Object?>{
+      'parameters': <String, Object?>{'flag': 'not-an-object'},
+    };
+
+    test('getTemplate reports unknown-error', () async {
+      when(
+        () => httpClient.getTemplate(),
+      ).thenAnswer((_) async => (body: badTemplate, etag: 'etag-1'));
+
+      await expectLater(rc.getTemplate(), isUnknownError);
+    });
+
+    test('rollback reports unknown-error', () async {
+      when(
+        () => httpClient.rollback('7'),
+      ).thenAnswer((_) async => (body: badTemplate, etag: 'etag-1'));
+
+      await expectLater(rc.rollback('7'), isUnknownError);
+    });
+
+    test('listVersions reports unknown-error', () async {
+      when(() => httpClient.listVersions()).thenAnswer(
+        (_) async => const <String, Object?>{
+          'versions': <Object?>['not-an-object'],
+        },
+      );
+
+      await expectLater(rc.listVersions(), isUnknownError);
+    });
+
+    test('getServerTemplate reports unknown-error', () async {
+      when(
+        () => httpClient.getServerTemplate(),
+      ).thenAnswer((_) async => (body: badTemplate, etag: 'etag-1'));
+
+      await expectLater(rc.getServerTemplate(), isUnknownError);
+    });
+  });
+
   group('getTemplateAtVersion', () {
     test('passes versionNumber through to the HTTP client', () async {
       when(

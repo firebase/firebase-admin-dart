@@ -192,16 +192,19 @@ class RemoteConfigHttpClient {
     return (body: decoded, etag: etag);
   }
 
-  /// Returns the response body as text, inflating it when the server honoured
-  /// the `Accept-Encoding: gzip` request header.
+  /// Returns the response body as text, inflating it when it is still gzip.
   ///
-  /// [FirebaseApp.client] pools HTTP/2 connections and does not decompress
-  /// transparently the way `dart:io`'s `HttpClient` does, and the `gzip`
-  /// header cannot be dropped because the backend only returns `ETag` when it
-  /// is sent.
+  /// The `Accept-Encoding: gzip` request header cannot be dropped, because the
+  /// backend only returns `ETag` when it is sent. Whether the body then arrives
+  /// compressed depends on the client: [FirebaseApp.client] pools HTTP/2
+  /// connections and passes the gzip bytes through, while a client backed by
+  /// `dart:io`'s `HttpClient` inflates the body and still reports
+  /// `content-encoding: gzip`. So the body's own magic number decides, not the
+  /// header.
   String _decodeBody(Response response) {
-    final encoding = response.headers['content-encoding'] ?? '';
-    if (!encoding.contains('gzip')) return response.body;
-    return utf8.decode(gzip.decode(response.bodyBytes));
+    final bytes = response.bodyBytes;
+    final isGzip = bytes.length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b;
+    if (!isGzip) return response.body;
+    return utf8.decode(gzip.decode(bytes));
   }
 }

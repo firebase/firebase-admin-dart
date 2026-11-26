@@ -238,7 +238,7 @@ bool _compareStrings(
   Object actualValue,
   bool Function(String target, String actual) predicate,
 ) {
-  final actualString = actualValue.toString();
+  final actualString = _jsString(actualValue);
   return targets.any((target) => predicate(target, actualString));
 }
 
@@ -259,7 +259,11 @@ bool _compareNumbers(
 ) {
   final actual = _coerceDouble(actualValue);
   final target = double.tryParse(targetValue);
-  if (actual == null || target == null) return false;
+  // NaN parses as a number but compares neither below nor above anything,
+  // which would read as "equal".
+  if (actual == null || target == null || actual.isNaN || target.isNaN) {
+    return false;
+  }
   final cmp = actual < target ? -1 : (actual > target ? 1 : 0);
   return predicate(cmp);
 }
@@ -271,7 +275,7 @@ bool _compareSemver(
   String targetValue,
   bool Function(int result) predicate,
 ) {
-  final v1 = actualValue.toString().split('.');
+  final v1 = _jsString(actualValue).split('.');
   final v2 = targetValue.split('.');
 
   if (v1.length > _semverMaxLength || v2.length > _semverMaxLength) {
@@ -288,6 +292,16 @@ bool _compareSemver(
     if (s1 > s2) return predicate(1);
   }
   return predicate(0);
+}
+
+/// [value] as JavaScript's `String(value)` renders it, which is what the
+/// Node.js SDK compares and what a template's target values are written
+/// against: a whole double has no trailing `.0`.
+String _jsString(Object value) {
+  if (value is! double) return value.toString();
+  if (value == 0) return '0';
+  final text = value.toString();
+  return text.endsWith('.0') ? text.substring(0, text.length - 2) : text;
 }
 
 double? _coerceDouble(Object value) {

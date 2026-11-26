@@ -338,6 +338,26 @@ void main() {
         },
       );
 
+      test('compares a whole double signal without its fraction', () {
+        bool? matches(String target, Object signal) {
+          final cond = CustomSignalCondition(
+            customSignalOperator: CustomSignalOperator.stringExactlyMatches,
+            customSignalKey: 'tier',
+            targetCustomSignalValues: [target],
+          );
+          return evaluator.evaluateConditions([
+            _named('c', cond),
+          ], ctxWith('tier', signal))['c'];
+        }
+
+        expect(matches('1', 1.0), isTrue);
+        expect(matches('1.0', 1.0), isFalse);
+        expect(matches('1.5', 1.5), isTrue);
+        expect(matches('1', 1), isTrue);
+        expect(matches('0', -0.0), isTrue);
+        expect(matches('-2', -2.0), isTrue);
+      });
+
       test('STRING_CONTAINS_REGEX matches via RegExp', () {
         final cond = CustomSignalCondition(
           customSignalOperator: CustomSignalOperator.stringContainsRegex,
@@ -474,6 +494,49 @@ void main() {
           ], ctxWith('not-a-number'))['c'],
           isFalse,
         );
+      });
+
+      test('a NaN signal or target matches no numeric operator', () {
+        const operators = [
+          CustomSignalOperator.numericLessThan,
+          CustomSignalOperator.numericLessEqual,
+          CustomSignalOperator.numericEqual,
+          CustomSignalOperator.numericNotEqual,
+          CustomSignalOperator.numericGreaterThan,
+          CustomSignalOperator.numericGreaterEqual,
+        ];
+        bool? evaluate(
+          CustomSignalOperator operator,
+          String target,
+          Object signal,
+        ) {
+          final cond = CustomSignalCondition(
+            customSignalOperator: operator,
+            customSignalKey: 'age',
+            targetCustomSignalValues: [target],
+          );
+          return evaluator.evaluateConditions([
+            _named('c', cond),
+          ], ctxWith(signal))['c'];
+        }
+
+        for (final operator in operators) {
+          expect(
+            evaluate(operator, '5', 'NaN'),
+            isFalse,
+            reason: '$operator, signal "NaN"',
+          );
+          expect(
+            evaluate(operator, '5', double.nan),
+            isFalse,
+            reason: '$operator, signal double.nan',
+          );
+          expect(
+            evaluate(operator, 'NaN', 5),
+            isFalse,
+            reason: '$operator, target "NaN"',
+          );
+        }
       });
     });
 

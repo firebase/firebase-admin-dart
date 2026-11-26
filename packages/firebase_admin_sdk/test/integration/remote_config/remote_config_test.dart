@@ -33,18 +33,41 @@ import 'package:test/test.dart';
 
 import '../../fixtures/helpers.dart';
 
-const _validConditions = [
+const _e2eConditions = [
   RemoteConfigCondition(
-    name: 'ios',
+    name: 'dart_admin_sdk_e2e_ios',
     expression: "device.os == 'ios'",
     tagColor: TagColor.indigo,
   ),
   RemoteConfigCondition(
-    name: 'android',
+    name: 'dart_admin_sdk_e2e_android',
     expression: "device.os == 'android'",
     tagColor: TagColor.green,
   ),
 ];
+
+/// The conditions of [template] followed by the e2e ones.
+///
+/// The project's own conditions are kept because its parameters may refer to
+/// them, and a template whose parameters name a missing condition is rejected.
+List<RemoteConfigCondition> _withE2eConditions(RemoteConfigTemplate template) {
+  final names = {for (final condition in template.conditions) condition.name};
+  return [
+    ...template.conditions,
+    for (final condition in _e2eConditions)
+      if (!names.contains(condition.name)) condition,
+  ];
+}
+
+/// An ETag in the server's own format that names an older version than
+/// [etag] does, so the server rejects it as a version mismatch.
+String _staleEtag(String etag) {
+  final match = RegExp(r'^(etag-\d+-)(\d+)$').firstMatch(etag);
+  if (match == null) {
+    throw StateError('Unexpected ETag format: $etag');
+  }
+  return '${match[1]}${int.parse(match[2]!) - 1}';
+}
 
 // `RemoteConfigParameter` isn't const (it wraps `conditionalValues` in
 // `Map.unmodifiable` internally), so this is `final` rather than `const`.
@@ -97,14 +120,12 @@ void main() {
     });
 
     test('validateTemplate succeeds with a valid template', () async {
-      final candidate = RemoteConfigTemplate(
-        etag: baseline.etag,
-        conditions: _validConditions,
+      final candidate = baseline.copyWith(
+        conditions: _withE2eConditions(baseline),
         parameters: <String, RemoteConfigParameter>{
           ...baseline.parameters,
           'dart_admin_sdk_e2e_marker': _validParameter,
         },
-        parameterGroups: baseline.parameterGroups,
         version: const Version(description: 'dart_admin_sdk e2e validate'),
       );
 
@@ -116,11 +137,9 @@ void main() {
     test(
       'validateTemplate propagates invalid-argument when conditions reference unknown names',
       () async {
-        final invalid = RemoteConfigTemplate(
-          etag: baseline.etag,
-          // No conditions defined, but the parameter below references
-          // a non-existent condition name.
-          conditions: const <RemoteConfigCondition>[],
+        final invalid = baseline.copyWith(
+          // The parameter below references a condition name the template
+          // does not declare.
           parameters: <String, RemoteConfigParameter>{
             ...baseline.parameters,
             'dart_admin_sdk_e2e_marker': RemoteConfigParameter(
@@ -130,7 +149,6 @@ void main() {
               },
             ),
           },
-          parameterGroups: baseline.parameterGroups,
         );
 
         await expectLater(
@@ -151,9 +169,8 @@ void main() {
       () async {
         // 1. Publish a marker parameter on top of the current baseline.
         final stamp = DateTime.now().toUtc().toIso8601String();
-        final candidate = RemoteConfigTemplate(
-          etag: baseline.etag,
-          conditions: _validConditions,
+        final candidate = baseline.copyWith(
+          conditions: _withE2eConditions(baseline),
           parameters: <String, RemoteConfigParameter>{
             ...baseline.parameters,
             'dart_admin_sdk_e2e_marker': RemoteConfigParameter(
@@ -162,7 +179,6 @@ void main() {
               valueType: ParameterValueType.string,
             ),
           },
-          parameterGroups: baseline.parameterGroups,
           version: Version(description: 'dart_admin_sdk e2e $stamp'),
         );
 
@@ -224,34 +240,36 @@ void main() {
     );
 
     test('publishTemplate(force: true) bypasses ETag validation', () async {
-      // 1. Build a candidate from the current active template, but stamp
-      //    a deliberately stale ETag to force the version-mismatch path.
+      // 1. Build a candidate from the current active template, but with the
+      //    ETag of an older version to force the version-mismatch path.
       final current = await rc.getTemplate();
       final stamp = DateTime.now().toUtc().toIso8601String();
-      final cleanCurrent = Map<String, RemoteConfigParameter>.from(
-        current.parameters,
-      )..remove('dart_admin_sdk_e2e_marker');
-      final staleCandidate = RemoteConfigTemplate(
-        // Stale: not the server's actual current ETag.
-        etag: 'etag-deliberately-stale',
-        conditions: current.conditions,
+      final staleCandidate = current.copyWith(
+        etag: _staleEtag(current.etag),
         parameters: <String, RemoteConfigParameter>{
-          ...cleanCurrent,
+          ...current.parameters,
           'dart_admin_sdk_e2e_marker': RemoteConfigParameter(
             defaultValue: ExplicitParameterValue(value: 'force-$stamp'),
             description: 'e2e force-publish $stamp',
             valueType: ParameterValueType.string,
           ),
         },
-        parameterGroups: current.parameterGroups,
         version: const Version(description: 'dart_admin_sdk e2e force'),
       );
 
-      // 2. Without force, the server rejects the stale ETag.
+      // 2. Without force, the server rejects the stale ETag as a version
+      //    mismatch. Asserting the code keeps an auth or quota failure from
+      //    passing this step.
       restoreBaselineOnTearDown();
       await expectLater(
         rc.publishTemplate(staleCandidate),
-        throwsA(isA<FirebaseRemoteConfigException>()),
+        throwsA(
+          isA<FirebaseRemoteConfigException>().having(
+            (e) => e.errorCode,
+            'errorCode',
+            RemoteConfigErrorCode.failedPrecondition,
+          ),
+        ),
       );
 
       // 3. With force=true, the SDK sends `If-Match: *` and the publish

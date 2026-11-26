@@ -52,10 +52,12 @@ class RemoteConfigRequestHandler {
     // success. Restore the original etag so callers can use the template for
     // follow-on operations.
     _requireEtag(result.etag, 'validateTemplate response');
-    return RemoteConfigTemplate.fromJson(<String, Object?>{
-      ...result.body,
-      'etag': template.etag,
-    });
+    return _decodeResponse(
+      () => RemoteConfigTemplate.fromJson(<String, Object?>{
+        ...result.body,
+        'etag': template.etag,
+      }),
+    );
   }
 
   Future<RemoteConfigTemplate> publishTemplate(
@@ -89,15 +91,17 @@ class RemoteConfigRequestHandler {
       startTime: options?.startTime,
       endTime: options?.endTime,
     );
-    return ListVersionsResult.fromJson(body);
+    return _decodeResponse(() => ListVersionsResult.fromJson(body));
   }
 
   Future<ServerTemplateData> getServerTemplate() async {
     final result = await _httpClient.getServerTemplate();
-    return ServerTemplateData.fromJson(<String, Object?>{
-      ...result.body,
-      'etag': _requireEtag(result.etag, 'getServerTemplate response'),
-    });
+    return _decodeResponse(
+      () => ServerTemplateData.fromJson(<String, Object?>{
+        ...result.body,
+        'etag': _requireEtag(result.etag, 'getServerTemplate response'),
+      }),
+    );
   }
 
   String _requireEtag(String? etag, [String source = 'response']) =>
@@ -110,10 +114,33 @@ class RemoteConfigRequestHandler {
       };
 
   RemoteConfigTemplate _parseTemplate(RemoteConfigHttpResult result) {
-    return RemoteConfigTemplate.fromJson(<String, Object?>{
-      ...result.body,
-      'etag': _requireEtag(result.etag),
-    });
+    return _decodeResponse(
+      () => RemoteConfigTemplate.fromJson(<String, Object?>{
+        ...result.body,
+        'etag': _requireEtag(result.etag),
+      }),
+    );
+  }
+
+  /// Runs [decode] on a server response.
+  ///
+  /// A response with a field of the wrong type fails a cast inside a
+  /// `fromJson`. That is reported as `unknown-error`, like any other response
+  /// the SDK cannot read, rather than as a raw [TypeError].
+  T _decodeResponse<T>(T Function() decode) {
+    try {
+      return decode();
+    } on FirebaseRemoteConfigException {
+      rethrow;
+    } catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        FirebaseRemoteConfigException(
+          RemoteConfigErrorCode.unknownError,
+          'Unexpected Remote Config response: $error',
+        ),
+        stackTrace,
+      );
+    }
   }
 
   Map<String, Object?> _buildRequestBody(RemoteConfigTemplate template) {
