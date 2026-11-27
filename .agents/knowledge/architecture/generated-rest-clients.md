@@ -24,6 +24,10 @@ sources:
     resource: ../../../packages/firebase_admin_sdk/lib/src/app_check/app_check_http_client.dart
     symbol: _verifyAppCheckTokenRest
     title: The hand-written `v1beta` `verifyAppCheckToken` call
+  - id: remote-config-rest
+    resource: ../../../packages/firebase_admin_sdk/lib/src/remote_config/remote_config_http_client.dart
+    symbol: "'If-Match'"
+    title: Remote Config's hand-written REST calls
   - id: node-retry
     resource: https://github.com/firebase/firebase-admin-node/blob/main/src/utils/api-request.ts
     symbol: defaultRetryConfig
@@ -35,12 +39,15 @@ sources:
 - Enforced by: nothing; review only.
 - Which `googleapis` API and version each service calls: the `googleapis` dependency in the admin `pubspec.yaml`, and the imports of each `*_http_client.dart`, for example `auth_http_client.dart` and `messaging_http_client.dart`.[^googleapis-dependency][^auth-generated-client][^messaging-generated-client]
 - The one raw call to a beta API: `_verifyAppCheckTokenRest` in `app_check_http_client.dart`.[^app-check-rest]
+- The one service with no generated client: the `If-Match` requests in `remote_config_http_client.dart`.[^remote-config-rest]
 
 # Decision
 
 Admin services call Google's REST/JSON APIs through generated discovery clients from `package:googleapis`. Firestore and Storage don't: Firestore uses the generated `google_cloud_firestore_v1` client, and Storage wraps `google_cloud_storage`.
 
-Hand-written HTTP is the exception, in five places: App Check's `v1beta` `verifyAppCheckToken`, the FCM v1 topic subscriptions, the legacy IID topic calls, Storage's `getDownloadURL`, and the certificate and JWKS fetches in `utils/jwt.dart`. App Check's call is raw REST because the SDK doesn't depend on `googleapis_beta`.
+Hand-written HTTP is the exception, in six places: App Check's `v1beta` `verifyAppCheckToken`, the FCM v1 topic subscriptions, the legacy IID topic calls, Storage's `getDownloadURL`, the certificate and JWKS fetches in `utils/jwt.dart`, and all of Remote Config. App Check's call is raw REST because the SDK doesn't depend on `googleapis_beta`.
+
+Remote Config is raw REST for two reasons. `googleapis` has no Remote Config client. And a generated client could not do the job: reading, validating, publishing and rolling back a template need the `ETag` response header and the `If-Match` request header, and generated clients expose neither.
 
 **No retry layer, unlike Node.** Node's admin services share a hand-written `HttpClient` whose `defaultRetryConfig` retries HTTP 503, `ECONNRESET` and `ETIMEDOUT` with exponential backoff.[^node-retry] `firebase_admin_sdk` has no general retry layer, so a transient failure reaches the caller. Firestore has its own retries; see [Firestore retries transient errors like Node](/firestore/retries.md).
 
@@ -50,7 +57,7 @@ The maintainers' stated reason, in part: `googleapis` was adopted because it is 
 
 Why REST and not gRPC isn't recorded. The likely reason (not recorded): Dart has maintained generated REST clients for these APIs, and none of these admin APIs needs streaming.
 
-Whether hand-written REST is the accepted pattern for APIs missing from `googleapis` is undecided; ask a maintainer. Remote Config is the open case; see [Firebase services Node has and Dart does not](/scope/unsupported-services.md).
+Whether hand-written REST is the accepted pattern for APIs missing from `googleapis` is undecided; ask a maintainer. Remote Config is hand-written, but it also needs headers a generated client can't reach, so it doesn't settle the question for the products in [Firebase services Node has and Dart does not](/scope/unsupported-services.md).
 
 Why there is no retry layer isn't recorded. Ask a maintainer before changing it.
 
@@ -71,4 +78,5 @@ Why there is no retry layer isn't recorded. Ask a maintainer before changing it.
 [^auth-generated-client]: Auth's generated identitytoolkit clients
 [^messaging-generated-client]: Messaging's generated FCM v1 client
 [^app-check-rest]: App Check's hand-written `verifyAppCheckToken`
+[^remote-config-rest]: Remote Config's hand-written REST calls
 [^node-retry]: Node's `defaultRetryConfig`

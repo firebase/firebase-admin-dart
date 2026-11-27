@@ -1,0 +1,339 @@
+// Copyright 2026 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Firebase Remote Config integration tests.
+//
+// SAFETY: Remote Config has no emulator, so these tests hit the real API.
+// They run a publish/rollback cycle against the canonical [projectId]. Each
+// test that publishes registers a teardown that rolls back to the template
+// version captured at the start, whether or not the test passed.
+//
+// Tagged `prod`: gated out of the default emulator suite (see
+// `dart_test.yaml` and `scripts/coverage.sh`). Run locally with
+// `gcloud beta auth application-default login` then
+// `dart test test/integration/remote_config -P prod`. The bound
+// credential must have `roles/firebaseremoteconfig.admin` and
+// `roles/firebaseanalytics.viewer` (the latter is needed by the rollback
+// endpoint, which validates against Google Analytics).
+
+import 'package:firebase_admin_sdk/firebase_admin_sdk.dart';
+import 'package:firebase_admin_sdk/remote_config.dart';
+import 'package:test/test.dart';
+
+import '../../fixtures/helpers.dart';
+
+const _e2eConditions = [
+  RemoteConfigCondition(
+    name: 'dart_admin_sdk_e2e_ios',
+    expression: "device.os == 'ios'",
+    tagColor: TagColor.indigo,
+  ),
+  RemoteConfigCondition(
+    name: 'dart_admin_sdk_e2e_android',
+    expression: "device.os == 'android'",
+    tagColor: TagColor.green,
+  ),
+];
+
+/// The conditions of [template] followed by the e2e ones.
+///
+/// The project's own conditions are kept because its parameters may refer to
+/// them, and a template whose parameters name a missing condition is rejected.
+List<RemoteConfigCondition> _withE2eConditions(RemoteConfigTemplate template) {
+  final names = {for (final condition in template.conditions) condition.name};
+  return [
+    ...template.conditions,
+    for (final condition in _e2eConditions)
+      if (!names.contains(condition.name)) condition,
+  ];
+}
+
+/// An ETag in the server's own format that names an older version than
+/// [etag] does, so the server rejects it as a version mismatch.
+String _staleEtag(String etag) {
+  final match = RegExp(r'^(etag-\d+-)(\d+)$').firstMatch(etag);
+  if (match == null) {
+    throw StateError('Unexpected ETag format: $etag');
+  }
+  return '${match[1]}${int.parse(match[2]!) - 1}';
+}
+
+// `RemoteConfigParameter` isn't const (it wraps `conditionalValues` in
+// `Map.unmodifiable` internally), so this is `final` rather than `const`.
+final _validParameter = RemoteConfigParameter(
+  defaultValue: const ExplicitParameterValue(value: 'hello'),
+  description: 'dart_admin_sdk e2e test parameter',
+  valueType: ParameterValueType.string,
+);
+
+void main() {
+  group('RemoteConfig (production)', () {
+    late FirebaseApp app;
+    late RemoteConfig rc;
+    late RemoteConfigTemplate baseline;
+
+    setUpAll(() async {
+      app = FirebaseApp.initializeApp(
+        name: 'rc-e2e-${DateTime.now().microsecondsSinceEpoch}',
+        options: const AppOptions(projectId: projectId),
+      );
+      rc = app.remoteConfig();
+      baseline = await rc.getTemplate();
+      if (baseline.version?.versionNumber == null) {
+        throw StateError(
+          'The template on $projectId has no version history, so these tests '
+          'cannot restore it after publishing. Publish once from the console '
+          'or pick a project that already has a version.',
+        );
+      }
+    });
+
+    tearDownAll(() async {
+      await app.close();
+    });
+
+    // Registers a rollback to the baseline captured in `setUpAll`. Call it
+    // before publishing, so the live project is restored even when a later
+    // assertion fails. `setUpAll` has already asserted the baseline has a
+    // version, so there is always something to roll back to. The bound service account needs
+    // `roles/firebaseanalytics.viewer` on the linked GA property in addition
+    // to `roles/firebaseremoteconfig.admin`, since the rollback endpoint
+    // validates against Google Analytics data.
+    void restoreBaselineOnTearDown() {
+      final priorVersion = baseline.version!.versionNumber!;
+      addTearDown(() => rc.rollback(priorVersion));
+    }
+
+    test('getTemplate returns a template with a non-empty etag', () {
+      expect(baseline.etag, isNotEmpty);
+    });
+
+    test('validateTemplate succeeds with a valid template', () async {
+      final candidate = baseline.copyWith(
+        conditions: _withE2eConditions(baseline),
+        parameters: <String, RemoteConfigParameter>{
+          ...baseline.parameters,
+          'dart_admin_sdk_e2e_marker': _validParameter,
+        },
+        version: const Version(description: 'dart_admin_sdk e2e validate'),
+      );
+
+      final validated = await rc.validateTemplate(candidate);
+      // Validate-only restores the original etag in our request handler.
+      expect(validated.etag, baseline.etag);
+    });
+
+    test(
+      'validateTemplate propagates invalid-argument when conditions reference unknown names',
+      () async {
+        final invalid = baseline.copyWith(
+          // The parameter below references a condition name the template
+          // does not declare.
+          parameters: <String, RemoteConfigParameter>{
+            ...baseline.parameters,
+            'dart_admin_sdk_e2e_marker': RemoteConfigParameter(
+              defaultValue: const ExplicitParameterValue(value: 'x'),
+              conditionalValues: const <String, RemoteConfigParameterValue>{
+                'never_declared_condition': ExplicitParameterValue(value: 'y'),
+              },
+            ),
+          },
+        );
+
+        await expectLater(
+          rc.validateTemplate(invalid),
+          throwsA(
+            isA<FirebaseRemoteConfigException>().having(
+              (e) => e.errorCode,
+              'errorCode',
+              RemoteConfigErrorCode.invalidArgument,
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'publishTemplate -> getTemplate -> rollback round-trip',
+      () async {
+        // 1. Publish a marker parameter on top of the current baseline.
+        final stamp = DateTime.now().toUtc().toIso8601String();
+        final candidate = baseline.copyWith(
+          conditions: _withE2eConditions(baseline),
+          parameters: <String, RemoteConfigParameter>{
+            ...baseline.parameters,
+            'dart_admin_sdk_e2e_marker': RemoteConfigParameter(
+              defaultValue: ExplicitParameterValue(value: stamp),
+              description: 'e2e $stamp',
+              valueType: ParameterValueType.string,
+            ),
+          },
+          version: Version(description: 'dart_admin_sdk e2e $stamp'),
+        );
+
+        restoreBaselineOnTearDown();
+        final published = await rc.publishTemplate(candidate);
+        expect(published.etag, isNot(equals(baseline.etag)));
+        expect(
+          published.parameters.containsKey('dart_admin_sdk_e2e_marker'),
+          isTrue,
+        );
+
+        // 2. Fetch and verify the marker is visible.
+        final fetched = await rc.getTemplate();
+        final marker = fetched.parameters['dart_admin_sdk_e2e_marker'];
+        expect(marker, isNotNull);
+        expect((marker!.defaultValue! as ExplicitParameterValue).value, stamp);
+
+        // 3. Roll back to the prior version; project state should match
+        //    the baseline we captured in setUpAll. Compare against the
+        //    baseline rather than asserting the marker is absent, so the test
+        //    does not assume the project started clean.
+        final rolledBack = await rc.rollback(baseline.version!.versionNumber!);
+        expect(
+          _markerValue(rolledBack),
+          _markerValue(baseline),
+          reason: 'rollback should restore the baseline marker value',
+        );
+      },
+      // Round-trip can take a bit; allow generous time.
+      timeout: const Timeout(Duration(seconds: 60)),
+    );
+
+    test(
+      'listVersions returns at least the version we just published',
+      () async {
+        final result = await rc.listVersions(ListVersionsOptions(pageSize: 5));
+        expect(result.versions, isNotEmpty);
+        // Newest first per the REST API.
+        expect(result.versions.first.versionNumber, isNotNull);
+      },
+    );
+
+    test(
+      'getTemplateAtVersion returns a specific historical version',
+      () async {
+        // Pick the latest known version from listVersions and re-fetch it
+        // explicitly. The returned template must echo that version number
+        // back in `version.versionNumber`.
+        final list = await rc.listVersions(ListVersionsOptions(pageSize: 1));
+        expect(list.versions, isNotEmpty);
+        final versionNumber = list.versions.first.versionNumber;
+        expect(versionNumber, isNotNull);
+
+        final atVersion = await rc.getTemplateAtVersion(versionNumber!);
+        expect(atVersion.etag, isNotEmpty);
+        expect(atVersion.version, isNotNull);
+        expect(atVersion.version!.versionNumber, versionNumber);
+      },
+    );
+
+    test('publishTemplate(force: true) bypasses ETag validation', () async {
+      // 1. Build a candidate from the current active template, but with the
+      //    ETag of an older version to force the version-mismatch path.
+      final current = await rc.getTemplate();
+      final stamp = DateTime.now().toUtc().toIso8601String();
+      final staleCandidate = current.copyWith(
+        etag: _staleEtag(current.etag),
+        parameters: <String, RemoteConfigParameter>{
+          ...current.parameters,
+          'dart_admin_sdk_e2e_marker': RemoteConfigParameter(
+            defaultValue: ExplicitParameterValue(value: 'force-$stamp'),
+            description: 'e2e force-publish $stamp',
+            valueType: ParameterValueType.string,
+          ),
+        },
+        version: const Version(description: 'dart_admin_sdk e2e force'),
+      );
+
+      // 2. Without force, the server rejects the stale ETag as a version
+      //    mismatch. Asserting the code keeps an auth or quota failure from
+      //    passing this step.
+      restoreBaselineOnTearDown();
+      await expectLater(
+        rc.publishTemplate(staleCandidate),
+        throwsA(
+          isA<FirebaseRemoteConfigException>().having(
+            (e) => e.errorCode,
+            'errorCode',
+            RemoteConfigErrorCode.failedPrecondition,
+          ),
+        ),
+      );
+
+      // 3. With force=true, the SDK sends `If-Match: *` and the publish
+      //    succeeds despite the stale ETag in the candidate.
+      final published = await rc.publishTemplate(staleCandidate, force: true);
+      expect(
+        published.parameters.containsKey('dart_admin_sdk_e2e_marker'),
+        isTrue,
+      );
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('getServerTemplate + evaluate produces a ServerConfig', () async {
+      // Server-side templates are a separate resource and can only be
+      // authored via the Firebase Console (the public REST API exposes
+      // GET on this namespace but no write path). If the target project
+      // has no server template configured, the API returns NOT_FOUND;
+      // we fall back to initServerTemplate with an empty cached template
+      // so the evaluator still smoke-tests cleanly.
+      ServerTemplate serverTemplate;
+      try {
+        serverTemplate = await rc.getServerTemplate(
+          GetServerTemplateOptions(
+            defaultConfig: const <String, Object>{
+              'dart_admin_sdk_e2e_in_app_only': 'fallback',
+            },
+          ),
+        );
+      } on FirebaseRemoteConfigException catch (e) {
+        if (e.errorCode != RemoteConfigErrorCode.notFound) rethrow;
+        serverTemplate = rc.initServerTemplate(
+          InitServerTemplateOptions(
+            defaultConfig: const <String, Object>{
+              'dart_admin_sdk_e2e_in_app_only': 'fallback',
+            },
+            template: const ServerTemplateJson(
+              '{"etag":"e2e-empty","conditions":[],"parameters":{}}',
+            ),
+          ),
+        );
+      }
+
+      final config = serverTemplate.evaluate(
+        const EvaluationContext(randomizationId: 'dart_admin_sdk_e2e_user'),
+      );
+
+      // A key that exists ONLY in the in-app defaultConfig (never published
+      // to the server template) must resolve from `valueDefault`.
+      expect(
+        config.getValue('dart_admin_sdk_e2e_in_app_only').getSource(),
+        ValueSource.valueDefault,
+      );
+      expect(config.getString('dart_admin_sdk_e2e_in_app_only'), 'fallback');
+      // Unknown keys fall through to static defaults.
+      expect(
+        config.getValue('definitely_not_a_real_key').getSource(),
+        ValueSource.valueStatic,
+      );
+    });
+  }, tags: 'prod');
+}
+
+/// The value of the e2e marker parameter in [template], or null when the
+/// parameter is absent.
+String? _markerValue(RemoteConfigTemplate template) {
+  final value = template.parameters['dart_admin_sdk_e2e_marker']?.defaultValue;
+  return value is ExplicitParameterValue ? value.value : null;
+}

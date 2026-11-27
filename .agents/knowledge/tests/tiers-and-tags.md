@@ -1,7 +1,7 @@
 ---
 type: Constraint
 title: Test tiers and tags, and the prod and WIF runs
-description: "Every feature and fix needs tests, split into unit, emulator, prod and WIF tiers by `dart_test.yaml` tags, never by environment variables; `-P prod` and `-P wif` need real credentials and run only on request, the coverage scripts add `-P prod` whenever `GOOGLE_APPLICATION_CREDENTIALS` is set, and the Pipeline E2E suite is the only prod suite CI runs."
+description: "Every feature and fix needs tests, split into unit, emulator, prod and WIF tiers by `dart_test.yaml` tags, never by environment variables; `-P prod` and `-P wif` need real credentials and run only on request, the coverage scripts add `-P prod` whenever `GOOGLE_APPLICATION_CREDENTIALS` is set, and the only prod suites CI runs are the Pipeline E2E suite and the Remote Config suite."
 tags: [tests, tags, credentials, ci]
 agents_md: always
 governs:
@@ -96,7 +96,7 @@ Tests are split into tiers by `dart_test` tags, never by environment variables.
 
 - In `firebase_admin_sdk`, the two refresh-token tests also need `FIREBASE_REFRESH_TOKEN_CREDENTIALS`. Without it, they fail rather than skip.
 - **Trap:** `scripts/coverage.sh` and `scripts/firestore-coverage.sh` run `-P prod` after the emulator run whenever `GOOGLE_APPLICATION_CREDENTIALS` is set. A credential exported in the shell for other work turns a coverage run into a prod run.
-- CI never runs `-P prod` for `firebase_admin_sdk`: the `test` job runs the coverage scripts without credentials. The Firestore Pipeline E2E suite is the only prod suite CI runs (see [Pipelines parity with Node](/firestore/pipelines/node-parity.md)).
+- CI runs `-P prod` for `firebase_admin_sdk` on one directory only: the `test-wif` job runs `test/integration/remote_config`, on a single matrix entry, because the suite publishes and rolls back the live project's template and parallel jobs would race on its ETag. The `test` job runs the coverage scripts without credentials. The other prod suite CI runs is the Firestore Pipeline E2E suite (see [Pipelines parity with Node](/firestore/pipelines/node-parity.md)).
 
 **`-P wif`** (admin only) runs a single file, in the `test-wif` job in CI.
 
@@ -123,7 +123,8 @@ The maintainers' stated reasons: the `test-wif` job authenticates with Workload 
 - **Must not:** run `-P prod` or `-P wif` unless the user asks and supplies credentials.
 - **Must:** before running `scripts/coverage.sh` or `scripts/firestore-coverage.sh`, which you do only when the user asks, check whether `GOOGLE_APPLICATION_CREDENTIALS` is set, without printing it. If it is and the user didn't ask for prod tests, run the script with the variable unset (`env -u GOOGLE_APPLICATION_CREDENTIALS …`).
 - **Must not:** write credentials into the repo, print them, or put them in test fixtures. Don't rely on the ignore rules: they cover only the key files above.
-- **Must not:** add `firebase_admin_sdk` prod tests to CI (`build.yml`). The Firestore Pipeline E2E suite is the one exception.
+- **Must not:** add more `firebase_admin_sdk` prod tests to CI (`build.yml`). The exceptions are the Firestore Pipeline E2E suite and the Remote Config suite, which has no emulator to run against.
+- **Must:** register the rollback with `addTearDown` before a test publishes to the live Remote Config project, so a failed assertion still restores the template.
 
 # Related
 

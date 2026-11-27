@@ -1,7 +1,7 @@
 ---
 type: Divergence
 title: Firebase services Node has and Dart does not
-description: Eight Firebase products that Node's Admin SDK offers are marked 🔴 "Not supported" in the README, a ninth, Phone Number Verification, is missing without being listed, and none has a recorded permanent out-of-scope decision.
+description: Seven Firebase products that Node's Admin SDK offers are marked 🔴 "Not supported" in the README, an eighth, Phone Number Verification, is missing without being listed, and none has a recorded permanent out-of-scope decision.
 tags: [scope, services, node-parity]
 agents_md: when-touching
 governs:
@@ -21,10 +21,6 @@ sources:
     resource: https://github.com/firebase/firebase-admin-node/blob/main/src/phone-number-verification/index.ts
     symbol: getPhoneNumberVerification
     title: Node's Phone Number Verification
-  - id: node-remote-config
-    resource: https://github.com/firebase/firebase-admin-node/blob/main/src/remote-config/index.ts
-    symbol: getRemoteConfig
-    title: Node's Remote Config
   - id: node-database
     resource: https://github.com/firebase/firebase-admin-node/blob/main/package.json
     symbol: "@firebase/database-compat"
@@ -43,7 +39,7 @@ sources:
 
 # Node.js
 
-Node's Admin SDK ships Realtime Database,[^node-database] Remote Config,[^node-remote-config] Project Management, Installations, Machine Learning (deprecated upstream, with a shutdown announced),[^node-machine-learning] Eventarc, Extensions, Data Connect and Phone Number Verification.[^node-phone-number-verification]
+Node's Admin SDK ships Realtime Database,[^node-database] Project Management, Installations, Machine Learning (deprecated upstream, with a shutdown announced),[^node-machine-learning] Eventarc, Extensions, Data Connect and Phone Number Verification.[^node-phone-number-verification]
 
 # Dart
 
@@ -58,7 +54,6 @@ These are gaps. The README only says "Not supported", and nothing records a deci
 Mostly unknown. The likely reason (not recorded): the supported set follows the module-by-module plan the SDK was built against.
 
 - **Realtime Database:** no reason is recorded. RTDB doesn't go through Firestore's transport, so the reason Firestore has no realtime listeners doesn't explain it.
-- **Remote Config:** no decision on the approach is recorded. The admin services go through the generated `googleapis` package, which has no Remote Config client. One proposal ports it over direct REST calls, with server-side template evaluation, because the generated clients can't read `ETag` or send `If-Match`.
 
 # Rules for agents
 
@@ -75,7 +70,6 @@ Mostly unknown. The likely reason (not recorded): the supported set follows the 
 - [Product libraries, parts and barrel exports](/conventions/product-libraries-and-barrels.md)
 
 [^node-database]: Node's `@firebase/database-compat` dependency
-[^node-remote-config]: Node's Remote Config
 [^node-machine-learning]: Node's Machine Learning deprecation
 [^node-phone-number-verification]: Node's Phone Number Verification
 [^readme-supported-services]: The README's "Supported Services" table

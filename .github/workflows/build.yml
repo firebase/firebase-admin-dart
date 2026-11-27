@@ -306,6 +306,12 @@ jobs:
       - name: Run WIF auth test
         run: dart test test/integration/app/firebase_app_prod_test.dart --concurrency=1 -P wif
 
+      # One matrix entry only: the tests publish and roll back the live
+      # project's template, so parallel jobs would race on its ETag.
+      - name: Run Remote Config integration tests
+        if: matrix.dart-version == 'stable'
+        run: dart test test/integration/remote_config -P prod --concurrency=1
+
   publish:
     name: Publish verification
     runs-on: ubuntu-latest

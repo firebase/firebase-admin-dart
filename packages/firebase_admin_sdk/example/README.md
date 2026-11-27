@@ -46,5 +46,6 @@ Some examples require a real project and credentials and are commented out by de
 -   **App Check**
 -   **Messaging**
 -   **Security Rules**
+-   **Remote Config**
 
 You can uncomment them in `bin/example.dart` to try them out if you have a properly configured project.

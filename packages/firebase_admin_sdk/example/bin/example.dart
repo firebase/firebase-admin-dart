@@ -19,6 +19,7 @@ import 'package:firebase_admin_sdk_example/auth_example.dart';
 import 'package:firebase_admin_sdk_example/firestore_example.dart';
 import 'package:firebase_admin_sdk_example/functions_example.dart';
 import 'package:firebase_admin_sdk_example/messaging_example.dart';
+import 'package:firebase_admin_sdk_example/remote_config_example.dart';
 import 'package:firebase_admin_sdk_example/security_rules_example.dart';
 import 'package:firebase_admin_sdk_example/storage_example.dart';
 
@@ -30,6 +31,7 @@ const _runStorage = false;
 const _runMessaging = false; // requires a valid FCM token
 const _runAppCheck = false; // requires a real project and credentials
 const _runSecurityRules = false; // requires a real project and credentials
+const _runRemoteConfig = false; // requires a real project and credentials
 
 // To run this example with emulators:
 // Run `dart run bin/run_with_emulator.dart` from the `example` directory.
@@ -44,6 +46,7 @@ Future<void> main() async {
     if (_runMessaging) await messagingExample(admin);
     if (_runAppCheck) await appCheckExample(admin);
     if (_runSecurityRules) await securityRulesExample(admin);
+    if (_runRemoteConfig) await remoteConfigExample(admin);
   } finally {
     await admin.close();
   }
