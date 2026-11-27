@@ -9,6 +9,12 @@ dev_dependencies:
   melos: ^8.0.0
   test: ^1.26.3
 
+# grpc (google_cloud_firestore's Listen transport) still requires http2 ^2.x,
+# while this workspace uses http2 3.x for Http2Client. Remove once
+# https://github.com/grpc/grpc-dart/pull/839 is released.
+dependency_overrides:
+  http2: ^3.1.0
+
 workspace:
   - packages/firebase_admin_sdk
   - packages/firebase_admin_sdk/example
